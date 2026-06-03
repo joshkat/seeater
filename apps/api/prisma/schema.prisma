@@ -1,0 +1,132 @@
+// Prisma schema for the seating-chart app.
+// Mirrors the domain types in @seating/shared.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Physical location. Public-template floor plans power "popular venues".
+model Venue {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  ownerId   String?
+  floorPlans FloorPlan[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// The editable canvas: a sized area containing tables. A plan flagged
+/// `isTemplate` can be cloned by other users.
+model FloorPlan {
+  id         String   @id @default(cuid())
+  venue      Venue?   @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  venueId    String?
+  ownerId    String
+  name       String
+  // Editable area dimensions, in floor-plan units.
+  width      Float
+  height     Float
+  isTemplate Boolean  @default(false)
+  tables     Table[]
+  events     Event[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([isTemplate])
+}
+
+enum TableShape {
+  round
+  rectangle
+}
+
+enum ChairLayoutMode {
+  auto
+  custom
+}
+
+/// A table placed on a floor plan, with its chairs (seats).
+model Table {
+  id              String          @id @default(cuid())
+  floorPlan       FloorPlan       @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  floorPlanId     String
+  label           String          @default("")
+  shape           TableShape
+  // Center position within the floor plan.
+  x               Float
+  y               Float
+  // Rotation in degrees, clockwise, about the table center.
+  rotation        Float           @default(0)
+  // Bounding size; for round tables width == height (diameter).
+  width           Float
+  height          Float
+  chairLayoutMode ChairLayoutMode @default(auto)
+  seats           Seat[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([floorPlanId])
+}
+
+/// A single chair belonging to a table. In custom layouts, offsetX/offsetY
+/// hold the seat position relative to the table center (before rotation).
+model Seat {
+  id      String  @id @default(cuid())
+  table   Table   @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  tableId String
+  index   Int
+  label   String?
+  offsetX Float?
+  offsetY Float?
+  // Back-reference for the guest assigned to this seat, if any.
+  guest   Guest?
+
+  @@unique([tableId, index])
+  @@index([tableId])
+}
+
+/// An event uses a floor plan (often a clone of a template) and has guests.
+model Event {
+  id          String    @id @default(cuid())
+  ownerId     String
+  floorPlan   FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  floorPlanId String
+  name        String
+  startsAt    DateTime?
+  guests      Guest[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerId])
+}
+
+enum RsvpStatus {
+  pending
+  accepted
+  declined
+}
+
+/// A guest on an event's list, optionally assigned to exactly one seat.
+model Guest {
+  id         String     @id @default(cuid())
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId    String
+  name       String
+  email      String?
+  phone      String?
+  rsvpStatus RsvpStatus @default(pending)
+  // A seat holds at most one guest (enforced by @unique on seatId).
+  seat       Seat?      @relation(fields: [seatId], references: [id], onDelete: SetNull)
+  seatId     String?    @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([eventId])
+}

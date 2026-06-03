@@ -1,0 +1,26 @@
+{
+  "name": "seating-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual event seating-chart builder (web-first, API-driven for future mobile)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace @seating/shared",
+    "dev:api": "npm run dev --workspace @seating/api",
+    "dev:web": "npm run dev --workspace @seating/web",
+    "prisma:migrate": "npm run prisma:migrate --workspace @seating/api",
+    "prisma:generate": "npm run prisma:generate --workspace @seating/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
