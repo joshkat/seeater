@@ -8,19 +8,26 @@ pan/zoom, snapping, rotation, and per-operation autosave.
 The backend is a REST API, kept deliberately separate from the web client so the
 same contract can later power a mobile app.
 
-> **Status:** Milestone 1b complete — the polished editor with guest-seat geometry.
-> Guest list / RSVP / invites / wallet passes are planned but not yet built.
+> **Status:** Editor, guest seating, RSVP, multi-event dashboard, and theming are built.
+> Export/print, venue templates, and Wallet passes are the next candidates.
+
+## Documentation
+
+- **[docs/architecture.md](docs/architecture.md)** — how the app is built and how data flows (start here).
+- **[docs/project-structure.md](docs/project-structure.md)** — annotated map of every folder.
+- **[docs/styling.md](docs/styling.md)** — the Tailwind/DaisyUI theming system and UI patterns.
+- **[CLAUDE.md](CLAUDE.md)** — terse cheatsheet + hard-won gotchas (also auto-loaded by Claude Code).
 
 ---
 
 ## Tech stack
 
-| Layer    | Tech |
-| -------- | ---- |
+| Layer    | Tech                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------- |
 | Web      | React 18 + Vite, [react-konva](https://konvajs.org/) canvas, [zustand](https://github.com/pmndrs/zustand) store |
-| API      | [Fastify 5](https://fastify.dev/) (TypeScript, ESM), [zod](https://zod.dev/) validation |
-| Database | PostgreSQL via [Prisma](https://www.prisma.io/) |
-| Shared   | `@seating/shared` — TypeScript domain types + seat-layout geometry, imported by both API and web |
+| API      | [Fastify 5](https://fastify.dev/) (TypeScript, ESM), [zod](https://zod.dev/) validation                         |
+| Database | PostgreSQL via [Prisma](https://www.prisma.io/)                                                                 |
+| Shared   | `@seating/shared` — TypeScript domain types + seat-layout geometry, imported by both API and web                |
 
 The repo is an **npm workspaces monorepo**:
 
@@ -77,18 +84,18 @@ npm run prisma:migrate
 
 **`apps/api/.env`**
 
-| Variable       | Default                                              | Notes |
-| -------------- | ---------------------------------------------------- | ----- |
+| Variable       | Default                                                                   | Notes                                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/seating_app?schema=public` | Your Postgres connection string. On a default macOS/Homebrew setup the user is your macOS username with no password, e.g. `postgresql://Josh@localhost:5432/seating_app?schema=public`. |
-| `PORT`         | `4000`                                               | API port |
-| `HOST`         | `0.0.0.0`                                            | API bind host |
-| `CORS_ORIGIN`  | `http://localhost:5173`                              | Comma-separated allowed origins (the web dev server) |
+| `PORT`         | `4000`                                                                    | API port                                                                                                                                                                                |
+| `HOST`         | `0.0.0.0`                                                                 | API bind host                                                                                                                                                                           |
+| `CORS_ORIGIN`  | `http://localhost:5173`                                                   | Comma-separated allowed origins (the web dev server)                                                                                                                                    |
 
 **`apps/web/.env.local`**
 
-| Variable             | Default                       | Notes |
-| -------------------- | ----------------------------- | ----- |
-| `VITE_API_BASE_URL`  | `http://localhost:4000/api`   | Base URL of the API |
+| Variable            | Default                     | Notes               |
+| ------------------- | --------------------------- | ------------------- |
+| `VITE_API_BASE_URL` | `http://localhost:4000/api` | Base URL of the API |
 
 ---
 
@@ -119,15 +126,15 @@ Health check: `curl http://localhost:4000/api/health` should return `200`.
 
 ## Useful scripts (run from the repo root)
 
-| Command                    | What it does |
-| -------------------------- | ------------ |
-| `npm run dev:api`          | Start the API in watch mode (tsx) |
-| `npm run dev:web`          | Start the Vite dev server |
-| `npm run build:shared`     | Compile `@seating/shared` to `dist/` |
-| `npm run prisma:migrate`   | Apply/create DB migrations (Prisma) |
-| `npm run prisma:generate`  | Regenerate the Prisma client |
-| `npm run typecheck`        | Typecheck every workspace |
-| `npm run format`           | Prettier-format the repo |
+| Command                   | What it does                         |
+| ------------------------- | ------------------------------------ |
+| `npm run dev:api`         | Start the API in watch mode (tsx)    |
+| `npm run dev:web`         | Start the Vite dev server            |
+| `npm run build:shared`    | Compile `@seating/shared` to `dist/` |
+| `npm run prisma:migrate`  | Apply/create DB migrations (Prisma)  |
+| `npm run prisma:generate` | Regenerate the Prisma client         |
+| `npm run typecheck`       | Typecheck every workspace            |
+| `npm run format`          | Prettier-format the repo             |
 
 Per-app builds: `npm run build --workspace @seating/api` and
 `npm run build --workspace @seating/web`.
