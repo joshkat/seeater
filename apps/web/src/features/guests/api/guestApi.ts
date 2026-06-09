@@ -1,6 +1,6 @@
-import type { EventWithGuests, Guest, GuestInput, GuestUpdateInput } from '@seating/shared';
+import type { EventWithGuests, Guest, GuestInput, GuestUpdateInput } from "@seating/shared";
 
-import { apiRequest } from '../../../lib/apiClient';
+import { apiRequest } from "../../../lib/apiClient";
 
 /** API surface for a floor plan's event and its guest list. */
 
@@ -11,14 +11,14 @@ export function getEventForFloorPlan(floorPlanId: string): Promise<EventWithGues
 
 export function createGuest(eventId: string, input: GuestInput): Promise<Guest> {
   return apiRequest<Guest>(`/events/${eventId}/guests`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export function bulkCreateGuests(eventId: string, guests: GuestInput[]): Promise<Guest[]> {
   return apiRequest<Guest[]>(`/events/${eventId}/guests/bulk`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ guests }),
   });
 }
@@ -29,14 +29,14 @@ export function updateGuest(
   patch: GuestUpdateInput,
 ): Promise<Guest> {
   return apiRequest<Guest>(`/events/${eventId}/guests/${guestId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(patch),
   });
 }
 
 export function deleteGuest(eventId: string, guestId: string): Promise<void> {
   return apiRequest<void>(`/events/${eventId}/guests/${guestId}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -48,7 +48,7 @@ export function assignGuestSeat(
   seatId: string | null,
 ): Promise<Guest[]> {
   return apiRequest<Guest[]>(`/events/${eventId}/guests/${guestId}/seat`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({ seatId }),
   });
 }

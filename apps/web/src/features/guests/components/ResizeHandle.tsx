@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 interface ResizeHandleProps {
   onMouseDown: (event: React.MouseEvent) => void;
@@ -20,7 +20,7 @@ export function ResizeHandle({ onMouseDown, active }: ResizeHandleProps): JSX.El
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={`absolute -right-[3px] bottom-0 top-0 z-[5] w-1.5 cursor-col-resize transition-colors ${
-        highlighted ? 'bg-primary/60' : 'bg-transparent'
+        highlighted ? "bg-primary/60" : "bg-transparent"
       }`}
     />
   );

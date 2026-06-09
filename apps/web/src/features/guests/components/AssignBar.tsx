@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-import { tableDisplayName } from '../../editor/lib/tableLabel';
-import { useEditorStore } from '../../editor/store/editorStore';
-import { useGuestStore } from '../store/guestStore';
+import { tableDisplayName } from "../../editor/lib/tableLabel";
+import { useEditorStore } from "../../editor/store/editorStore";
+import { useGuestStore } from "../store/guestStore";
 
 /** Action bar shown when one or more guests are selected: assign the whole
  * selection to a table's open seats, or clear the selection. */
@@ -40,7 +40,7 @@ export function AssignBar(): JSX.Element | null {
     <div className="flex flex-col gap-1.5 rounded-box border border-primary/30 bg-primary/5 p-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-primary">
-          {count} guest{count === 1 ? '' : 's'} selected
+          {count} guest{count === 1 ? "" : "s"} selected
         </span>
         <button
           type="button"
@@ -58,7 +58,7 @@ export function AssignBar(): JSX.Element | null {
         value=""
         onChange={(event) => {
           if (event.target.value) void handleAssign(event.target.value);
-          event.target.value = '';
+          event.target.value = "";
         }}
       >
         <option value="" disabled>

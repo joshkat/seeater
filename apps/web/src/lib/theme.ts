@@ -4,18 +4,18 @@
  * page loads without a flash.
  */
 
-const STORAGE_KEY = 'seating.theme';
-const DEFAULT_THEME = 'seating';
+const STORAGE_KEY = "seating.theme";
+const DEFAULT_THEME = "seating";
 
 /** Valid theme values that match the names registered in global.css + DaisyUI. */
 export const THEMES = [
-  { value: 'seating', label: 'Light' },
-  { value: 'seating-dark', label: 'Dark' },
-  { value: 'black', label: 'Black' },
-  { value: 'synthwave', label: 'Purple' },
+  { value: "seating", label: "Light" },
+  { value: "seating-dark", label: "Dark" },
+  { value: "black", label: "Black" },
+  { value: "synthwave", label: "Purple" },
 ] as const;
 
-export type ThemeValue = (typeof THEMES)[number]['value'];
+export type ThemeValue = (typeof THEMES)[number]["value"];
 
 /** Read the persisted theme (or the default). */
 export function getSavedTheme(): ThemeValue {
@@ -30,7 +30,7 @@ export function getSavedTheme(): ThemeValue {
 
 /** Apply a theme to <html data-theme> and persist it. */
 export function applyTheme(theme: ThemeValue): void {
-  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.setAttribute("data-theme", theme);
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch {

@@ -1,3 +1,4 @@
+import { clerkPlugin } from "@clerk/fastify";
 import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -44,6 +45,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(sensible);
   await app.register(cors, { origin: resolveCorsOrigin });
   await app.register(prismaPlugin);
+
+  // Verify Clerk session tokens (attaches auth to each request) when configured.
+  // Without keys the API runs in keyless dev mode (see lib/auth.ts).
+  if (env.CLERK_SECRET_KEY) {
+    await app.register(clerkPlugin, {
+      secretKey: env.CLERK_SECRET_KEY,
+      publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    });
+  }
 
   // Translate request-validation failures into 400s with field details.
   app.setErrorHandler((error, _request, reply) => {

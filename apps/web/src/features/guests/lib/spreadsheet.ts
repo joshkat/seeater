@@ -1,7 +1,7 @@
-import { type GuestImportResult, parseCsvRows, rowsToGuests } from './csv';
+import { type GuestImportResult, parseCsvRows, rowsToGuests } from "./csv";
 
 /** File extensions we accept for guest imports. */
-export const IMPORT_ACCEPT = '.csv,.xlsx,.xls,text/csv';
+export const IMPORT_ACCEPT = ".csv,.xlsx,.xls,text/csv";
 
 function isSpreadsheet(file: File): boolean {
   return /\.(xlsx|xls)$/i.test(file.name);
@@ -10,9 +10,9 @@ function isSpreadsheet(file: File): boolean {
 /** Reads the first sheet of an xlsx/xls file into rows of string cells. The
  * (heavy) SheetJS library is loaded on demand so it stays out of the main bundle. */
 async function readSpreadsheetRows(file: File): Promise<string[][]> {
-  const XLSX = await import('xlsx');
+  const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  const workbook = XLSX.read(buffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const sheet = workbook.Sheets[firstSheetName];
@@ -20,9 +20,9 @@ async function readSpreadsheetRows(file: File): Promise<string[][]> {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     blankrows: false,
-    defval: '',
+    defval: "",
   });
-  return rows.map((row) => row.map((cell) => (cell == null ? '' : String(cell))));
+  return rows.map((row) => row.map((cell) => (cell == null ? "" : String(cell))));
 }
 
 /**

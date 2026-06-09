@@ -1,21 +1,21 @@
-import type { GuestInput } from '@seating/shared';
-import { type FormEvent, useState } from 'react';
+import type { GuestInput } from "@seating/shared";
+import { type FormEvent, useState } from "react";
 
-import { useGuestStore } from '../store/guestStore';
+import { useGuestStore } from "../store/guestStore";
 
 /** Splits a free-text contact into an email or phone based on its content. */
-function classifyContact(value: string): Pick<GuestInput, 'email' | 'phone'> {
+function classifyContact(value: string): Pick<GuestInput, "email" | "phone"> {
   const trimmed = value.trim();
   if (!trimmed) return {};
-  if (trimmed.includes('@')) return { email: trimmed };
+  if (trimmed.includes("@")) return { email: trimmed };
   return { phone: trimmed };
 }
 
 /** Form to add a single guest by name plus an optional email or phone. */
 export function AddGuestForm(): JSX.Element {
   const addGuest = useGuestStore((state) => state.addGuest);
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
@@ -25,8 +25,8 @@ export function AddGuestForm(): JSX.Element {
     setBusy(true);
     try {
       await addGuest({ name: trimmed, ...classifyContact(contact) });
-      setName('');
-      setContact('');
+      setName("");
+      setContact("");
     } finally {
       setBusy(false);
     }
@@ -50,7 +50,7 @@ export function AddGuestForm(): JSX.Element {
       />
       <button
         type="submit"
-        disabled={busy || name.trim() === ''}
+        disabled={busy || name.trim() === ""}
         className="btn btn-primary btn-sm"
       >
         Add

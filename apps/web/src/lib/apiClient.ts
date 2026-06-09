@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
+import { getAuthToken } from "./authToken";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
 
 export class ApiError extends Error {
   constructor(
@@ -6,7 +8,7 @@ export class ApiError extends Error {
     readonly status: number,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -21,9 +23,13 @@ export async function apiRequest<TResponse>(
   // Only advertise a JSON body when one is actually present — Fastify rejects
   // requests that set Content-Type: application/json with an empty body.
   const headers = new Headers(options.headers);
-  if (options.body != null && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  if (options.body != null && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
+
+  // Attach the Clerk session token when signed in (no-op in keyless dev).
+  const token = await getAuthToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 
-import { parseGuestFile } from '../lib/spreadsheet';
-import { IMPORT_ACCEPT } from '../lib/spreadsheet';
-import { useGuestStore } from '../store/guestStore';
-import { FormatHelp } from './FormatHelp';
+import { parseGuestFile } from "../lib/spreadsheet";
+import { IMPORT_ACCEPT } from "../lib/spreadsheet";
+import { useGuestStore } from "../store/guestStore";
+import { FormatHelp } from "./FormatHelp";
 
 /** Imports guests from a spreadsheet (CSV or Excel), with a format help button. */
 export function ImportButton(): JSX.Element {
@@ -12,19 +12,19 @@ export function ImportButton(): JSX.Element {
   const [message, setMessage] = useState<string | null>(null);
 
   async function handleFile(file: File): Promise<void> {
-    setMessage('Importing…');
+    setMessage("Importing…");
     try {
       const { guests, skipped } = await parseGuestFile(file);
       if (guests.length === 0) {
-        setMessage('No guests found in that file.');
+        setMessage("No guests found in that file.");
         return;
       }
       const added = await importGuests(guests);
       setMessage(
-        `Imported ${added} guest${added === 1 ? '' : 's'}${skipped ? ` (skipped ${skipped})` : ''}.`,
+        `Imported ${added} guest${added === 1 ? "" : "s"}${skipped ? ` (skipped ${skipped})` : ""}.`,
       );
     } catch {
-      setMessage('Import failed. Check the file format.');
+      setMessage("Import failed. Check the file format.");
     }
   }
 
@@ -38,7 +38,7 @@ export function ImportButton(): JSX.Element {
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void handleFile(file);
-          event.target.value = ''; // allow re-importing the same file
+          event.target.value = ""; // allow re-importing the same file
         }}
       />
       <div className="flex items-center gap-1.5">

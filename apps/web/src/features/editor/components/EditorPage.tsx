@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { AuthControls } from "../../auth/components/AuthControls";
 import { useNavStore } from "../../dashboard/store/navStore";
 import { GuestPanel } from "../../guests/components/GuestPanel";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -69,7 +70,10 @@ export function EditorPage(): JSX.Element {
           </button>
           <EventTitle />
         </div>
-        <SaveStatusBadge />
+        <div className="flex items-center gap-3">
+          <SaveStatusBadge />
+          <AuthControls />
+        </div>
       </header>
 
       <div className="border-b border-base-300 bg-base-100 px-4 py-2.5">

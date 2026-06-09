@@ -1,6 +1,7 @@
 import type { FloorPlanSummary } from "@seating/shared";
 import { useCallback, useEffect, useState } from "react";
 
+import { AuthControls } from "../../auth/components/AuthControls";
 import { listFloorPlanSummaries } from "../../editor/api/floorPlanApi";
 import { EventCard } from "./EventCard";
 import { NewEventButton } from "./NewEventButton";
@@ -31,7 +32,10 @@ export function Dashboard(): JSX.Element {
       <header className="border-b border-base-300 bg-base-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <h1 className="text-xl font-bold">My Events</h1>
-          <NewEventButton />
+          <div className="flex items-center gap-3">
+            <NewEventButton />
+            <AuthControls />
+          </div>
         </div>
       </header>
 

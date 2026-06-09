@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.8",
     "@seating/shared": "*",
     "konva": "^9.3.22",
     "react": "^18.3.1",
