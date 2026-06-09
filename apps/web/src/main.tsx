@@ -1,9 +1,8 @@
-import { ClerkProvider } from "@clerk/clerk-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
-import { AuthGate } from "./features/auth/components/AuthGate";
+import { AuthRoot } from "./features/auth/components/AuthRoot";
 import { restoreTheme } from "./lib/theme";
 import "./styles/global.css";
 
@@ -20,13 +19,5 @@ if (!rootElement) {
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 createRoot(rootElement).render(
-  <StrictMode>
-    {clerkKey ? (
-      <ClerkProvider publishableKey={clerkKey} afterSignOutUrl="/">
-        <AuthGate />
-      </ClerkProvider>
-    ) : (
-      <App />
-    )}
-  </StrictMode>,
+  <StrictMode>{clerkKey ? <AuthRoot publishableKey={clerkKey} /> : <App />}</StrictMode>,
 );

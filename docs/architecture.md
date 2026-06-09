@@ -212,6 +212,16 @@ key alone gates the UI but the API would still accept `x-owner-id` in dev.
   only outside production. Because every query already filters by owner id, switching from `dev-user`
   to real Clerk ids needed no changes in the services.
 
+### Theming Clerk to match the app
+
+Clerk's sign-in modal and user menu are styled to match the active DaisyUI theme.
+`features/auth/lib/clerkAppearance.ts` reads the theme's resolved CSS variables off `<html>`
+(`--color-primary`, `--color-base-100`, `--color-base-content`, `--color-base-300`, `--color-error`,
+`--radius-field`) and maps them onto Clerk's `appearance` API. Clerk computes hover/border shades in
+JS, so it gets concrete colors (not raw `var(...)` strings). `useClerkAppearance` rebuilds that object
+whenever the theme picker flips `<html data-theme>` (via a `MutationObserver`), and `AuthRoot` feeds it
+to `<ClerkProvider appearance={…}>` — so Clerk re-themes live alongside the rest of the UI.
+
 > **Reconfiguring keys requires a restart.** `VITE_*` vars are read by Vite at dev-server startup,
 > and the API reads `.env` at boot — changing a key only takes effect after restarting that process.
 > Note also that `.env.example` is just a template; real values go in `apps/web/.env.local` and
