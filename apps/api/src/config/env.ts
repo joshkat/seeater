@@ -14,6 +14,10 @@ const envSchema = z.object({
     .string()
     .default("http://localhost:5173")
     .transform((value) => value.split(",").map((origin) => origin.trim())),
+  // Clerk auth keys. Optional: when absent, the API runs in dev mode without
+  // auth (owner resolved from x-owner-id / a fixed dev user).
+  CLERK_SECRET_KEY: z.string().optional(),
+  CLERK_PUBLISHABLE_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

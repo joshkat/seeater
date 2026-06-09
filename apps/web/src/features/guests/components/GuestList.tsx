@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
-import { useGuestStore } from '../store/guestStore';
-import { GuestListItem } from './GuestListItem';
+import { useGuestStore } from "../store/guestStore";
+import { GuestListItem } from "./GuestListItem";
 
 /** Where a seat lives, for grouping the seated list by table. */
 export interface SeatInfo {
@@ -113,7 +113,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                 {group.items.map((item) =>
                   renderItem(
                     item.guestId,
-                    `Seat ${item.seatNumber} ${item.guestContact != null ? '• ' : ''}${item.guestContact ?? ''}`,
+                    `Seat ${item.seatNumber} ${item.guestContact != null ? "• " : ""}${item.guestContact ?? ""}`,
                   ),
                 )}
               </ul>
@@ -125,8 +125,8 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   );
 }
 
-const headingClass = 'mb-1 ml-1 text-[11px] uppercase tracking-wide text-base-content/60';
-const listClass = 'm-0 flex list-none flex-col gap-0.5 p-0';
+const headingClass = "mb-1 ml-1 text-[11px] uppercase tracking-wide text-base-content/60";
+const listClass = "m-0 flex list-none flex-col gap-0.5 p-0";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
   return (

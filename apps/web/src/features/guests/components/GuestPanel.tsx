@@ -1,20 +1,20 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from "react";
 
-import { tableDisplayName } from '../../editor/lib/tableLabel';
-import { useEditorStore } from '../../editor/store/editorStore';
-import { usePanelWidth } from '../hooks/usePanelWidth';
-import { useGuestStore } from '../store/guestStore';
-import { AddGuestForm } from './AddGuestForm';
-import { AssignBar } from './AssignBar';
-import { GuestList, type SeatInfo } from './GuestList';
-import { ImportButton } from './ImportButton';
-import { ResizeHandle } from './ResizeHandle';
+import { tableDisplayName } from "../../editor/lib/tableLabel";
+import { useEditorStore } from "../../editor/store/editorStore";
+import { usePanelWidth } from "../hooks/usePanelWidth";
+import { useGuestStore } from "../store/guestStore";
+import { AddGuestForm } from "./AddGuestForm";
+import { AssignBar } from "./AssignBar";
+import { GuestList, type SeatInfo } from "./GuestList";
+import { ImportButton } from "./ImportButton";
+import { ResizeHandle } from "./ResizeHandle";
 
 /** Left-hand guest panel: add/import guests and assign them to seats. */
 export function GuestPanel(): JSX.Element {
   const floorPlanId = useEditorStore((state) => state.floorPlanId);
   const tables = useEditorStore((state) => state.tables);
-  const editorReady = useEditorStore((state) => state.loadStatus === 'ready');
+  const editorReady = useEditorStore((state) => state.loadStatus === "ready");
 
   const loadForFloorPlan = useGuestStore((state) => state.loadForFloorPlan);
   const loadStatus = useGuestStore((state) => state.loadStatus);
@@ -22,7 +22,7 @@ export function GuestPanel(): JSX.Element {
   const syncAssignments = useGuestStore((state) => state.syncAssignments);
 
   const { width, startResize, resizing } = usePanelWidth({
-    storageKey: 'seating.guestPanelWidth',
+    storageKey: "seating.guestPanelWidth",
     defaultWidth: 340,
     min: 280,
     max: 560,
@@ -37,7 +37,7 @@ export function GuestPanel(): JSX.Element {
   // to the unassigned list immediately. Guarded on both stores being loaded so
   // the initial load race doesn't momentarily unseat everyone.
   useEffect(() => {
-    if (!editorReady || loadStatus !== 'ready') return;
+    if (!editorReady || loadStatus !== "ready") return;
     const validSeatIds = new Set(tables.flatMap((table) => table.seats.map((seat) => seat.id)));
     syncAssignments(validSeatIds);
   }, [tables, editorReady, loadStatus, syncAssignments]);
@@ -79,9 +79,9 @@ export function GuestPanel(): JSX.Element {
 
       <div className="h-px bg-base-300" />
 
-      {loadStatus === 'loading' && <p className="text-sm text-base-content/60">Loading guests…</p>}
-      {loadStatus === 'error' && <p className="text-sm text-error">Could not load guests.</p>}
-      {loadStatus === 'ready' && <GuestList seatInfoFor={seatInfoFor} />}
+      {loadStatus === "loading" && <p className="text-sm text-base-content/60">Loading guests…</p>}
+      {loadStatus === "error" && <p className="text-sm text-error">Could not load guests.</p>}
+      {loadStatus === "ready" && <GuestList seatInfoFor={seatInfoFor} />}
     </aside>
   );
 }

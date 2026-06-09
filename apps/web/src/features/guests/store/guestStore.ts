@@ -1,5 +1,5 @@
-import type { Guest, GuestInput, GuestUpdateInput } from '@seating/shared';
-import { create } from 'zustand';
+import type { Guest, GuestInput, GuestUpdateInput } from "@seating/shared";
+import { create } from "zustand";
 
 import {
   assignGuestSeat,
@@ -8,9 +8,9 @@ import {
   deleteGuest,
   getEventForFloorPlan,
   updateGuest,
-} from '../api/guestApi';
+} from "../api/guestApi";
 
-type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
+type LoadStatus = "idle" | "loading" | "ready" | "error";
 
 /** A guest-to-seat pairing for batch assignment. */
 export interface SeatAssignment {
@@ -61,16 +61,16 @@ function mergeGuests(current: Guest[], updated: Guest[]): Guest[] {
 export const useGuestStore = create<GuestState>((set, get) => ({
   eventId: null,
   guests: [],
-  loadStatus: 'idle',
+  loadStatus: "idle",
   selectedGuestIds: [],
 
   async loadForFloorPlan(floorPlanId) {
-    set({ loadStatus: 'loading' });
+    set({ loadStatus: "loading" });
     try {
       const event = await getEventForFloorPlan(floorPlanId);
-      set({ eventId: event.id, guests: event.guests, loadStatus: 'ready' });
+      set({ eventId: event.id, guests: event.guests, loadStatus: "ready" });
     } catch {
-      set({ loadStatus: 'error' });
+      set({ loadStatus: "error" });
     }
   },
 
@@ -217,6 +217,6 @@ export const useGuestStore = create<GuestState>((set, get) => ({
   },
 
   reset() {
-    set({ eventId: null, guests: [], loadStatus: 'idle', selectedGuestIds: [] });
+    set({ eventId: null, guests: [], loadStatus: "idle", selectedGuestIds: [] });
   },
 }));

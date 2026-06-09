@@ -1,4 +1,4 @@
-import { apiRequest } from '../../lib/apiClient';
+import { apiRequest } from "../../lib/apiClient";
 
 export interface HealthResponse {
   status: string;
@@ -7,5 +7,5 @@ export interface HealthResponse {
 
 /** Fetches the API health-check endpoint. */
 export function fetchHealth(): Promise<HealthResponse> {
-  return apiRequest<HealthResponse>('/health');
+  return apiRequest<HealthResponse>("/health");
 }

@@ -1,4 +1,4 @@
-import type { GuestInput } from '@seating/shared';
+import type { GuestInput } from "@seating/shared";
 
 /**
  * Minimal CSV parsing for guest imports. Supports quoted fields (with embedded
@@ -9,7 +9,7 @@ import type { GuestInput } from '@seating/shared';
 export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
-  let cell = '';
+  let cell = "";
   let inQuotes = false;
 
   for (let i = 0; i < text.length; i += 1) {
@@ -31,16 +31,16 @@ export function parseCsvRows(text: string): string[][] {
 
     if (char === '"') {
       inQuotes = true;
-    } else if (char === ',') {
+    } else if (char === ",") {
       row.push(cell);
-      cell = '';
-    } else if (char === '\n' || char === '\r') {
+      cell = "";
+    } else if (char === "\n" || char === "\r") {
       // Finish the row on a newline; swallow the \n of a \r\n pair.
-      if (char === '\r' && text[i + 1] === '\n') i += 1;
+      if (char === "\r" && text[i + 1] === "\n") i += 1;
       row.push(cell);
       rows.push(row);
       row = [];
-      cell = '';
+      cell = "";
     } else {
       cell += char;
     }
@@ -56,22 +56,22 @@ export function parseCsvRows(text: string): string[][] {
 }
 
 const HEADER_ALIASES: Record<string, keyof GuestInput> = {
-  name: 'name',
-  names: 'name',
-  'full name': 'name',
-  'guest name': 'name',
-  'first name': 'name',
-  guest: 'name',
-  attendee: 'name',
-  email: 'email',
-  emails: 'email',
-  'e-mail': 'email',
-  'email address': 'email',
-  phone: 'phone',
-  phones: 'phone',
-  'phone number': 'phone',
-  mobile: 'phone',
-  cell: 'phone',
+  name: "name",
+  names: "name",
+  "full name": "name",
+  "guest name": "name",
+  "first name": "name",
+  guest: "name",
+  attendee: "name",
+  email: "email",
+  emails: "email",
+  "e-mail": "email",
+  "email address": "email",
+  phone: "phone",
+  phones: "phone",
+  "phone number": "phone",
+  mobile: "phone",
+  cell: "phone",
 };
 
 /** Maps a header row to column indices, or null if no header is recognized. */
@@ -100,7 +100,7 @@ export type CsvImportResult = GuestImportResult;
  * spreadsheet (xlsx) importers.
  */
 export function rowsToGuests(rawRows: string[][]): GuestImportResult {
-  const rows = rawRows.filter((row) => row.some((cell) => (cell ?? '').trim() !== ''));
+  const rows = rawRows.filter((row) => row.some((cell) => (cell ?? "").trim() !== ""));
   if (rows.length === 0) return { guests: [], skipped: 0 };
 
   const header = detectHeader(rows[0]);
@@ -115,13 +115,13 @@ export function rowsToGuests(rawRows: string[][]): GuestImportResult {
   let skipped = 0;
 
   for (const row of dataRows) {
-    const name = (row[col.name] ?? '').trim();
+    const name = (row[col.name] ?? "").trim();
     if (!name) {
       skipped += 1;
       continue;
     }
-    const email = (row[col.email] ?? '').trim();
-    const phone = (row[col.phone] ?? '').trim();
+    const email = (row[col.email] ?? "").trim();
+    const phone = (row[col.phone] ?? "").trim();
     guests.push({
       name,
       email: email || null,

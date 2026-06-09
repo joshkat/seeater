@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 interface UsePanelWidthOptions {
   storageKey: string;
@@ -30,7 +30,7 @@ export function usePanelWidth({
   max,
 }: UsePanelWidthOptions): UsePanelWidth {
   const [width, setWidth] = useState<number>(() => {
-    const stored = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
     const parsed = stored !== null ? Number(stored) : NaN;
     return Number.isFinite(parsed) ? clamp(parsed, min, max) : defaultWidth;
   });
@@ -44,22 +44,22 @@ export function usePanelWidth({
       const startX = event.clientX;
       const startWidth = width;
       setResizing(true);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
 
       const handleMove = (move: MouseEvent): void => {
         setWidth(clamp(startWidth + (move.clientX - startX), min, max));
       };
       const stop = (): void => {
-        window.removeEventListener('mousemove', handleMove);
-        window.removeEventListener('mouseup', stop);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", stop);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
         setResizing(false);
       };
 
-      window.addEventListener('mousemove', handleMove);
-      window.addEventListener('mouseup', stop);
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", stop);
     },
     [width, min, max],
   );

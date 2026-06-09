@@ -8,19 +8,27 @@ pan/zoom, snapping, rotation, and per-operation autosave.
 The backend is a REST API, kept deliberately separate from the web client so the
 same contract can later power a mobile app.
 
-> **Status:** Milestone 1b complete — the polished editor with guest-seat geometry.
-> Guest list / RSVP / invites / wallet passes are planned but not yet built.
+> **Status:** Editor, guest seating, RSVP, multi-event dashboard, theming, and
+> Clerk auth (email/password + Google) are built.
+> Export/print, venue templates, and Wallet passes are the next candidates.
+
+## Documentation
+
+- **[docs/architecture.md](docs/architecture.md)** — how the app is built and how data flows (start here).
+- **[docs/project-structure.md](docs/project-structure.md)** — annotated map of every folder.
+- **[docs/styling.md](docs/styling.md)** — the Tailwind/DaisyUI theming system and UI patterns.
+- **[CLAUDE.md](CLAUDE.md)** — terse cheatsheet + hard-won gotchas (also auto-loaded by Claude Code).
 
 ---
 
 ## Tech stack
 
-| Layer    | Tech |
-| -------- | ---- |
+| Layer    | Tech                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------- |
 | Web      | React 18 + Vite, [react-konva](https://konvajs.org/) canvas, [zustand](https://github.com/pmndrs/zustand) store |
-| API      | [Fastify 5](https://fastify.dev/) (TypeScript, ESM), [zod](https://zod.dev/) validation |
-| Database | PostgreSQL via [Prisma](https://www.prisma.io/) |
-| Shared   | `@seating/shared` — TypeScript domain types + seat-layout geometry, imported by both API and web |
+| API      | [Fastify 5](https://fastify.dev/) (TypeScript, ESM), [zod](https://zod.dev/) validation                         |
+| Database | PostgreSQL via [Prisma](https://www.prisma.io/)                                                                 |
+| Shared   | `@seating/shared` — TypeScript domain types + seat-layout geometry, imported by both API and web                |
 
 The repo is an **npm workspaces monorepo**:
 
@@ -77,18 +85,21 @@ npm run prisma:migrate
 
 **`apps/api/.env`**
 
-| Variable       | Default                                              | Notes |
-| -------------- | ---------------------------------------------------- | ----- |
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/seating_app?schema=public` | Your Postgres connection string. On a default macOS/Homebrew setup the user is your macOS username with no password, e.g. `postgresql://Josh@localhost:5432/seating_app?schema=public`. |
-| `PORT`         | `4000`                                               | API port |
-| `HOST`         | `0.0.0.0`                                            | API bind host |
-| `CORS_ORIGIN`  | `http://localhost:5173`                              | Comma-separated allowed origins (the web dev server) |
+| Variable                | Default                                                                   | Notes                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | `postgresql://postgres:postgres@localhost:5432/seating_app?schema=public` | Your Postgres connection string. On a default macOS/Homebrew setup the user is your macOS username with no password, e.g. `postgresql://Josh@localhost:5432/seating_app?schema=public`. |
+| `PORT`                  | `4000`                                                                    | API port                                                                                                                                                                                |
+| `HOST`                  | `0.0.0.0`                                                                 | API bind host                                                                                                                                                                           |
+| `CORS_ORIGIN`           | `http://localhost:5173`                                                   | Comma-separated allowed origins (the web dev server)                                                                                                                                    |
+| `CLERK_SECRET_KEY`      | _(unset)_                                                                 | Clerk **secret** key (`sk_test_…` / `sk_live_…`). When set, the API verifies every request's Clerk session and rejects unauthenticated calls. Leave unset to run keyless (dev-user).    |
+| `CLERK_PUBLISHABLE_KEY` | _(unset)_                                                                 | Clerk publishable key (optional on the API; used by Clerk's middleware).                                                                                                                |
 
 **`apps/web/.env.local`**
 
-| Variable             | Default                       | Notes |
-| -------------------- | ----------------------------- | ----- |
-| `VITE_API_BASE_URL`  | `http://localhost:4000/api`   | Base URL of the API |
+| Variable                     | Default                     | Notes                                                                                                                      |
+| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`          | `http://localhost:4000/api` | Base URL of the API                                                                                                        |
+| `VITE_CLERK_PUBLISHABLE_KEY` | _(unset)_                   | Clerk **publishable** key (`pk_test_…`). When set, the web app shows the sign-in gate. Leave unset to run without sign-in. |
 
 ---
 
@@ -111,23 +122,36 @@ floor plan ("My Seating Chart") and you can start adding tables.
 
 Health check: `curl http://localhost:4000/api/health` should return `200`.
 
-> **Auth note:** Clerk auth is deferred. In development the API identifies the
-> owner via a placeholder user (`dev-user`), so no login is required. The owner
-> can be overridden per-request with an `x-owner-id` header.
+> **Auth note:** Authentication is handled by [Clerk](https://clerk.com) (email +
+> password and Google sign-in), but it's **opt-in via env keys** so local dev works
+> out of the box:
+>
+> - **No keys set → keyless dev mode.** The web app skips the sign-in gate and the
+>   API identifies the owner via a placeholder user (`dev-user`); the owner can be
+>   overridden per-request with an `x-owner-id` header. This is the default.
+> - **Keys set → real auth.** Put `VITE_CLERK_PUBLISHABLE_KEY` in
+>   `apps/web/.env.local` to show the sign-in gate, and `CLERK_SECRET_KEY` in
+>   `apps/api/.env` so the API verifies the session token and rejects
+>   unauthenticated requests. Both keys come from your
+>   [Clerk dashboard](https://dashboard.clerk.com) → **API Keys**; enable
+>   Email/Password and Google under **User & Authentication**.
+>
+> See [docs/architecture.md → Authentication](docs/architecture.md#authentication-clerk)
+> for how it fits together.
 
 ---
 
 ## Useful scripts (run from the repo root)
 
-| Command                    | What it does |
-| -------------------------- | ------------ |
-| `npm run dev:api`          | Start the API in watch mode (tsx) |
-| `npm run dev:web`          | Start the Vite dev server |
-| `npm run build:shared`     | Compile `@seating/shared` to `dist/` |
-| `npm run prisma:migrate`   | Apply/create DB migrations (Prisma) |
-| `npm run prisma:generate`  | Regenerate the Prisma client |
-| `npm run typecheck`        | Typecheck every workspace |
-| `npm run format`           | Prettier-format the repo |
+| Command                   | What it does                         |
+| ------------------------- | ------------------------------------ |
+| `npm run dev:api`         | Start the API in watch mode (tsx)    |
+| `npm run dev:web`         | Start the Vite dev server            |
+| `npm run build:shared`    | Compile `@seating/shared` to `dist/` |
+| `npm run prisma:migrate`  | Apply/create DB migrations (Prisma)  |
+| `npm run prisma:generate` | Regenerate the Prisma client         |
+| `npm run typecheck`       | Typecheck every workspace            |
+| `npm run format`          | Prettier-format the repo             |
 
 Per-app builds: `npm run build --workspace @seating/api` and
 `npm run build --workspace @seating/web`.
