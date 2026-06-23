@@ -65,7 +65,7 @@ export function EditorPage(): JSX.Element {
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-base-300 bg-base-100 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button type="button" className="btn btn-accent btn-sm" onClick={goToDashboard}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={goToDashboard}>
             ← Events
           </button>
           <EventTitle />

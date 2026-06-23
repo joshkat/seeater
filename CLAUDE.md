@@ -69,6 +69,9 @@ event`). Guests belong to that event. `GET /floor-plans/summaries` powers the da
   registers Clerk's `getToken()` into `lib/authToken.ts`; `lib/apiClient.ts` reads it to attach
   `Authorization: Bearer <token>`. API: `clerkPlugin` registered in `app.ts` only when
   `CLERK_SECRET_KEY` set; `lib/auth.ts` prefers `getAuth(request).userId` as owner id.
+  Clerk's modal/user-menu are themed to the live DaisyUI theme: `auth/lib/clerkAppearance` reads the
+  theme's CSS vars → Clerk `appearance`; `useClerkAppearance` rebuilds on `data-theme` change;
+  `AuthRoot` passes it to `<ClerkProvider>`.
 
 ## Gotchas (these cost real time — read before debugging)
 
