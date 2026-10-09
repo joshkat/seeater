@@ -14,11 +14,13 @@
     "prisma:migrate": "npm run prisma:migrate --workspace @seating/api",
     "prisma:generate": "npm run prisma:generate --workspace @seating/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "prettier": "^3.8.3",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=20"

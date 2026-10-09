@@ -1,6 +1,5 @@
 import type { Point, Size } from "../types/geometry.js";
-import type { SeatInput } from "../types/seat.js";
-import type { Table, TableShape } from "../types/table.js";
+import type { Table, TableShape } from "../document/schema.js";
 import { CHAIR_GAP, CHAIR_RADIUS } from "./constants.js";
 
 /** Distance from a table edge to a chair center. */
@@ -97,29 +96,4 @@ export function resolveSeatPositions(table: Table): Point[] {
   }
 
   return computeAutoSeatOffsets(table.shape, table.size, seats.length);
-}
-
-/** Seat inputs for an auto layout: ordered indices with no stored offset. */
-export function makeAutoSeatInputs(count: number): SeatInput[] {
-  return Array.from({ length: Math.max(0, count) }, (_, index) => ({
-    index,
-    label: null,
-    offset: null,
-  }));
-}
-
-/**
- * Seat inputs for switching a table to custom mode: seeds explicit offsets
- * from the current auto arrangement so users don't start from an empty table.
- */
-export function makeCustomSeatInputsFromAuto(
-  shape: TableShape,
-  size: Size,
-  count: number,
-): SeatInput[] {
-  return computeAutoSeatOffsets(shape, size, count).map((offset, index) => ({
-    index,
-    label: null,
-    offset,
-  }));
 }
