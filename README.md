@@ -51,7 +51,7 @@ apps/api          @seating/api      — optional sync API
 
 ## Quick start (just the app)
 
-You only need Node.js >= 20. No database, no API, no keys.
+You only need Node.js 22.12+, 24, or 26+. No database, no API, no keys.
 
 ```bash
 npm install

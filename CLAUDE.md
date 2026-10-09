@@ -114,6 +114,7 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   container isn't running. Only the sync API needs a database; the web app never does.
 - **IndexedDB is per origin:** each dev port (5173/5174/5175/4173) has separate data. "My events
   vanished" usually means a different port or a different identity scope.
+- **Node:** 22.12+, 24 or 26+ (Vitest 5's range; Node 23/25 unsupported). CI uses 24.
 - **Vite + react-konva:** after installing ANY new dependency, the canvas may crash in `<StageWrap>`
   (stale optimize cache / duplicate React). Fix: `rm -rf node_modules/.vite apps/web/node_modules/.vite`
   and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.
