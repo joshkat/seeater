@@ -2,6 +2,7 @@ import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { syncConfigured } from "../../auth/lib/authConfig";
 import { downloadEventBackup } from "../../backup/lib/backupActions";
 import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
@@ -32,7 +33,9 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
 
   async function handleDelete(): Promise<void> {
     const ok = window.confirm(
-      `Delete “${summary.name}” and its ${summary.guestCount} guest(s)? This removes it from this device (and your account, if you're signed in). Use “Download backup” first if you might need it.`,
+      `Delete “${summary.name}” and its ${summary.guestCount} guest(s)? This removes it from this device${
+        syncConfigured ? " (and your account, if you're signed in)" : ""
+      }. Use “Download backup” first if you might need it.`,
     );
     if (!ok) return;
     await deleteEvent(activeDb(), summary.id);

@@ -1,26 +1,18 @@
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { Suspense, lazy } from "react";
 
 import { clerkPublishableKey } from "../lib/authConfig";
 
-/**
- * Header account controls: a "Sign in to sync" button when signed out, the
- * avatar menu when signed in. Renders nothing when Clerk isn't configured, and
- * nothing while Clerk is still loading (or can't load, e.g. offline).
- */
+// Lazy so Clerk's SDK is only downloaded in builds where sign-in is enabled.
+const ClerkAccountButtons = lazy(() =>
+  import("./ClerkAccountButtons").then((module) => ({ default: module.ClerkAccountButtons })),
+);
+
+/** Header account controls. Renders nothing unless sign-in is enabled. */
 export function AuthControls(): JSX.Element | null {
   if (!clerkPublishableKey) return null;
   return (
-    <>
-      <SignedOut>
-        <SignInButton mode="modal">
-          <button type="button" className="btn btn-outline btn-sm">
-            Sign in to sync
-          </button>
-        </SignInButton>
-      </SignedOut>
-      <SignedIn>
-        <UserButton afterSignOutUrl="/" />
-      </SignedIn>
-    </>
+    <Suspense fallback={null}>
+      <ClerkAccountButtons />
+    </Suspense>
   );
 }

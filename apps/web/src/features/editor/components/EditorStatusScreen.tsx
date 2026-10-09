@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 
+import { syncConfigured } from "../../auth/lib/authConfig";
+
 interface EditorStatusScreenProps {
   status: "idle" | "loading" | "missing" | "error";
 }
@@ -24,7 +26,9 @@ export function EditorStatusScreen({ status }: EditorStatusScreenProps): JSX.Ele
         </p>
         <p className="mt-1 text-sm text-base-content/60">
           {status === "missing"
-            ? "It may have been deleted, or it lives in another browser or account."
+            ? syncConfigured
+              ? "It may have been deleted, or it lives in another browser or account."
+              : "It may have been deleted, or it was made in a different browser."
             : "Try reloading the page."}
         </p>
         <Link to="/" className="btn btn-primary btn-sm mt-4">
