@@ -3,7 +3,10 @@ import { useState } from "react";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { useNavStore } from "../../dashboard/store/navStore";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
+import { useDocumentStore } from "../store/documentStore";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -12,8 +15,8 @@ import { Toolbar } from "./Toolbar";
 
 /** Inline-editable event title in the header. */
 function EventTitle(): JSX.Element {
-  const name = useEditorStore((state) => state.name);
-  const renameFloorPlan = useEditorStore((state) => state.renameFloorPlan);
+  const name = useEventName();
+  const renameEvent = useEditorStore((state) => state.renameEvent);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -25,12 +28,12 @@ function EventTitle(): JSX.Element {
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
-          void renameFloorPlan(draft);
+          renameEvent(draft);
           setEditing(false);
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
-            void renameFloorPlan(draft);
+            renameEvent(draft);
             setEditing(false);
           }
           if (event.key === "Escape") setEditing(false);
@@ -56,10 +59,11 @@ function EventTitle(): JSX.Element {
 
 /** Top-level seating editor for the currently open event. */
 export function EditorPage(): JSX.Element {
-  const loadStatus = useEditorStore((state) => state.loadStatus);
+  const status = useDocumentStore((state) => state.status);
   const goToDashboard = useNavStore((state) => state.goToDashboard);
 
   useKeyboardShortcuts();
+  useUnsavedChangesGuard();
 
   return (
     <div className="flex h-screen flex-col">
@@ -83,17 +87,22 @@ export function EditorPage(): JSX.Element {
       <div className="flex min-h-0 flex-1">
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
-          {loadStatus === "loading" && (
+          {status === "loading" && (
             <div className="absolute inset-0 grid place-items-center text-base-content/60">
-              Loading floor plan…
+              Loading event…
             </div>
           )}
-          {loadStatus === "error" && (
+          {status === "missing" && (
+            <div className="absolute inset-0 grid place-items-center text-base-content/60">
+              This event doesn’t exist on this device.
+            </div>
+          )}
+          {status === "error" && (
             <div className="absolute inset-0 grid place-items-center text-error">
-              Could not load the floor plan. Is the API running?
+              Could not read this event from browser storage.
             </div>
           )}
-          {loadStatus === "ready" && <EditorCanvas />}
+          {status === "ready" && <EditorCanvas />}
         </div>
         <PropertiesPanel />
       </div>

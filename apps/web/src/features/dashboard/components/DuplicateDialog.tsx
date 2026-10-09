@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-import { duplicateFloorPlan } from "../../editor/api/floorPlanApi";
+import { duplicateEvent } from "../../storage/repository/eventRepository";
+import { activeDb } from "../../storage/store/storageStore";
 
 interface DuplicateDialogProps {
   sourceId: string;
   sourceName: string;
   onClose: () => void;
-  onDuplicated: () => void;
 }
 
 /** Modal to duplicate an event: layout always copies; guests + their seat
@@ -15,7 +15,6 @@ export function DuplicateDialog({
   sourceId,
   sourceName,
   onClose,
-  onDuplicated,
 }: DuplicateDialogProps): JSX.Element {
   const [copyGuests, setCopyGuests] = useState(false);
   const [copyAssignments, setCopyAssignments] = useState(false);
@@ -24,11 +23,10 @@ export function DuplicateDialog({
   async function handleDuplicate(): Promise<void> {
     setBusy(true);
     try {
-      await duplicateFloorPlan(sourceId, {
+      await duplicateEvent(activeDb(), sourceId, {
         copyGuests,
         copyAssignments: copyGuests && copyAssignments,
       });
-      onDuplicated();
       onClose();
     } finally {
       setBusy(false);

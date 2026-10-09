@@ -15,10 +15,10 @@ export function useKeyboardShortcuts(): void {
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        void deleteSelected();
+        deleteSelected();
       } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "d") {
         event.preventDefault();
-        void duplicateSelected();
+        duplicateSelected();
       } else if (event.key === "Escape") {
         clearSelection();
       }

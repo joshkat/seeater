@@ -19,7 +19,7 @@ export function ImportButton(): JSX.Element {
         setMessage("No guests found in that file.");
         return;
       }
-      const added = await importGuests(guests);
+      const added = importGuests(guests);
       setMessage(
         `Imported ${added} guest${added === 1 ? "" : "s"}${skipped ? ` (skipped ${skipped})` : ""}.`,
       );

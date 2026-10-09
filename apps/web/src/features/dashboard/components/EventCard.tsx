@@ -1,18 +1,19 @@
-import type { FloorPlanSummary } from "@seating/shared";
+import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
 
-import { deleteFloorPlan, updateFloorPlan } from "../../editor/api/floorPlanApi";
+import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
+import { activeDb } from "../../storage/store/storageStore";
 import { relativeTime } from "../lib/relativeTime";
 import { useNavStore } from "../store/navStore";
 import { DuplicateDialog } from "./DuplicateDialog";
 
 interface EventCardProps {
-  summary: FloorPlanSummary;
-  onChanged: () => void;
+  summary: EventSummary;
 }
 
-/** A single event tile on the dashboard: open it, or rename/duplicate/delete. */
-export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
+/** A single event tile on the dashboard: open it, or rename/duplicate/delete.
+ * The dashboard list is live, so changes here re-render it automatically. */
+export function EventCard({ summary }: EventCardProps): JSX.Element {
   const openEvent = useNavStore((state) => state.openEvent);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(summary.name);
@@ -25,8 +26,7 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
       setName(summary.name);
       return;
     }
-    await updateFloorPlan(summary.id, { name: trimmed });
-    onChanged();
+    await renameEvent(activeDb(), summary.id, trimmed);
   }
 
   async function handleDelete(): Promise<void> {
@@ -34,8 +34,7 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
       `Delete “${summary.name}”? This permanently removes the chart and its ${summary.guestCount} guest(s).`,
     );
     if (!ok) return;
-    await deleteFloorPlan(summary.id);
-    onChanged();
+    await deleteEvent(activeDb(), summary.id);
   }
 
   return (
@@ -115,7 +114,6 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
           sourceId={summary.id}
           sourceName={summary.name}
           onClose={() => setShowDuplicate(false)}
-          onDuplicated={onChanged}
         />
       )}
     </div>

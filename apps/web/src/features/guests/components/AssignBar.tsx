@@ -1,7 +1,7 @@
 import { useState } from "react";
 
+import { useTables } from "../../editor/hooks/useDocumentSelectors";
 import { tableDisplayName } from "../../editor/lib/tableLabel";
-import { useEditorStore } from "../../editor/store/editorStore";
 import { useGuestStore } from "../store/guestStore";
 
 /** Action bar shown when one or more guests are selected: assign the whole
@@ -10,7 +10,7 @@ export function AssignBar(): JSX.Element | null {
   const selectedGuestIds = useGuestStore((state) => state.selectedGuestIds);
   const assignGuestsToTable = useGuestStore((state) => state.assignGuestsToTable);
   const clearGuestSelection = useGuestStore((state) => state.clearGuestSelection);
-  const tables = useEditorStore((state) => state.tables);
+  const tables = useTables();
 
   const [message, setMessage] = useState<string | null>(null);
 
@@ -18,15 +18,11 @@ export function AssignBar(): JSX.Element | null {
 
   const count = selectedGuestIds.length;
 
-  async function handleAssign(tableId: string): Promise<void> {
+  function handleAssign(tableId: string): void {
     const index = tables.findIndex((t) => t.id === tableId);
     if (index === -1) return;
-    const table = tables[index];
-    const name = tableDisplayName(table.label, index);
-    const { assigned, capacity } = await assignGuestsToTable(
-      selectedGuestIds,
-      table.seats.map((seat) => seat.id),
-    );
+    const name = tableDisplayName(tables[index].label, index);
+    const { assigned, capacity } = assignGuestsToTable(selectedGuestIds, tableId);
     if (assigned === 0) {
       setMessage(`${name} is full — no open seats.`);
     } else if (assigned < count) {
@@ -57,7 +53,7 @@ export function AssignBar(): JSX.Element | null {
         className="select select-bordered select-sm w-full"
         value=""
         onChange={(event) => {
-          if (event.target.value) void handleAssign(event.target.value);
+          if (event.target.value) handleAssign(event.target.value);
           event.target.value = "";
         }}
       >

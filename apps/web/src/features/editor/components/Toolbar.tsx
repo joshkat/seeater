@@ -20,17 +20,13 @@ export function Toolbar(): JSX.Element {
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => void addTable("round")}
-        >
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => addTable("round")}>
           + Round table
         </button>
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          onClick={() => void addTable("rectangle")}
+          onClick={() => addTable("rectangle")}
         >
           + Rectangle table
         </button>
@@ -39,7 +35,7 @@ export function Toolbar(): JSX.Element {
           type="button"
           className="btn btn-sm"
           disabled={!hasSelection}
-          onClick={() => void duplicateSelected()}
+          onClick={duplicateSelected}
         >
           Duplicate
         </button>
@@ -47,7 +43,7 @@ export function Toolbar(): JSX.Element {
           type="button"
           className="btn btn-sm btn-error"
           disabled={!hasSelection}
-          onClick={() => void deleteSelected()}
+          onClick={deleteSelected}
         >
           Delete
         </button>

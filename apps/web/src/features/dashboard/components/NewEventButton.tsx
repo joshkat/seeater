@@ -1,9 +1,11 @@
+import { createEventDoc } from "@seating/shared";
 import { type FormEvent, useState } from "react";
 
-import { createFloorPlan } from "../../editor/api/floorPlanApi";
+import { createEvent } from "../../storage/repository/eventRepository";
+import { activeDb } from "../../storage/store/storageStore";
 import { useNavStore } from "../store/navStore";
 
-/** "+ New event" button → name prompt → creates the plan and opens it. */
+/** "+ New event" button → name prompt → creates the event locally and opens it. */
 export function NewEventButton(): JSX.Element {
   const openEvent = useNavStore((state) => state.openEvent);
   const [open, setOpen] = useState(false);
@@ -16,8 +18,9 @@ export function NewEventButton(): JSX.Element {
     if (!trimmed || busy) return;
     setBusy(true);
     try {
-      const plan = await createFloorPlan({ name: trimmed });
-      openEvent(plan.id);
+      const doc = createEventDoc({ name: trimmed });
+      await createEvent(activeDb(), doc);
+      openEvent(doc.id);
     } finally {
       setBusy(false);
     }

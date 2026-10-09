@@ -1,22 +1,18 @@
-import { useEditorStore } from "../store/editorStore";
-import type { SaveStatus } from "../types";
+import { type SaveStatus, useDocumentStore } from "../store/documentStore";
 
 const TEXT: Record<SaveStatus, string> = {
-  idle: "All changes saved",
   saving: "Saving…",
-  saved: "All changes saved",
-  error: "Save failed — retrying on next edit",
+  saved: "Saved on this device",
+  error: "Couldn't save on this device",
 };
 
 const TONE: Record<SaveStatus, string> = {
-  idle: "text-success",
   saving: "text-warning",
   saved: "text-success",
   error: "text-error",
 };
 
 const DOT: Record<SaveStatus, string> = {
-  idle: "bg-success",
   saving: "bg-warning",
   saved: "bg-success",
   error: "bg-error",
@@ -24,7 +20,7 @@ const DOT: Record<SaveStatus, string> = {
 
 /** Compact autosave indicator shown in the editor header. */
 export function SaveStatusBadge(): JSX.Element {
-  const saveStatus = useEditorStore((state) => state.saveStatus);
+  const saveStatus = useDocumentStore((state) => state.saveStatus);
 
   return (
     <span className={`inline-flex items-center gap-1.5 text-sm ${TONE[saveStatus]}`}>
