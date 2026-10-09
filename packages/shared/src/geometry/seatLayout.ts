@@ -18,7 +18,7 @@ export function distributeByWeight(weights: number[], total: number): number[] {
 
   const exact = weights.map((w) => (w / sum) * total);
   const result = exact.map(Math.floor);
-  let remaining = total - result.reduce((acc, n) => acc + n, 0);
+  const remaining = total - result.reduce((acc, n) => acc + n, 0);
 
   const byRemainder = exact
     .map((value, index) => ({ index, frac: value - Math.floor(value) }))
