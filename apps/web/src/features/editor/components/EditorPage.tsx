@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { AuthControls } from "../../auth/components/AuthControls";
-import { useNavStore } from "../../dashboard/store/navStore";
+import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -12,8 +15,8 @@ import { Toolbar } from "./Toolbar";
 
 /** Inline-editable event title in the header. */
 function EventTitle(): JSX.Element {
-  const name = useEditorStore((state) => state.name);
-  const renameFloorPlan = useEditorStore((state) => state.renameFloorPlan);
+  const name = useEventName();
+  const renameEvent = useEditorStore((state) => state.renameEvent);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -25,12 +28,12 @@ function EventTitle(): JSX.Element {
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
-          void renameFloorPlan(draft);
+          renameEvent(draft);
           setEditing(false);
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
-            void renameFloorPlan(draft);
+            renameEvent(draft);
             setEditing(false);
           }
           if (event.key === "Escape") setEditing(false);
@@ -54,24 +57,23 @@ function EventTitle(): JSX.Element {
   );
 }
 
-/** Top-level seating editor for the currently open event. */
+/** The seating editor for the open event (rendered once it has loaded). */
 export function EditorPage(): JSX.Element {
-  const loadStatus = useEditorStore((state) => state.loadStatus);
-  const goToDashboard = useNavStore((state) => state.goToDashboard);
-
   useKeyboardShortcuts();
+  useUnsavedChangesGuard();
 
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-base-300 bg-base-100 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={goToDashboard}>
+          <Link to="/" className="btn btn-secondary btn-sm">
             ← Events
-          </button>
+          </Link>
           <EventTitle />
         </div>
         <div className="flex items-center gap-3">
           <SaveStatusBadge />
+          <SyncStatusBadge />
           <AuthControls />
         </div>
       </header>
@@ -83,17 +85,7 @@ export function EditorPage(): JSX.Element {
       <div className="flex min-h-0 flex-1">
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
-          {loadStatus === "loading" && (
-            <div className="absolute inset-0 grid place-items-center text-base-content/60">
-              Loading floor plan…
-            </div>
-          )}
-          {loadStatus === "error" && (
-            <div className="absolute inset-0 grid place-items-center text-error">
-              Could not load the floor plan. Is the API running?
-            </div>
-          )}
-          {loadStatus === "ready" && <EditorCanvas />}
+          <EditorCanvas />
         </div>
         <PropertiesPanel />
       </div>

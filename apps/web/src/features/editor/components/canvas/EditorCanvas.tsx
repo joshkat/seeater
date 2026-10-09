@@ -8,6 +8,12 @@ import { getGuestDragData } from "../../../guests/lib/dnd";
 import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
 import { WHEEL_ZOOM, clampScale } from "../../geometry/viewport";
+import {
+  useDimensions,
+  useDocumentId,
+  useGuests,
+  useTables,
+} from "../../hooks/useDocumentSelectors";
 import { useEditorStore } from "../../store/editorStore";
 import type { AlignmentGuide } from "../../types";
 import { AlignmentGuides } from "./AlignmentGuides";
@@ -29,20 +35,19 @@ export function EditorCanvas(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const nodeRefs = useRef<Map<string, Konva.Group>>(new Map());
-  const didFit = useRef(false);
+  const fittedFor = useRef<string | null>(null);
   const skipNextClick = useRef(false);
 
   const [guides, setGuides] = useState<AlignmentGuide[]>([]);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
   const [marqueeMode, setMarqueeMode] = useState(false);
 
-  const dimensions = useEditorStore((state) => state.dimensions);
-  const floorPlanId = useEditorStore((state) => state.floorPlanId);
-  const tables = useEditorStore((state) => state.tables);
+  const dimensions = useDimensions();
+  const documentId = useDocumentId();
+  const tables = useTables();
   const selectedIds = useEditorStore((state) => state.selectedIds);
   const viewport = useEditorStore((state) => state.viewport);
   const stageSize = useEditorStore((state) => state.stageSize);
-  const loadStatus = useEditorStore((state) => state.loadStatus);
   const selectTable = useEditorStore((state) => state.selectTable);
   const setSelection = useEditorStore((state) => state.setSelection);
   const clearSelection = useEditorStore((state) => state.clearSelection);
@@ -54,7 +59,7 @@ export function EditorCanvas(): JSX.Element {
   const focusTable = useEditorStore((state) => state.focusTable);
   const clearFocus = useEditorStore((state) => state.clearFocus);
 
-  const guests = useGuestStore((state) => state.guests);
+  const guests = useGuests();
   const assignSeat = useGuestStore((state) => state.assignSeat);
   const assignGuestsToTable = useGuestStore((state) => state.assignGuestsToTable);
 
@@ -89,16 +94,11 @@ export function EditorCanvas(): JSX.Element {
       const { selectedGuestIds } = useGuestStore.getState();
       if (selectedGuestIds.length === 0) return;
       if (selectedGuestIds.length === 1) {
-        void assignSeat(selectedGuestIds[0], seatId);
+        assignSeat(selectedGuestIds[0], seatId);
         return;
       }
       const table = tableForSeat(seatId);
-      if (table) {
-        void assignGuestsToTable(
-          selectedGuestIds,
-          table.seats.map((s) => s.id),
-        );
-      }
+      if (table) assignGuestsToTable(selectedGuestIds, table.id);
     },
     [assignSeat, assignGuestsToTable, tableForSeat],
   );
@@ -127,21 +127,15 @@ export function EditorCanvas(): JSX.Element {
           : [draggedId];
 
       if (group.length === 1 && seatId) {
-        void assignSeat(group[0], seatId);
+        assignSeat(group[0], seatId);
         return;
       }
 
       const focusedTableId = useEditorStore.getState().focusedTableId;
       const targetTableId = (seatId && tableForSeat(seatId)?.id) || bodyTableId || focusedTableId;
-      const table = tables.find((t) => t.id === targetTableId);
-      if (table) {
-        void assignGuestsToTable(
-          group,
-          table.seats.map((s) => s.id),
-        );
-      }
+      if (targetTableId) assignGuestsToTable(group, targetTableId);
     },
-    [assignSeat, assignGuestsToTable, tableForSeat, tables],
+    [assignSeat, assignGuestsToTable, tableForSeat],
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>): void => {
@@ -186,18 +180,13 @@ export function EditorCanvas(): JSX.Element {
     };
   }, [setStageSize]);
 
-  // Re-fit when a different plan is opened (each event gets its own fit-to-view).
+  // Fit-to-view once per event, as soon as the stage has a size.
   useEffect(() => {
-    didFit.current = false;
-  }, [floorPlanId]);
-
-  // Fit-to-view once per plan, after it's loaded and the stage is sized.
-  useEffect(() => {
-    if (didFit.current || loadStatus !== "ready") return;
+    if (!documentId || fittedFor.current === documentId) return;
     if (stageSize.width === 0 || stageSize.height === 0) return;
     fitToView();
-    didFit.current = true;
-  }, [loadStatus, stageSize, fitToView]);
+    fittedFor.current = documentId;
+  }, [documentId, stageSize, fitToView]);
 
   // Zoom in on a single selected table; restore the prior view when deselected.
   useEffect(() => {

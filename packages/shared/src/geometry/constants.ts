@@ -1,5 +1,5 @@
 import type { Size } from "../types/geometry.js";
-import type { TableShape } from "../types/table.js";
+import type { TableShape } from "../document/schema.js";
 
 /**
  * Layout constants in floor-plan units. The editor renders these through its
@@ -20,6 +20,9 @@ export const DEFAULT_RECT_SIZE: Size = { width: 180, height: 90 };
 
 /** Default chair count for a new table. */
 export const DEFAULT_SEAT_COUNT = 8;
+
+/** Most chairs a single table can have. */
+export const MAX_SEAT_COUNT = 64;
 
 /** Grid spacing used for snapping in the editor. */
 export const GRID_SIZE = 20;

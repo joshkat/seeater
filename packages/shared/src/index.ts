@@ -1,16 +1,21 @@
 /**
  * @seating/shared
  *
- * Domain types shared between the API (@seating/api) and web client
- * (@seating/web). Keeping the model here keeps both ends in sync and makes
- * a future mobile client just another consumer of the same contracts.
+ * The contract shared by the web app and the sync API (and, later, a mobile
+ * client): the event-document schema + types, pure operations that edit a
+ * document, and seat-layout geometry.
  */
 
 export * from "./types/geometry.js";
-export * from "./types/seat.js";
-export * from "./types/table.js";
-export * from "./types/floorPlan.js";
-export * from "./types/event.js";
+
+export * from "./document/schema.js";
+export * from "./document/migrate.js";
+export * from "./document/ids.js";
+export * from "./document/eventOps.js";
+export * from "./document/tableOps.js";
+export * from "./document/guestOps.js";
+export * from "./document/summary.js";
 
 export * from "./geometry/constants.js";
 export * from "./geometry/seatLayout.js";
+export * from "./sync/protocol.js";

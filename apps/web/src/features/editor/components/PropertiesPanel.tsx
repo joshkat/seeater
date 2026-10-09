@@ -1,5 +1,6 @@
 import type { Table } from "@seating/shared";
 
+import { useTables } from "../hooks/useDocumentSelectors";
 import { tableDisplayName } from "../lib/tableLabel";
 import { useEditorStore } from "../store/editorStore";
 
@@ -143,7 +144,7 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
 /** Right-hand inspector for the current selection. */
 export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const tables = useEditorStore((state) => state.tables);
+  const tables = useTables();
 
   const selected = tables.filter((table) => selectedIds.includes(table.id));
   const selectedIndex = selected.length === 1 ? tables.indexOf(selected[0]) : -1;

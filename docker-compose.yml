@@ -1,0 +1,21 @@
+# Local Postgres for the optional sync API. The web app does NOT need this —
+# it runs entirely on the browser's IndexedDB. Start with `npm run db:up`.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: seating
+      POSTGRES_PASSWORD: seating
+      POSTGRES_DB: seating_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seating -d seating_app"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:

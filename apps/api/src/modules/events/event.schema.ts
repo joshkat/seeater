@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-/** Path param for routes scoped to a floor plan's event. */
-export const floorPlanEventParamsSchema = z.object({
-  floorPlanId: z.string().cuid(),
+/** Path param: a document id (client-generated UUID, or a legacy id). */
+export const eventIdParamsSchema = z.object({
+  id: z.string().min(1).max(64),
 });
 
-export type FloorPlanEventParams = z.infer<typeof floorPlanEventParamsSchema>;
+/** `DELETE /events/:id?baseVersion=N` */
+export const deleteEventQuerySchema = z.object({
+  baseVersion: z.coerce.number().int().positive(),
+});
+
+/** Largest accepted PUT body. A 5,000-guest wedding is ~1.5 MB of JSON. */
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;

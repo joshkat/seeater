@@ -16,20 +16,14 @@ export function AddGuestForm(): JSX.Element {
   const addGuest = useGuestStore((state) => state.addGuest);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
-  const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(event: FormEvent): Promise<void> {
+  function handleSubmit(event: FormEvent): void {
     event.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed || busy) return;
-    setBusy(true);
-    try {
-      await addGuest({ name: trimmed, ...classifyContact(contact) });
-      setName("");
-      setContact("");
-    } finally {
-      setBusy(false);
-    }
+    if (!trimmed) return;
+    addGuest({ name: trimmed, ...classifyContact(contact) });
+    setName("");
+    setContact("");
   }
 
   return (
@@ -48,11 +42,7 @@ export function AddGuestForm(): JSX.Element {
         aria-label="Guest email or phone"
         className="input input-sm w-full text-base-content"
       />
-      <button
-        type="submit"
-        disabled={busy || name.trim() === ""}
-        className="btn btn-primary btn-sm"
-      >
+      <button type="submit" disabled={name.trim() === ""} className="btn btn-primary btn-sm">
         Add
       </button>
     </form>

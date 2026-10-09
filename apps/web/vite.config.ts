@@ -1,10 +1,41 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Installable, offline-capable app: a service worker precaches the built
+    // app shell (HTML/JS/CSS/icons) so it loads with no network. Data already
+    // lives in IndexedDB, so the whole app works offline. Only active in
+    // production builds (`npm run build && npm run preview` to try it).
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      manifest: {
+        name: 'Seating Chart Builder',
+        short_name: 'Seating',
+        description: 'Plan tables and seat your guests — works offline.',
+        theme_color: '#2563eb',
+        background_color: '#f1f5f9',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Client-side routes (/events/:id) are served the app shell offline.
+        navigateFallback: '/index.html',
+      },
+    }),
+  ],
   server: {
     port: 5173,
   },

@@ -1,19 +1,21 @@
-import type { FloorPlanSummary } from "@seating/shared";
+import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
-import { deleteFloorPlan, updateFloorPlan } from "../../editor/api/floorPlanApi";
+import { downloadEventBackup } from "../../backup/lib/backupActions";
+import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
+import { activeDb } from "../../storage/store/storageStore";
 import { relativeTime } from "../lib/relativeTime";
-import { useNavStore } from "../store/navStore";
 import { DuplicateDialog } from "./DuplicateDialog";
 
 interface EventCardProps {
-  summary: FloorPlanSummary;
-  onChanged: () => void;
+  summary: EventSummary;
 }
 
-/** A single event tile on the dashboard: open it, or rename/duplicate/delete. */
-export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
-  const openEvent = useNavStore((state) => state.openEvent);
+/** A single event tile on the dashboard: open it, or rename/duplicate/delete.
+ * The dashboard list is live, so changes here re-render it automatically. */
+export function EventCard({ summary }: EventCardProps): JSX.Element {
+  const navigate = useNavigate();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(summary.name);
   const [showDuplicate, setShowDuplicate] = useState(false);
@@ -25,17 +27,15 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
       setName(summary.name);
       return;
     }
-    await updateFloorPlan(summary.id, { name: trimmed });
-    onChanged();
+    await renameEvent(activeDb(), summary.id, trimmed);
   }
 
   async function handleDelete(): Promise<void> {
     const ok = window.confirm(
-      `Delete “${summary.name}”? This permanently removes the chart and its ${summary.guestCount} guest(s).`,
+      `Delete “${summary.name}” and its ${summary.guestCount} guest(s)? This removes it from this device (and your account, if you're signed in). Use “Download backup” first if you might need it.`,
     );
     if (!ok) return;
-    await deleteFloorPlan(summary.id);
-    onChanged();
+    await deleteEvent(activeDb(), summary.id);
   }
 
   return (
@@ -53,7 +53,7 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
         >
           ⋯
         </button>
-        <ul className="dropdown-content menu z-10 w-36 rounded-box border border-base-300 bg-base-100 p-1 text-sm shadow-lg">
+        <ul className="dropdown-content menu z-10 w-44 rounded-box border border-base-300 bg-base-100 p-1 text-sm shadow-lg">
           <li>
             <button type="button" onClick={() => setRenaming(true)}>
               Rename
@@ -62,6 +62,11 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
           <li>
             <button type="button" onClick={() => setShowDuplicate(true)}>
               Duplicate
+            </button>
+          </li>
+          <li>
+            <button type="button" onClick={() => void downloadEventBackup(summary.id)}>
+              Download backup
             </button>
           </li>
           <li>
@@ -76,7 +81,7 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
       <button
         type="button"
         className="flex flex-1 flex-col items-start gap-2 pr-6 text-left"
-        onClick={() => !renaming && openEvent(summary.id)}
+        onClick={() => !renaming && navigate(`/events/${summary.id}`)}
         disabled={renaming}
       >
         {renaming ? (
@@ -115,7 +120,6 @@ export function EventCard({ summary, onChanged }: EventCardProps): JSX.Element {
           sourceId={summary.id}
           sourceName={summary.name}
           onClose={() => setShowDuplicate(false)}
-          onDuplicated={onChanged}
         />
       )}
     </div>

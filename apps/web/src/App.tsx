@@ -1,9 +1,21 @@
-import { Dashboard } from "./features/dashboard/components/Dashboard";
-import { useNavStore } from "./features/dashboard/store/navStore";
-import { EditorPage } from "./features/editor/components/EditorPage";
+import { RouterProvider, createBrowserRouter } from "react-router";
 
-/** Root shell: the events dashboard, or the editor for the open event. */
+import { NotFoundPage } from "./components/NotFoundPage";
+import { Dashboard } from "./features/dashboard/components/Dashboard";
+import { EditorRoute } from "./features/editor/components/EditorRoute";
+
+/**
+ * URL routes. Real URLs mean refresh keeps your place, the back button works,
+ * and an event can be linked to directly. (Static hosts must rewrite unknown
+ * paths to index.html — see "Deploying" in the README.)
+ */
+const router = createBrowserRouter([
+  { path: "/", element: <Dashboard /> },
+  { path: "/events/:eventId", element: <EditorRoute /> },
+  { path: "*", element: <NotFoundPage /> },
+]);
+
+/** Root shell. */
 export function App(): JSX.Element {
-  const view = useNavStore((state) => state.view);
-  return view === "dashboard" ? <Dashboard /> : <EditorPage />;
+  return <RouterProvider router={router} />;
 }

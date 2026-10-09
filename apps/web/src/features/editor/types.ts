@@ -13,5 +13,3 @@ export interface AlignmentGuide {
   /** Position along the perpendicular axis, in floor-plan units. */
   position: number;
 }
-
-export type SaveStatus = "idle" | "saving" | "saved" | "error";

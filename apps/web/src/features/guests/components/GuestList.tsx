@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useGuests } from "../../editor/hooks/useDocumentSelectors";
 import { useGuestStore } from "../store/guestStore";
 import { GuestListItem } from "./GuestListItem";
 
@@ -18,7 +19,7 @@ interface GuestListProps {
 
 /** The guest list: unassigned guests, then seated guests grouped by table. */
 export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
-  const guests = useGuestStore((state) => state.guests);
+  const guests = useGuests();
   const selectedGuestIds = useGuestStore((state) => state.selectedGuestIds);
   const selectGuest = useGuestStore((state) => state.selectGuest);
   const assignSeat = useGuestStore((state) => state.assignSeat);
@@ -77,9 +78,9 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         subtitle={subtitle}
         selected={selectedGuestIds.includes(guest.id)}
         onSelect={(additive) => selectGuest(guest.id, additive)}
-        onSetRsvp={(status) => void editGuest(guest.id, { rsvpStatus: status })}
-        onUnseat={() => void assignSeat(guest.id, null)}
-        onRemove={() => void removeGuest(guest.id)}
+        onSetRsvp={(status) => editGuest(guest.id, { rsvpStatus: status })}
+        onUnseat={() => assignSeat(guest.id, null)}
+        onRemove={() => removeGuest(guest.id)}
       />
     );
   };
