@@ -2,6 +2,7 @@ import { createEventDoc } from "@seating/shared";
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { requestPersistentStorage } from "../../../lib/persistentStorage";
 import { createEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
 
@@ -20,6 +21,7 @@ export function NewEventButton(): JSX.Element {
     try {
       const doc = createEventDoc({ name: trimmed });
       await createEvent(activeDb(), doc);
+      void requestPersistentStorage();
       navigate(`/events/${doc.id}`);
     } finally {
       setBusy(false);
