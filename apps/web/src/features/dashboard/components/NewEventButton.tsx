@@ -1,13 +1,13 @@
 import { createEventDoc } from "@seating/shared";
 import { type FormEvent, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { createEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
-import { useNavStore } from "../store/navStore";
 
 /** "+ New event" button → name prompt → creates the event locally and opens it. */
 export function NewEventButton(): JSX.Element {
-  const openEvent = useNavStore((state) => state.openEvent);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,7 +20,7 @@ export function NewEventButton(): JSX.Element {
     try {
       const doc = createEventDoc({ name: trimmed });
       await createEvent(activeDb(), doc);
-      openEvent(doc.id);
+      navigate(`/events/${doc.id}`);
     } finally {
       setBusy(false);
     }

@@ -1,10 +1,10 @@
 import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
 import { relativeTime } from "../lib/relativeTime";
-import { useNavStore } from "../store/navStore";
 import { DuplicateDialog } from "./DuplicateDialog";
 
 interface EventCardProps {
@@ -14,7 +14,7 @@ interface EventCardProps {
 /** A single event tile on the dashboard: open it, or rename/duplicate/delete.
  * The dashboard list is live, so changes here re-render it automatically. */
 export function EventCard({ summary }: EventCardProps): JSX.Element {
-  const openEvent = useNavStore((state) => state.openEvent);
+  const navigate = useNavigate();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(summary.name);
   const [showDuplicate, setShowDuplicate] = useState(false);
@@ -75,7 +75,7 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
       <button
         type="button"
         className="flex flex-1 flex-col items-start gap-2 pr-6 text-left"
-        onClick={() => !renaming && openEvent(summary.id)}
+        onClick={() => !renaming && navigate(`/events/${summary.id}`)}
         disabled={renaming}
       >
         {renaming ? (

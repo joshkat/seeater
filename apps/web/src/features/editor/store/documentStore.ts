@@ -84,8 +84,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   async close() {
-    openRequest += 1;
+    const request = ++openRequest;
     await writer.flush();
+    if (request !== openRequest) return; // a newer open() has taken over
     set({ doc: null, status: "idle" });
   },
 
