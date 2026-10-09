@@ -1,3 +1,4 @@
+import { devSyncOwner } from "../features/auth/lib/authConfig";
 import { getAuthToken } from "./authToken";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
@@ -6,6 +7,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Parsed JSON error body, when the server sent one (e.g. a 409's `current`). */
+    readonly body: unknown = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -13,8 +16,9 @@ export class ApiError extends Error {
 }
 
 /**
- * Thin typed wrapper around fetch for talking to @seating/api. Centralizes
- * the base URL, JSON handling, and error shape so feature modules stay small.
+ * Thin typed wrapper around fetch for the sync API. Centralizes the base URL,
+ * auth header, JSON handling and error shape. Network failures surface as the
+ * fetch TypeError (callers treat that as "offline").
  */
 export async function apiRequest<TResponse>(
   path: string,
@@ -27,14 +31,18 @@ export async function apiRequest<TResponse>(
     headers.set("Content-Type", "application/json");
   }
 
-  // Attach the Clerk session token when signed in (no-op in keyless dev).
+  // Clerk session token when signed in. In keyless dev (no Clerk), the local
+  // API trusts an x-owner-id header instead — see authConfig.devSyncOwner.
   const token = await getAuthToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  else if (devSyncOwner) headers.set("x-owner-id", devSyncOwner);
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
   if (!response.ok) {
-    throw new ApiError(`Request to ${path} failed`, response.status);
+    const body: unknown = await response.json().catch(() => null);
+    const message = (body as { message?: string } | null)?.message ?? `Request to ${path} failed`;
+    throw new ApiError(message, response.status, body);
   }
 
   // 204 No Content (e.g. DELETE) has no body to parse.

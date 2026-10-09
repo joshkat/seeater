@@ -1,4 +1,6 @@
 import { AuthControls } from "../../auth/components/AuthControls";
+import { SyncNotice } from "../../sync/components/SyncNotice";
+import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { useEventSummaries } from "../hooks/useEventSummaries";
 import { EventCard } from "./EventCard";
 import { NewEventButton } from "./NewEventButton";
@@ -14,12 +16,14 @@ export function Dashboard(): JSX.Element {
           <h1 className="text-xl font-bold">My Events</h1>
           <div className="flex items-center gap-3">
             <NewEventButton />
+            <SyncStatusBadge />
             <AuthControls />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
+        <SyncNotice />
         {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
         {summaries?.length === 0 && (
           <div className="rounded-box border border-dashed border-base-300 p-12 text-center">

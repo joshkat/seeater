@@ -23,6 +23,30 @@
         "--strictPort"
       ],
       "port": 5174
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:api"],
+      "port": 4000
+    },
+    {
+      "name": "web-devsync",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_CLERK_PUBLISHABLE_KEY=",
+        "VITE_DEV_SYNC_OWNER=dev-user",
+        "npm",
+        "run",
+        "dev",
+        "--workspace",
+        "@seating/web",
+        "--",
+        "--port",
+        "5175",
+        "--strictPort"
+      ],
+      "port": 5175
     }
   ]
 }

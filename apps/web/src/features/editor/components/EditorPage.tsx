@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { AuthControls } from "../../auth/components/AuthControls";
+import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
 import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -72,6 +73,7 @@ export function EditorPage(): JSX.Element {
         </div>
         <div className="flex items-center gap-3">
           <SaveStatusBadge />
+          <SyncStatusBadge />
           <AuthControls />
         </div>
       </header>
