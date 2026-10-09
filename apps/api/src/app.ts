@@ -1,5 +1,7 @@
 import { clerkPlugin } from "@clerk/fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
@@ -28,19 +30,34 @@ function resolveCorsOrigin(
   callback(null, env.CORS_ORIGIN.includes(origin));
 }
 
+export interface BuildAppOptions {
+  /** Overrides RATE_LIMIT_MAX (requests per minute per client IP). */
+  rateLimitMax?: number;
+}
+
 /**
  * Builds and configures the Fastify application. Kept separate from the
  * server bootstrap (server.ts) so tests can build an app without listening.
  */
-export async function buildApp(): Promise<FastifyInstance> {
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: { production: "info", development: "debug", test: "silent" }[env.NODE_ENV],
     },
+    trustProxy: env.TRUST_PROXY,
   });
 
   await app.register(sensible);
+  // Standard security headers. The API is called cross-origin by the web app,
+  // so allow cross-origin reads of its responses (CORS still decides who).
+  await app.register(helmet, { crossOriginResourcePolicy: { policy: "cross-origin" } });
   await app.register(cors, { origin: resolveCorsOrigin });
+  // Per-IP request cap. Sync makes a handful of calls a minute per open tab,
+  // so the default leaves lots of headroom while stopping floods.
+  await app.register(rateLimit, {
+    max: options.rateLimitMax ?? env.RATE_LIMIT_MAX,
+    timeWindow: "1 minute",
+  });
   await app.register(prismaPlugin);
 
   // Verify Clerk session tokens (attaches auth to each request) when configured.
