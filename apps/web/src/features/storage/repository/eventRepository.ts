@@ -3,6 +3,7 @@ import {
   type EventDoc,
   type EventSummary,
   duplicateEventDoc,
+  reidentifyEventDoc,
   renameEventDoc,
   summarizeEventDoc,
 } from "@seating/shared";
@@ -82,6 +83,18 @@ export async function duplicateEvent(
   const copy = duplicateEventDoc(source, options);
   await createEvent(db, copy);
   return copy.id;
+}
+
+/**
+ * Adds an event from outside (a backup file). If an event with the same id is
+ * already here — e.g. restoring a backup of an event you still have — it's
+ * imported as a separate copy with fresh ids instead of overwriting.
+ */
+export async function importEvent(db: SeatingDb, doc: EventDoc): Promise<EventDoc> {
+  const clash = await db.events.get(doc.id);
+  const toStore = clash ? renameEventDoc(reidentifyEventDoc(doc), `${doc.name} (imported)`) : doc;
+  await createEvent(db, toStore);
+  return toStore;
 }
 
 /**

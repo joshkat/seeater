@@ -1,4 +1,5 @@
 import { AuthControls } from "../../auth/components/AuthControls";
+import { ImportBackupButton } from "../../backup/components/ImportBackupButton";
 import { SyncNotice } from "../../sync/components/SyncNotice";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { useEventSummaries } from "../hooks/useEventSummaries";
@@ -15,6 +16,7 @@ export function Dashboard(): JSX.Element {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <h1 className="text-xl font-bold">My Events</h1>
           <div className="flex items-center gap-3">
+            <ImportBackupButton />
             <NewEventButton />
             <SyncStatusBadge />
             <AuthControls />

@@ -2,6 +2,7 @@ import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { downloadEventBackup } from "../../backup/lib/backupActions";
 import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
 import { relativeTime } from "../lib/relativeTime";
@@ -31,7 +32,7 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
 
   async function handleDelete(): Promise<void> {
     const ok = window.confirm(
-      `Delete “${summary.name}”? This permanently removes the chart and its ${summary.guestCount} guest(s).`,
+      `Delete “${summary.name}” and its ${summary.guestCount} guest(s)? This removes it from this device (and your account, if you're signed in). Use “Download backup” first if you might need it.`,
     );
     if (!ok) return;
     await deleteEvent(activeDb(), summary.id);
@@ -52,7 +53,7 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
         >
           ⋯
         </button>
-        <ul className="dropdown-content menu z-10 w-36 rounded-box border border-base-300 bg-base-100 p-1 text-sm shadow-lg">
+        <ul className="dropdown-content menu z-10 w-44 rounded-box border border-base-300 bg-base-100 p-1 text-sm shadow-lg">
           <li>
             <button type="button" onClick={() => setRenaming(true)}>
               Rename
@@ -61,6 +62,11 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
           <li>
             <button type="button" onClick={() => setShowDuplicate(true)}>
               Duplicate
+            </button>
+          </li>
+          <li>
+            <button type="button" onClick={() => void downloadEventBackup(summary.id)}>
+              Download backup
             </button>
           </li>
           <li>
