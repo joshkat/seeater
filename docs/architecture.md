@@ -1,255 +1,222 @@
 # Architecture
 
-A guided tour of how the seating-chart app is built and how the pieces talk to each other.
-If you read one doc, read this one. See also [project-structure.md](./project-structure.md) for a
-file-by-file map and [styling.md](./styling.md) for the UI/theming system.
+A guided tour of how the seating-chart app is built and how data moves through it. If you read one
+doc, read this one. Then:
+
+- [data-model.md](./data-model.md): the event document, where it's stored, how big it gets.
+- [sync.md](./sync.md): the optional sign-in sync protocol and conflict policy.
+- [project-structure.md](./project-structure.md): a file-by-file map.
+- [styling.md](./styling.md): the Tailwind/DaisyUI theming system.
 
 ---
 
-## The big picture
+## The big picture: local-first
 
-It's a single product split into three packages inside one repo (an **npm-workspaces monorepo**):
+The app is **local-first**. The browser holds the real data, works with no network and no account,
+and the server is an optional backup and sync service.
 
+```mermaid
+flowchart TB
+  subgraph Browser["Browser — always works, no account needed"]
+    direction TB
+    UI["React UI<br/>(dashboard, editor canvas, guest panel)"]
+    Stores["zustand stores<br/>documentStore · editorStore · guestStore"]
+    Ops["@seating/shared ops<br/>pure functions: addTable, assignSeat, …"]
+    Repo["storage repository<br/>(Dexie)"]
+    IDB[("IndexedDB<br/>one JSON doc per event")]
+    SW["Service worker<br/>caches the app for offline load"]
+    UI --> Stores --> Ops
+    Stores -- "save on every change" --> Repo --> IDB
+  end
+
+  subgraph Optional["Only when signed in"]
+    Clerk["Clerk<br/>(identity)"]
+    Sync["sync engine<br/>(in the browser)"]
+    API["Fastify sync API<br/>/api/events"]
+    PG[("Postgres<br/>one row per event")]
+  end
+
+  IDB <--> Sync
+  Sync <-- "versioned whole-document<br/>PUT / GET / DELETE" --> API --> PG
+  Clerk -. "session token" .-> Sync
+  Clerk -. "verifies" .-> API
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  apps/web  — React app (the UI you click)                    │
-│    • Canvas editor (react-konva)                             │
-│    • Guest panel, dashboard                                  │
-│    • zustand stores hold all client state                   │
-└───────────────┬─────────────────────────────────────────────┘
-                │  HTTP/JSON (fetch)
-                │  types come from @seating/shared
-┌───────────────▼─────────────────────────────────────────────┐
-│  apps/api  — Fastify REST API                                │
-│    • Validates input (zod)                                   │
-│    • Talks to the DB (Prisma)                                │
-│    • Maps DB rows → shared DTOs                              │
-└───────────────┬─────────────────────────────────────────────┘
-                │  Prisma Client
-┌───────────────▼─────────────────────────────────────────────┐
-│  PostgreSQL — the source of truth                            │
-└─────────────────────────────────────────────────────────────┘
 
-        packages/shared (@seating/shared)
-        ▲ imported by BOTH web and api ▲
-        The TypeScript "contract": domain types + seat geometry.
-```
+It's one product in three packages (an **npm-workspaces monorepo**):
 
-**Why a monorepo with a shared package?** The web app and the API have to agree on the shape of a
-`Table`, a `Guest`, a `FloorPlan`, etc. Instead of defining those types twice (and letting them
-drift), they're defined once in `@seating/shared` and imported by both ends. If you change a type,
-both sides get a compile error until they agree again. The same package also holds the **seat
-geometry math** (where chairs sit around a table), so the server and client compute identical
-positions.
+| Package           | What it is                                                                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared` | **The contract.** The event-document zod schema and types, the pure edit operations, seat geometry, and the sync wire types. Imported by both web and API. |
+| `apps/web`        | **The product.** React + Vite + react-konva. Everything a user does happens here, against IndexedDB.                                                       |
+| `apps/api`        | **Optional sync service.** Fastify + Prisma + Postgres. Stores whole documents per account with optimistic concurrency. Not needed to run or use the app.  |
 
-**Why keep the API separate from the web app?** So a future mobile app can reuse the exact same
-REST API — the web app is just one client.
+### Why local-first?
+
+- **No barrier to entry.** Open the URL and start seating people. No sign-up, no server round
+  trip, nothing to lose if the API is down.
+- **Cheap to host.** The web app is static files (any CDN). A signed-out user costs nothing. The
+  API only stores small JSON blobs for people who opt into sync.
+- **It fits the data.** A whole seating chart is one small document (~91 KB for a 300-guest
+  wedding), almost always edited by one person at a time. Storing it as one versioned document is
+  simpler and sturdier than five relational tables with per-row endpoints.
+- **Mobile-ready.** A future native app can reuse `@seating/shared` (schema plus ops) and the same
+  six-endpoint sync API.
 
 ---
 
-## The domain model (what the app is actually about)
+## How an edit flows
 
+Follow one action, **dropping a guest onto a chair**:
+
+```mermaid
+sequenceDiagram
+  participant C as EditorCanvas
+  participant G as guestStore
+  participant D as documentStore
+  participant O as shared: assignSeat()
+  participant W as coalescedWriter
+  participant I as IndexedDB
+
+  C->>G: assignSeat(guestId, seatId)
+  G->>D: apply(doc => assignSeat(doc, guestId, seatId))
+  D->>O: assignSeat(doc, …)
+  O-->>D: new doc (previous occupant displaced)
+  D-->>C: re-render with the new doc (same tick)
+  D->>W: schedule(newDoc)
+  W->>I: put(record) — dirty = true, updatedAt stamped
+  Note over W,I: a burst of edits = at most one write in flight<br/>plus the latest queued
 ```
-FloorPlan ("an event", e.g. "Sarah & Tom's Wedding")
-  ├── Table[]            (round or rectangle, placed on the canvas)
-  │     └── Seat[]       (chairs; auto-arranged or hand-placed)
-  └── Event              (the guest-list container — exactly one per plan, created on demand)
-        └── Guest[]      (each may sit in one Seat; RSVP = pending/accepted/declined)
-```
 
-A few rules worth internalising:
+1. **UI event.** `EditorCanvas` hit-tests the drop to find the seat.
+2. **Store action.** `guestStore.assignSeat` calls `documentStore.apply(edit)`.
+3. **Pure op.** `assignSeat` from `@seating/shared` returns a _new_ document, with any previous
+   occupant moved out. It never mutates and never touches I/O.
+4. **Instant UI.** The new document replaces the old one in memory, and React re-renders.
+5. **Save.** The same document goes to the coalesced writer, which saves it to IndexedDB right
+   away (milliseconds). A burst of edits (like typing a table name) coalesces: one write in flight
+   and the latest one queued. Writes never reorder.
+6. **Sync (if signed in).** The record is now `dirty`, so the sync engine pushes it about 1.5 s
+   later (see [sync.md](./sync.md)).
 
-- A **`FloorPlan` is what the user calls an "event."** It has a name, the table layout, and a
-  one-to-one default `Event` named "Guest list" that holds the guests. (The separate `Event` table
-  is an implementation detail — it exists so guests have a home and so the model can grow later.)
-- **One guest per seat.** Enforced in the database (`Guest.seatId` is unique). If you drop a guest
-  onto an already-occupied seat, the previous occupant is **displaced** back to unassigned.
-- **Seats have stable identity.** When you change a table's chairs (toggle auto/custom, nudge a
-  chair, change the count), the server _updates the existing seat rows in place by index_ rather
-  than deleting and recreating them. This is the whole reason a seated guest stays seated when you
-  tweak their table — the seat keeps its id, so the guest's `seatId` still points at it.
-
-The Prisma schema lives in `apps/api/prisma/schema.prisma`; the matching TypeScript types live in
-`packages/shared/src/types/`.
+There's no optimistic-update-then-reconcile with a server any more. The local write _is_ the
+commit, which removes a whole class of bugs: rollbacks, temporary ids, half-saved table edits, and
+guest lists racing each other.
 
 ---
 
-## How a change flows end-to-end
+## Client state
 
-Follow one concrete action — **dragging a guest onto a chair** — through every layer:
+| Store / module    | File                                     | Owns                                                                                                                                               |
+| ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **documentStore** | `features/editor/store/documentStore.ts` | The open event document (tables + guests + assignments), its load status, and the local save status. **The single source of truth while editing.** |
+| **editorStore**   | `features/editor/store/editorStore.ts`   | View state only: viewport, zoom/focus, selected tables. Table actions are thin wrappers over shared ops.                                           |
+| **guestStore**    | `features/guests/store/guestStore.ts`    | Guest selection. Guest actions are thin wrappers over shared ops.                                                                                  |
+| **storageStore**  | `features/storage/store/storageStore.ts` | Which IndexedDB database is active (signed-out or a specific account).                                                                             |
+| **identityStore** | `features/auth/store/identityStore.ts`   | Who the data belongs to (Clerk user id, or null).                                                                                                  |
+| **syncStore**     | `features/sync/store/syncStore.ts`       | Sync status for the badge, plus one-off notices.                                                                                                   |
 
-1. **UI event.** You drop a guest tile onto the canvas. `EditorCanvas`'s drop handler figures out
-   which seat (or table) you dropped on using Konva hit-testing.
-2. **Store action (optimistic).** It calls `assignSeat(guestId, seatId)` on the **guest store**.
-   The store immediately updates its in-memory list — the guest appears in the seat _right now_,
-   before the network responds. It also clears anyone who was in that seat (displacement).
-3. **API call.** The store calls `assignGuestSeat(...)` in the API client, which does a
-   `PUT /events/:eventId/guests/:guestId/seat`.
-4. **Server.** Fastify validates the body (zod), the `GuestService` checks ownership + that the
-   seat belongs to this plan, performs the assignment in a transaction (displacing any occupant),
-   and returns every guest whose seat changed.
-5. **Reconcile.** The store merges the server's response back into its list (replacing the
-   optimistic guess with the source of truth). If the request had failed, it rolls back to the
-   previous state.
+Components read the document through tiny selector hooks
+(`features/editor/hooks/useDocumentSelectors.ts`: `useTables`, `useGuests`, `useDimensions`, …).
 
-That **optimistic-update-then-reconcile** pattern is used throughout the client: the UI feels
-instant, and the server stays authoritative.
+Because tables and guests now live in the **same** document, the ops keep them consistent
+themselves. Deleting a table unseats its guests in the same step, so the old effect that kept the
+two stores in sync is gone.
 
----
+## Routing
 
-## Client state: the three stores
+React Router (`App.tsx`):
 
-Client state lives in **[zustand](https://github.com/pmndrs/zustand) stores** — small, hook-based
-state containers. There are three, each owning one concern:
+| Path               | Component                                                                        |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `/`                | `Dashboard`: live list of events in the active database (a Dexie `useLiveQuery`) |
+| `/events/:eventId` | `EditorRoute`: opens the event on mount, saves and closes it on unmount          |
+| `*`                | `NotFoundPage`                                                                   |
 
-| Store           | File                                   | Owns                                                                                      |
-| --------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **editorStore** | `features/editor/store/editorStore.ts` | The open plan: its tables, the canvas viewport (pan/zoom/focus), selection, and autosave. |
-| **guestStore**  | `features/guests/store/guestStore.ts`  | The guest list for the open event: guests, multi-selection, and seat assignment.          |
-| **navStore**    | `features/dashboard/store/navStore.ts` | Which screen you're on (`dashboard` vs `editor`) and switching between events.            |
-
-They're deliberately decoupled but coordinate when needed. For example, opening an event
-(`navStore.openEvent`) resets the guest store and tells the editor store to load the new plan, so
-one event's guests never bleed into another.
-
-**Autosave** (editor store): there's no Save button. Each edit to a table schedules a _debounced_
-`PATCH` through `persistQueue.ts`, which coalesces rapid edits (e.g. while dragging) into one
-request and shows the "Saving…/All changes saved" badge.
+Static hosting must rewrite unknown paths to `index.html` (see README → Deploying). The service
+worker does the same offline.
 
 ---
 
 ## The canvas (react-konva)
 
-The visual editor is an HTML `<canvas>` driven by **react-konva** — a React renderer for the Konva
-2D library. Instead of DOM elements, you write `<Stage>`, `<Layer>`, `<Group>`, `<Circle>`,
-`<Rect>`, `<Text>` and Konva paints them.
+Unchanged by the local-first work.
 
-- A **table** is a `<Group>` positioned at its center, containing the table shape + chair nodes + a
-  label. Putting it in a group means dragging/rotating the group moves everything together.
-- The **viewport** (pan/zoom) is applied to the whole `<Stage>` (`x`, `y`, `scaleX/Y`). All the
-  fit-to-view / zoom-to-table / clamp math is pure functions in
-  `features/editor/geometry/viewport.ts`, so it's easy to test and reason about.
-- **Coordinates:** the floor plan has its own units (e.g. 1600×1000). Screen pixels =
-  `worldCoord * scale + viewportOffset`. Keep that mapping in mind when something looks
-  mis-positioned.
+- A **table** is a Konva `<Group>` at its center, containing the shape, the chair nodes and a
+  label, so dragging or rotating the group moves everything together.
+- The **viewport** (pan/zoom) is applied to the whole `<Stage>`. The fit-to-view, zoom-to-table and
+  clamp math is pure functions in `features/editor/geometry/viewport.ts`.
+- **Coordinates:** the floor plan has its own units (e.g. 1600×1000).
+  Screen = `world * scale + offset`.
 
-> ⚠️ react-konva is sensitive to Vite's dependency pre-bundling. If the canvas ever crashes in
-> `<StageWrap>`, see the Gotchas in [`CLAUDE.md`](../CLAUDE.md) — the fix is usually
-> `rm -rf node_modules/.vite` and restarting the dev server.
+> ⚠️ react-konva is sensitive to Vite's dependency pre-bundling. If the canvas crashes in
+> `<StageWrap>` after installing a dependency: `rm -rf node_modules/.vite apps/web/node_modules/.vite`
+> and restart the dev server (see CLAUDE.md → Gotchas).
 
 ---
 
-## The API layer
+## The API (optional sync service)
 
-Fastify, organised by **feature module**. Each module under `apps/api/src/modules/<feature>/` has
-three files:
+One feature module, `apps/api/src/modules/events/`:
 
-- `*.routes.ts` — the HTTP endpoints (URL + method), thin glue.
-- `*.service.ts` — the business logic + Prisma queries.
-- `*.schema.ts` — zod schemas that validate and type the request bodies/params.
+- `event.routes.ts`: `GET/PUT/DELETE /api/events[/:id]`.
+- `event.service.ts`: Prisma queries. Every write is a compare-and-swap on `version`.
+- `event.schema.ts`: path/query validation. Bodies are validated with the shared `eventDocSchema`.
 
-Cross-cutting helpers live in `src/lib/`:
+`lib/auth.ts` resolves the **owner id**: the verified Clerk user when `CLERK_SECRET_KEY` is set,
+otherwise an `x-owner-id` header (keyless dev only). Every query is scoped by owner through the
+`(ownerId, id)` primary key.
 
-- `mappers.ts` — converts Prisma rows (flat columns, `Date` objects) into the shared DTO shapes the
-  web app expects (nested `position`/`size`, ISO date strings). **This is the boundary** between
-  "database shape" and "API/web shape."
-- `auth.ts` — resolves the **owner id** for a request (see [Authentication](#authentication-clerk)
-  below). With Clerk configured it returns the verified Clerk user id; otherwise it falls back to an
-  `x-owner-id` header / `dev-user`. Every service query filters by this owner id.
-
-A request lifecycle: **route → zod-validate → service (ownership check + Prisma) → mapper → JSON.**
+The API never edits documents. It stores versions and rejects stale writes. All the domain logic
+lives in `@seating/shared` and runs in the browser.
 
 ---
 
-## Authentication (Clerk)
+## Identity (Clerk), now optional
 
-Auth is handled by **[Clerk](https://clerk.com)** — a hosted identity provider — and supports both
-**email + password** and **Google** sign-in. The key design choice is that auth is **opt-in via
-environment keys**, so the app still runs with zero config in local development.
+| Configuration                                                  | What users get                                                                                  |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| No keys                                                        | A purely local app. No sign-in UI, no network calls.                                            |
+| `VITE_CLERK_PUBLISHABLE_KEY` (+ `CLERK_SECRET_KEY` on the API) | The app works signed out exactly as above. "Sign in to sync" adds backup and multi-device sync. |
+| Keyless + `VITE_DEV_SYNC_OWNER=dev-user`                       | Dev only: always "signed in" as `dev-user` against a keyless local API.                         |
 
-### Two modes
+How it's wired:
 
-| Mode              | Trigger                                                       | Web behaviour                        | API behaviour                                                |
-| ----------------- | ------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------ |
-| **Keyless (dev)** | no Clerk keys set                                             | renders `<App>` directly, no sign-in | owner = `x-owner-id` header, or `dev-user`                   |
-| **Authenticated** | `VITE_CLERK_PUBLISHABLE_KEY` (web) + `CLERK_SECRET_KEY` (API) | sign-in gate, then the app           | verifies the Clerk session token; rejects anonymous requests |
+- `main.tsx` calls `startAccountSession()` **before the first render**. That opens the right local
+  database for the current (or last-known) identity and starts sync.
+- `<AuthRoot>` mounts `<ClerkProvider>` around the app (no gate) plus `<ClerkIdentityBridge>`. The
+  bridge pushes Clerk's user id into `identityStore` and registers `getToken` for `apiClient`'s
+  `Authorization: Bearer` header.
+- `identityStore` changes drive `accountSession.applyIdentity()`, which switches the database,
+  moves signed-out events into the account on sign-in, and starts or stops the sync scheduler.
 
-The web and API keys are independent. The publishable key turns on the **front-end gate**; the
-secret key turns on **back-end enforcement**. For real protection you need _both_ — a publishable
-key alone gates the UI but the API would still accept `x-owner-id` in dev.
+Clerk's modal and user menu are themed live to the active DaisyUI theme
+(`features/auth/lib/clerkAppearance.ts` + `useClerkAppearance`). That part is unchanged.
 
-### How it fits together
+---
 
-```
-                 ┌──────────────────────── apps/web ────────────────────────┐
-  signed out →   │  <ClerkProvider>                                          │
-                 │    <SignedOut>  → <SignInScreen> (Clerk modal: email/Google)
-  signed in  →   │    <SignedIn>   → <AuthTokenBridge/> + <App/>             │
-                 │                      │ registers Clerk getToken()          │
-                 └──────────────────────┼───────────────────────────────────┘
-                                         ▼
-                 lib/authToken.ts  ◄── module-level token getter
-                                         ▲
-                 lib/apiClient.ts  ──────┘  attaches  Authorization: Bearer <token>
-                                         │  on every fetch
-                                         ▼  HTTP
-                 ┌──────────────────────── apps/api ────────────────────────┐
-                 │  clerkPlugin (registered only when CLERK_SECRET_KEY set)  │
-                 │  lib/auth.ts → getAuth(request).userId  ─→  owner id      │
-                 └───────────────────────────────────────────────────────────┘
-```
+## Offline
 
-- **`main.tsx`** mounts `<ClerkProvider>` + `<AuthGate>` only when the publishable key exists;
-  otherwise it mounts `<App>` directly (keyless).
-- **`AuthGate`** uses Clerk's `<SignedOut>` / `<SignedIn>` to show either the `SignInScreen` or the
-  app.
-- **The token bridge** is the one non-obvious piece: Clerk's session token is only reachable through
-  a React hook (`useAuth().getToken()`), but `apiClient` is a plain (non-React) fetch wrapper.
-  `AuthTokenBridge` registers `getToken` into a module-level slot (`lib/authToken.ts`) on mount, and
-  `apiClient` reads from that slot to attach `Authorization: Bearer <token>` to each request.
-- **On the API**, `clerkPlugin` is registered only when `CLERK_SECRET_KEY` is present. `lib/auth.ts`
-  then prefers the verified `getAuth(request).userId` as the owner id, falling back to the dev header
-  only outside production. Because every query already filters by owner id, switching from `dev-user`
-  to real Clerk ids needed no changes in the services.
-
-### Theming Clerk to match the app
-
-Clerk's sign-in modal and user menu are styled to match the active DaisyUI theme.
-`features/auth/lib/clerkAppearance.ts` reads the theme's resolved CSS variables off `<html>`
-(`--color-primary`, `--color-base-100`, `--color-base-content`, `--color-base-300`, `--color-error`,
-`--radius-field`) and maps them onto Clerk's `appearance` API. Clerk computes hover/border shades in
-JS, so it gets concrete colors (not raw `var(...)` strings). `useClerkAppearance` rebuilds that object
-whenever the theme picker flips `<html data-theme>` (via a `MutationObserver`), and `AuthRoot` feeds it
-to `<ClerkProvider appearance={…}>` — so Clerk re-themes live alongside the rest of the UI.
-
-> **Reconfiguring keys requires a restart.** `VITE_*` vars are read by Vite at dev-server startup,
-> and the API reads `.env` at boot — changing a key only takes effect after restarting that process.
-> Note also that `.env.example` is just a template; real values go in `apps/web/.env.local` and
-> `apps/api/.env` (both gitignored).
+- **Data:** always local (IndexedDB), so editing never needs the network.
+- **App shell:** `vite-plugin-pwa` precaches the built HTML/JS/CSS/icons, so the app loads with no
+  network after the first visit, including deep links. It's installable to a home screen or
+  desktop.
+- **Durability:** `navigator.storage.persist()` is requested on first event creation, and
+  installed apps are exempt from Safari's 7-day eviction. Backups can be downloaded and imported.
+  Signed-in data is also on the server. See data-model.md → "Is local storage big enough?".
 
 ---
 
 ## Key design decisions (the "why")
 
-- **Shared types as a contract.** One source of truth for domain shapes prevents API/UI drift.
-- **Optimistic UI + reconcile.** Instant-feeling interactions without giving up server authority.
-- **Seat reconciliation by index, not delete/recreate.** Preserves seat identity so guest
-  assignments survive table edits. (Learned the hard way — see the Gotchas.)
-- **A `FloorPlan` = an "event."** Avoids a heavier multi-entity model while still giving each event
-  its own layout + guest list. The dashboard lists plans; opening one loads its editor.
-- **Layout-only duplication by default.** Duplicating an event copies the table layout; bringing
-  over guests / seat assignments is opt-in, because those usually differ per event.
-- **No client router (yet).** A simple `view` flag in `navStore` toggles dashboard ↔ editor. Easy
-  to swap for a real router later if deep-linking is needed.
-- **Opt-in auth (Clerk).** Auth is enabled by env keys, not hardcoded, so local dev stays
-  zero-config while production gets real sign-in. The owner-id abstraction in `auth.ts` meant
-  adding Clerk touched almost no service code.
-
----
-
-## Where to go next
-
-- Want to find a specific file? → [project-structure.md](./project-structure.md)
-- Adding or restyling UI? → [styling.md](./styling.md)
-- Running it locally / environment setup? → the root [README.md](../README.md)
-- Quick agent-oriented cheatsheet + gotchas? → [CLAUDE.md](../CLAUDE.md)
+- **One document per event.** It matches how the data is used (small, edited as a unit, one
+  editor at a time) and makes offline, backup, duplicate and sync almost trivial.
+- **Pure ops in `@seating/shared`.** All domain rules (one guest per seat, seat identity, unseating
+  on delete) live in one tested place that a mobile app can reuse.
+- **Client-generated UUIDs.** Nothing waits on a server to mint an id. That's what removed the
+  `tmp-` seat-id hack.
+- **Whole-document sync with "keep both" conflicts.** Simple, auditable, and it never loses an
+  edit. Field-level merging can come later if real-time collaboration is wanted.
+- **Database per identity.** Account data and signed-out data never mix on a shared browser.
+- **Seat identity by index.** Chair edits reuse seat ids, so seated guests stay put. (Same rule as
+  before, now enforced in shared ops instead of the API.)
+- **Layout-only duplication by default.** Copying guests and assignments is opt-in.

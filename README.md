@@ -1,214 +1,174 @@
 # Seating App
 
-A web-first visual **event seating-chart builder** — think Ticketmaster's concert
-seating map, but for weddings and large venues. Drag-and-drop tables (round or
-rectangle) with configurable chair counts, auto- or manually-arranged seats,
-pan/zoom, snapping, rotation, and per-operation autosave.
+A visual **seating-chart builder** for weddings, galas, or two tables at a dinner party. Lay out
+round and rectangular tables with auto- or hand-placed chairs, manage the guest list (add, import
+CSV/XLSX, RSVP), and drag guests into seats.
 
-The backend is a REST API, kept deliberately separate from the web client so the
-same contract can later power a mobile app.
+It's **local-first**: the app runs entirely in your browser, works offline, and needs no account.
+Signing in is optional and adds backup plus sync across your devices.
 
-> **Status:** Editor, guest seating, RSVP, multi-event dashboard, theming, and
-> Clerk auth (email/password + Google) are built.
-> Export/print, venue templates, and Wallet passes are the next candidates.
+> **Status:** Editor, guest seating, RSVP, multi-event dashboard, theming, offline/installable app,
+> backups, and optional Clerk sign-in with sync are built. Next candidates: export/print, venue
+> templates, undo/redo.
 
 ## Documentation
 
-- **[docs/architecture.md](docs/architecture.md)** — how the app is built and how data flows (start here).
-- **[docs/project-structure.md](docs/project-structure.md)** — annotated map of every folder.
-- **[docs/styling.md](docs/styling.md)** — the Tailwind/DaisyUI theming system and UI patterns.
-- **[CLAUDE.md](CLAUDE.md)** — terse cheatsheet + hard-won gotchas (also auto-loaded by Claude Code).
+- **[docs/architecture.md](docs/architecture.md)**: how it's built and how data flows (start here).
+- **[docs/data-model.md](docs/data-model.md)**: the event document, where data is stored (with
+  diagrams), and how much space it takes.
+- **[docs/sync.md](docs/sync.md)**: the optional sign-in sync protocol and conflict policy.
+- **[docs/reviewing-local-first.md](docs/reviewing-local-first.md)**: guide to auditing the
+  local-first migration.
+- **[docs/project-structure.md](docs/project-structure.md)**: annotated map of every folder.
+- **[docs/styling.md](docs/styling.md)**: the Tailwind/DaisyUI theming system.
+- **[CLAUDE.md](CLAUDE.md)**: terse cheatsheet and hard-won gotchas.
 
 ---
 
 ## Tech stack
 
-| Layer    | Tech                                                                                                            |
-| -------- | --------------------------------------------------------------------------------------------------------------- |
-| Web      | React 18 + Vite, [react-konva](https://konvajs.org/) canvas, [zustand](https://github.com/pmndrs/zustand) store |
-| API      | [Fastify 5](https://fastify.dev/) (TypeScript, ESM), [zod](https://zod.dev/) validation                         |
-| Database | PostgreSQL via [Prisma](https://www.prisma.io/)                                                                 |
-| Shared   | `@seating/shared` — TypeScript domain types + seat-layout geometry, imported by both API and web                |
+| Layer   | Tech                                                                                                       |
+| ------- | ---------------------------------------------------------------------------------------------------------- |
+| Web     | React 18 + Vite, react-konva canvas, zustand, React Router, Tailwind v4 + DaisyUI                          |
+| Storage | **IndexedDB** via [Dexie](https://dexie.org) (one JSON document per event); PWA service worker for offline |
+| Shared  | `@seating/shared`: zod schema for the event document, pure edit operations, seat geometry, sync types      |
+| Sync    | _Optional._ Fastify 5 + Prisma + PostgreSQL, storing versioned documents per account                       |
+| Auth    | _Optional._ [Clerk](https://clerk.com) (email/password + Google)                                           |
+| Tests   | Vitest (shared ops, web storage/sync in Node with fake-indexeddb, API against real Postgres)               |
 
-The repo is an **npm workspaces monorepo**:
+npm-workspaces monorepo:
 
 ```
-packages/shared   @seating/shared   — types + geometry (the API/web contract)
-apps/api          @seating/api      — Fastify REST API
-apps/web          @seating/web      — React editor
+packages/shared   @seating/shared   — event-document schema + ops + geometry (the contract)
+apps/web          @seating/web      — the app (everything users do happens here)
+apps/api          @seating/api      — optional sync API
 ```
 
 ---
 
-## Prerequisites
+## Quick start (just the app)
 
-- **Node.js >= 20** (developed on 26) and **npm >= 10**
-- **PostgreSQL** running locally (or any reachable Postgres instance)
-
-On macOS with Homebrew:
+You only need Node.js >= 20. No database, no API, no keys.
 
 ```bash
-brew install postgresql@14
-brew services start postgresql@14
-createdb seating_app
-```
-
-> The Homebrew Postgres service occasionally stops on its own. If the API can't
-> connect (Prisma error `P1001`), restart it with
-> `brew services restart postgresql@14`.
-
----
-
-## Setup
-
-From the repo root:
-
-```bash
-# 1. Install all workspace dependencies
 npm install
-
-# 2. Build the shared package (API and web import its compiled output)
 npm run build:shared
-
-# 3. Configure the API environment
-cp apps/api/.env.example apps/api/.env
-#   then edit apps/api/.env and set DATABASE_URL to your Postgres connection
-
-# 4. (Optional) configure the web environment — defaults work out of the box
-cp apps/web/.env.example apps/web/.env.local
-
-# 5. Create the database schema (runs Prisma migrations + generates the client)
-npm run prisma:migrate
+npm run dev:web          # http://localhost:5173
 ```
+
+If `apps/web/.env.local` contains a Clerk key, you'll also see a "Sign in to sync" button. The app
+works fully without using it.
+
+## With sync (optional)
+
+Needs Docker, for local Postgres.
+
+```bash
+npm run db:up                                   # Postgres 17 in Docker (docker-compose.yml)
+cp apps/api/.env.example apps/api/.env          # defaults match the Docker database
+npm run prisma:migrate                          # create the EventDocument table
+npm run dev:api                                 # http://localhost:4000
+```
+
+Then either:
+
+- **Real accounts:** set `VITE_CLERK_PUBLISHABLE_KEY` in `apps/web/.env.local` and
+  `CLERK_SECRET_KEY` in `apps/api/.env`, run `npm run dev:web`, and click "Sign in to sync".
+- **No accounts (dev only):** run the web app keyless, syncing as a fixed dev user:
+
+  ```bash
+  VITE_CLERK_PUBLISHABLE_KEY= VITE_DEV_SYNC_OWNER=dev-user npm run dev --workspace @seating/web
+  ```
 
 ### Environment variables
 
+**`apps/web/.env.local`** (all optional)
+
+| Variable                     | Default                     | Notes                                                                                 |
+| ---------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| `VITE_CLERK_PUBLISHABLE_KEY` | _(unset)_                   | Enables the optional "Sign in to sync". Unset means a purely local app.               |
+| `VITE_API_BASE_URL`          | `http://localhost:4000/api` | Where the sync API lives                                                              |
+| `VITE_DEV_SYNC_OWNER`        | _(unset)_                   | Keyless dev only: sync as this owner via `x-owner-id`. Ignored if a Clerk key is set. |
+
 **`apps/api/.env`**
 
-| Variable                | Default                                                                   | Notes                                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | `postgresql://postgres:postgres@localhost:5432/seating_app?schema=public` | Your Postgres connection string. On a default macOS/Homebrew setup the user is your macOS username with no password, e.g. `postgresql://Josh@localhost:5432/seating_app?schema=public`. |
-| `PORT`                  | `4000`                                                                    | API port                                                                                                                                                                                |
-| `HOST`                  | `0.0.0.0`                                                                 | API bind host                                                                                                                                                                           |
-| `CORS_ORIGIN`           | `http://localhost:5173`                                                   | Comma-separated allowed origins (the web dev server)                                                                                                                                    |
-| `CLERK_SECRET_KEY`      | _(unset)_                                                                 | Clerk **secret** key (`sk_test_…` / `sk_live_…`). When set, the API verifies every request's Clerk session and rejects unauthenticated calls. Leave unset to run keyless (dev-user).    |
-| `CLERK_PUBLISHABLE_KEY` | _(unset)_                                                                 | Clerk publishable key (optional on the API; used by Clerk's middleware).                                                                                                                |
+| Variable                | Default                                                                 | Notes                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`          | `postgresql://seating:seating@localhost:5432/seating_app?schema=public` | Matches `docker-compose.yml`                                                                                 |
+| `PORT` / `HOST`         | `4000` / `0.0.0.0`                                                      |                                                                                                              |
+| `CORS_ORIGIN`           | `http://localhost:5173`                                                 | Comma-separated web origins. Any `localhost` port is allowed in dev.                                         |
+| `CLERK_SECRET_KEY`      | _(unset)_                                                               | When set, every request must carry a valid Clerk session. Unset means keyless dev (owner from `x-owner-id`). |
+| `CLERK_PUBLISHABLE_KEY` | _(unset)_                                                               | Optional, used by Clerk's middleware                                                                         |
 
-**`apps/web/.env.local`**
-
-| Variable                     | Default                     | Notes                                                                                                                      |
-| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`          | `http://localhost:4000/api` | Base URL of the API                                                                                                        |
-| `VITE_CLERK_PUBLISHABLE_KEY` | _(unset)_                   | Clerk **publishable** key (`pk_test_…`). When set, the web app shows the sign-in gate. Leave unset to run without sign-in. |
+`VITE_*` variables are read when Vite starts, and the API reads `.env` at boot, so restart after
+changing either.
 
 ---
 
-## Running it
+## Scripts (from the repo root)
 
-Open **two terminals** from the repo root:
+| Command                     | What it does                                        |
+| --------------------------- | --------------------------------------------------- |
+| `npm run dev:web`           | Vite dev server                                     |
+| `npm run dev:api`           | API in watch mode                                   |
+| `npm run build:shared`      | Compile `@seating/shared` (re-run after editing it) |
+| `npm run typecheck`         | Typecheck every workspace                           |
+| `npm test`                  | All tests (API tests need `npm run db:up`)          |
+| `npm run db:up` / `db:down` | Start / stop local Postgres in Docker               |
+| `npm run prisma:migrate`    | Apply/create DB migrations                          |
+| `npm run format`            | Prettier                                            |
 
-```bash
-# Terminal 1 — API on http://localhost:4000
-npm run dev:api
-```
-
-```bash
-# Terminal 2 — web app on http://localhost:5173
-npm run dev:web
-```
-
-Then open **http://localhost:5173**. On first load the editor creates a default
-floor plan ("My Seating Chart") and you can start adding tables.
-
-Health check: `curl http://localhost:4000/api/health` should return `200`.
-
-> **Auth note:** Authentication is handled by [Clerk](https://clerk.com) (email +
-> password and Google sign-in), but it's **opt-in via env keys** so local dev works
-> out of the box:
->
-> - **No keys set → keyless dev mode.** The web app skips the sign-in gate and the
->   API identifies the owner via a placeholder user (`dev-user`); the owner can be
->   overridden per-request with an `x-owner-id` header. This is the default.
-> - **Keys set → real auth.** Put `VITE_CLERK_PUBLISHABLE_KEY` in
->   `apps/web/.env.local` to show the sign-in gate, and `CLERK_SECRET_KEY` in
->   `apps/api/.env` so the API verifies the session token and rejects
->   unauthenticated requests. Both keys come from your
->   [Clerk dashboard](https://dashboard.clerk.com) → **API Keys**; enable
->   Email/Password and Google under **User & Authentication**.
->
-> See [docs/architecture.md → Authentication](docs/architecture.md#authentication-clerk)
-> for how it fits together.
+Builds: `npm run build --workspace @seating/web` (static files in `apps/web/dist/`, including the
+service worker) and `npm run build --workspace @seating/api`. To try the offline app locally, run
+`npm run build --workspace @seating/web` and then `npm run preview --workspace @seating/web`.
 
 ---
 
-## Useful scripts (run from the repo root)
+## Deploying
 
-| Command                   | What it does                         |
-| ------------------------- | ------------------------------------ |
-| `npm run dev:api`         | Start the API in watch mode (tsx)    |
-| `npm run dev:web`         | Start the Vite dev server            |
-| `npm run build:shared`    | Compile `@seating/shared` to `dist/` |
-| `npm run prisma:migrate`  | Apply/create DB migrations (Prisma)  |
-| `npm run prisma:generate` | Regenerate the Prisma client         |
-| `npm run typecheck`       | Typecheck every workspace            |
-| `npm run format`          | Prettier-format the repo             |
+**Web app (required):** it's a static site. Host `apps/web/dist/` on any static host or CDN
+(Cloudflare Pages, Netlify, Vercel, S3 + CloudFront).
 
-Per-app builds: `npm run build --workspace @seating/api` and
-`npm run build --workspace @seating/web`.
+- Rewrite unknown paths to `/index.html` so `/events/:id` works on a fresh load. Netlify:
+  `/* /index.html 200`. Cloudflare Pages and Vercel do this for SPAs.
+- Serve over HTTPS. IndexedDB, `crypto.randomUUID` and service workers need a secure context.
+- Set `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_BASE_URL` at build time if you offer sync.
 
-> **Tip:** After editing anything in `packages/shared`, re-run
-> `npm run build:shared` so the API and web pick up the changes (the `dev` script
-> in shared, `npm run dev --workspace @seating/shared`, can watch-build it for you).
+That alone is a complete, free-to-run product. Users' data stays in their browsers.
 
----
+**Sync API (optional):** a small Node service plus Postgres.
 
-## Project layout
-
-```
-custom-seating-app/
-├── package.json            # workspaces + root scripts
-├── tsconfig.base.json      # shared strict TS config
-├── packages/
-│   └── shared/             # @seating/shared — domain types + seat geometry
-│       └── src/
-│           ├── types/      # geometry, seat, table, floorPlan, event
-│           └── geometry/   # seat-layout math + constants
-└── apps/
-    ├── api/                # @seating/api — Fastify REST API
-    │   ├── prisma/         # schema.prisma + migrations
-    │   └── src/
-    │       ├── modules/    # floorPlans/, tables/ (routes, service, schema)
-    │       ├── plugins/    # prisma plugin
-    │       ├── lib/        # mappers, auth, validation
-    │       └── server.ts   # bootstrap
-    └── web/                # @seating/web — React + Vite editor
-        └── src/
-            └── features/editor/
-                ├── components/  # canvas/ (Konva nodes), Toolbar, PropertiesPanel
-                ├── store/       # zustand editor store + persist queue
-                ├── geometry/    # snapping
-                └── api/         # floorPlan API client
-```
+- Postgres: any managed provider (Neon, Supabase, RDS). Run
+  `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`.
+- API: any Node host (Fly.io, Render, Railway). Build, then `npm run start --workspace
+@seating/api`, with `NODE_ENV=production`, `DATABASE_URL`, `CLERK_SECRET_KEY`, and
+  `CORS_ORIGIN=https://your-web-origin`.
 
 ---
 
 ## Troubleshooting
 
-- **API exits immediately / `P1001` Prisma error** — Postgres isn't running or
-  `DATABASE_URL` is wrong. Start Postgres and confirm `createdb seating_app` ran.
-- **Web shows "Could not load the floor plan. Is the API running?"** — start the
-  API (`npm run dev:api`) and check `VITE_API_BASE_URL`.
-- **Type errors importing `@seating/shared`** — run `npm run build:shared`; the
-  consumers import its compiled `dist/` output.
-- **CORS errors in the browser console** — make sure `CORS_ORIGIN` in
-  `apps/api/.env` includes the web origin (`http://localhost:5173`).
+- **Canvas crashes in `<StageWrap>` after installing a package:**
+  `rm -rf node_modules/.vite apps/web/node_modules/.vite` and restart Vite.
+- **Type errors importing `@seating/shared`:** run `npm run build:shared`.
+- **Sync badge says "Offline":** the API isn't reachable. Check `npm run dev:api` and
+  `VITE_API_BASE_URL`. Your edits are safe locally and will sync when it's back.
+- **API exits with Prisma `P1001`:** Postgres isn't running. Run `npm run db:up`.
+- **"This event isn't on this device":** events live per browser and per account. Sign in, or
+  import a backup.
+- **CORS errors:** add the web origin to `CORS_ORIGIN` in `apps/api/.env` (production only;
+  localhost is allowed in dev).
 
 ---
 
 ## Roadmap
 
-- [x] Polished visual editor (tables, auto/custom chairs, transform, snapping, autosave)
-- [ ] Guest list + CSV import, drag guests onto seats
-- [ ] "Popular venue" template gallery
-- [ ] Send invites (email / SMS) + RSVP pages
-- [ ] Apple Wallet & Google Wallet passes after RSVP
+- [x] Visual editor (tables, auto/custom chairs, transform, snapping, autosave)
+- [x] Guest list, CSV/XLSX import, drag guests onto seats, RSVP marking
+- [x] Multi-event dashboard (create, rename, duplicate, delete)
+- [x] Local-first: offline, installable, no account required, backups
+- [x] Optional sign-in with multi-device sync
+- [ ] Export / print (chart PDF, per-table rosters, escort cards)
+- [ ] Undo / redo
+- [ ] Venue templates
+- [ ] Touch-friendly seating on tablets and phones

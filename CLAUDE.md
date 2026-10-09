@@ -5,39 +5,45 @@ current: update **Feature status**, **Architecture**, and **Gotchas** whenever a
 
 ## What this is
 
-A web app (with a mobile-portable API) for building event seating charts — Ticketmaster-style
-visual seating, but for weddings/large venues with tables that have configurable chairs. Users
-lay out tables, manage a guest list, and seat guests. A `FloorPlan` is the user-facing **"event"**
-(name + tables + a 1:1 default "Guest list" `Event` holding its guests).
+A **local-first** web app for building seating charts (weddings, galas, or a two-table dinner).
+Users lay out tables with configurable chairs, manage a guest list, and seat guests. Each **event**
+is one JSON document stored in the browser's IndexedDB. The app works offline with no account.
+Signing in (Clerk) is optional and syncs documents to a small API backed by Postgres.
 
 ## Stack & layout
 
 npm-workspaces monorepo:
 
-- `packages/shared` (`@seating/shared`) — domain **types + seat geometry**; the contract between
-  API and web. ESM, builds to `dist/`. **Run `npm run build:shared` after editing.**
-- `apps/api` (`@seating/api`) — **Fastify 5 + TypeScript (ESM)**, **Prisma + PostgreSQL**, zod
-  validation. Feature modules under `src/modules/<feature>/{*.routes,*.service,*.schema}.ts`,
-  shared mappers in `src/lib/mappers.ts` (Prisma rows → shared DTOs).
-- `apps/web` (`@seating/web`) — **React 18 + Vite**, **react-konva** canvas, **zustand** stores,
-  **Tailwind v4 + DaisyUI** styling, **Clerk** auth. Feature folders:
-  `src/features/{editor,guests,dashboard,auth}/`.
+- `packages/shared` (`@seating/shared`): **the contract.** The zod schema for the event document
+  (types inferred from it), **pure edit ops** (`document/*Ops.ts`), `parseEventDoc` (upgrade +
+  validate untrusted input), seat geometry, and sync wire types. ESM, builds to `dist/`. **Run
+  `npm run build:shared` after editing.**
+- `apps/web` (`@seating/web`): **the product.** React 18 + Vite, react-konva, zustand, React
+  Router, Dexie (IndexedDB), vite-plugin-pwa, Tailwind v4 + DaisyUI, optional Clerk. Features:
+  `src/features/{storage,editor,guests,dashboard,backup,auth,sync}/`.
+- `apps/api` (`@seating/api`): **optional sync service.** Fastify 5 + Prisma + Postgres. One module
+  (`modules/events`) and one table (`EventDocument`). Compare-and-swap writes on `version`.
+
+Docs: `docs/architecture.md` (start), `docs/data-model.md`, `docs/sync.md`,
+`docs/reviewing-local-first.md`.
 
 ## Run & verify
 
 ```bash
-# Postgres must be running (see Gotchas)
 npm run build:shared          # after any shared change
-npm run dev:api               # API on :4000  (tsx watch; run from repo root)
-npm run dev:web               # web on :5173
+npm run dev:web               # web on :5173 — needs nothing else
 npm run typecheck             # all workspaces
-npm run build --workspace @seating/web   # prod build
+npm test                      # shared + web (Node, fake-indexeddb) + api (needs Postgres)
+# Sync (optional):
+npm run db:up                 # Postgres 17 in Docker
+npm run dev:api               # API on :4000
 ```
 
-- **Auth is opt-in via env keys** (Clerk). No keys → keyless dev mode: web skips the sign-in gate,
-  API owner id comes from `x-owner-id` header (default `dev-user`, `apps/api/src/lib/auth.ts`). With
-  keys set, web shows the gate and API verifies the Clerk session. See **Authentication** below.
-- Verify in the browser preview; in keyless mode smoke-test the API with `curl -H "x-owner-id: dev-user"`.
+Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`, Clerk on), `web-keyless`
+:5174 (Clerk forced off), `api` :4000, `web-devsync` :5175 (keyless + `VITE_DEV_SYNC_OWNER=dev-user`,
+syncs to the local API as `dev-user`), `web-preview` :4173 (prod build, service worker active).
+
+- Smoke-test the API in keyless mode with `curl -H "x-owner-id: dev-user" localhost:4000/api/events`.
 
 ## Conventions (important — user preference)
 
@@ -47,57 +53,72 @@ npm run build --workspace @seating/web   # prod build
   `className="btn btn-primary btn-sm"`. Theme tokens: `bg-base-100/200/300`, `text-base-content`,
   `btn-primary/secondary/accent/error`, `badge-*`, `join`, `dropdown`, `card`, `rounded-box`.
   (Konva canvas nodes use Konva props, not CSS.)
-- Shared types live in `@seating/shared` and are imported by both ends.
+- **Every edit to an event is a pure op in `@seating/shared`** (with a test), applied via
+  `useDocumentStore.getState().apply(doc => op(doc, …))`. Don't mutate documents anywhere else.
+- **Schema change?** Edit `document/schema.ts`. If old docs won't satisfy it, bump
+  `EVENT_DOC_SCHEMA_VERSION` and add an upgrade step in `document/migrate.ts`.
+- Storage access goes through `features/storage/repository/*` with `activeDb()`.
 
 ## Architecture notes
 
-- **Stores (zustand):** `editor/store/editorStore` (active plan: tables, viewport, zoom/focus,
-  autosave), `guests/store/guestStore` (guest list, selection, seat assignment), and
-  `dashboard/store/navStore` (`view: dashboard | editor`, `openEvent`, `goToDashboard`).
-- **Autosave:** per-table debounced PATCH via `editor/store/persistQueue`. No Save button.
-- **Seat geometry:** pure functions in `@seating/shared` (`resolveSeatPositions`, auto layouts).
-  Editor viewport math (fit / focus / zoom / clamp) in `editor/geometry/viewport.ts`.
-- **Events ↔ plans:** each FloorPlan has a get-or-create default `Event` (`GET /floor-plans/:id/
-event`). Guests belong to that event. `GET /floor-plans/summaries` powers the dashboard;
-  `POST /floor-plans/:id/duplicate` clones a plan (layout always; guests/assignments opt-in).
-- **One guest per seat** enforced by `Guest.seatId @unique`; assigning to an occupied seat
-  **displaces** the previous occupant (API returns all affected guests).
-- **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts
-  (`web/src/lib/theme.ts`, called in `main.tsx`).
-- **Auth (Clerk), opt-in:** `web/src/features/auth/` — `main.tsx` mounts `<ClerkProvider>` +
-  `<AuthGate>` only when `VITE_CLERK_PUBLISHABLE_KEY` is set, else `<App>` directly. `AuthTokenBridge`
-  registers Clerk's `getToken()` into `lib/authToken.ts`; `lib/apiClient.ts` reads it to attach
-  `Authorization: Bearer <token>`. API: `clerkPlugin` registered in `app.ts` only when
-  `CLERK_SECRET_KEY` set; `lib/auth.ts` prefers `getAuth(request).userId` as owner id.
-  Clerk's modal/user-menu are themed to the live DaisyUI theme: `auth/lib/clerkAppearance` reads the
-  theme's CSS vars → Clerk `appearance`; `useClerkAppearance` rebuilds on `data-theme` change;
-  `AuthRoot` passes it to `<ClerkProvider>`.
+- **documentStore** (`editor/store/documentStore.ts`) holds the open `EventDoc`, the single source
+  of truth while editing. `apply(op)` updates memory and schedules a save through a
+  **coalescedWriter** (serialized, latest-wins). Local saves are immediate; there's no debounce
+  and no Save button.
+- **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
+  only. Both expose actions that wrap shared ops. Components read via
+  `editor/hooks/useDocumentSelectors.ts` (`useTables`, `useGuests`, …).
+- **Routing:** `/` dashboard (Dexie `useLiveQuery`), `/events/:eventId` → `EditorRoute`
+  (open on mount, close on unmount).
+- **Storage scopes:** one IndexedDB database per identity: `seating-local` (signed out) and
+  `seating-account-<userId>`. `storageStore.activate(scope)` switches them.
+  `sync/engine/accountSession.ts` wires identity → database → sync and is started in `main.tsx`
+  **before render**. Signing in moves signed-out events into the account (`adoptEvents`).
+- **Sync:** `sync/engine/planSync.ts` is the whole conflict policy (a pure decision table; "keep
+  both" on concurrent edits). `runSync.ts` executes it. Local writes from sync are compare-and-set
+  on `updatedAt` (`storage/repository/syncRepository.ts`). Triggers: sign-in, focus/online, every
+  60 s, and 1.5 s after any record goes dirty.
+- **Seat identity:** chair edits reuse seat ids by index (`tableOps.buildSeats`), so seated guests
+  stay put. Shrinking or deleting unseats orphans in the same op.
+- **One guest per seat:** enforced by shared ops and by `eventDocSchema` integrity (also checked on
+  API upload).
+- **Auth (Clerk), optional:** no gate. `AuthRoot` = `<ClerkProvider>` + `<ClerkIdentityBridge>`
+  (pushes userId to `identityStore`, registers `getToken` for `apiClient`). `AuthControls` shows
+  "Sign in to sync" or the avatar. API: `clerkPlugin` only when `CLERK_SECRET_KEY` is set;
+  `lib/auth.ts` resolves the owner. Clerk theming via `auth/lib/clerkAppearance` +
+  `useClerkAppearance` is unchanged.
+- **Offline:** the PWA precaches the app shell (`vite.config.ts`); `navigator.storage.persist()` is
+  requested on first event creation; backups are `<name>.seating.json` (`features/backup`).
+- **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts.
 
 ## Gotchas (these cost real time — read before debugging)
 
-- **Postgres (local, macOS/Homebrew):** superuser is **`Josh`**, not `postgres`. DB `seating_app`,
-  `DATABASE_URL=postgresql://Josh@localhost:5432/seating_app?schema=public`. If the API throws
-  Prisma **P1001**, the service stopped → `brew services restart postgresql@14`. Don't
-  `cp .env.example .env` (its `postgres:postgres` placeholder clobbers the working value).
+- **Postgres is Docker now:** `npm run db:up` (docker-compose, `seating:seating@localhost:5432/
+seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** means the
+  container isn't running. Only the sync API needs a database; the web app never does.
+- **IndexedDB is per origin:** each dev port (5173/5174/5175/4173) has separate data. "My events
+  vanished" usually means a different port or a different identity scope.
 - **Vite + react-konva:** after installing ANY new dependency, the canvas may crash in `<StageWrap>`
-  (stale optimize cache / duplicate React) — fix: `rm -rf node_modules/.vite` and restart the dev
-  server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`. **Do NOT add
-  `react`/`react-dom` to `optimizeDeps.include`** — it triggers an "Outdated Optimize Dep" reload
-  loop (blank page). Only `react-konva`/`konva` belong there.
-- **Seat re-sync preserves identity:** when seats change (mode toggle, chair move, count change),
-  the API reconciles seats **by index** (update in place, keep ids) instead of delete+recreate —
-  this is what keeps seated guests put (`apps/api/src/modules/tables/table.service.ts`).
+  (stale optimize cache / duplicate React). Fix: `rm -rf node_modules/.vite apps/web/node_modules/.vite`
+  and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.
+  **Do NOT add `react`/`react-dom` to `optimizeDeps.include`**: it triggers an "Outdated Optimize
+  Dep" reload loop (blank page). Only `react-konva`/`konva` belong there.
+- **Passing Vite flags through npm:** use `npm run dev --workspace @seating/web -- --port N`. Going
+  via the root `dev:web` script swallows the flags.
+- **Service worker only in production builds.** To test offline, build and run `web-preview`.
+  Unregister the SW afterwards if it confuses later preview runs.
+- **StrictMode double-mounts** `EditorRoute`: `documentStore.open()` is idempotent and `close()` is
+  guarded by a request counter. Keep it that way.
 - **ResizeObserver** in `EditorCanvas` defers `setStageSize` via `requestAnimationFrame` so opening
   DevTools doesn't trip the "ResizeObserver loop" error.
 - **CORS (dev):** API allows any `localhost` origin in non-production (`apps/api/src/app.ts`).
-- **Synthetic clicks on Konva** are unreliable; for verification, drive real DOM events or store
+- **Synthetic clicks on Konva** are unreliable. For verification, drive real DOM events or store
   actions, or dispatch pointer events at a node's `getAbsolutePosition()`.
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
-  (`VITE_CLERK_PUBLISHABLE_KEY`, `pk_test_…`). API: `apps/api/.env` (`CLERK_SECRET_KEY`, `sk_test_…`).
-  `.env.example` is only a template and is never read. `VITE_*` vars are read at Vite **startup** and
-  the API reads `.env` at boot, so **restart** after changing a key. Web gate ≠ API enforcement —
-  the publishable key alone gates the UI; you also need the secret key for the API to actually reject
-  anonymous requests.
+  (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
+  them. Without a secret key, the API trusts `x-owner-id` (dev only).
+- **API tests hit the real database** in `DATABASE_URL`, using random `test-…` owner ids that are
+  cleaned up afterwards.
 
 ## Feature status
 
@@ -109,19 +130,22 @@ Done:
   re-fit to current viewport.
 - Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded), drag-to-seat, **multi-select
   (ctrl/cmd-click) + assign-to-table**, click-to-assign, occupancy initials on chairs.
-- **RSVP** marking (pending/going/declined) — segmented control; declined guests struck through +
+- **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
-  assignments)** / delete (cascades event+guests). Editor has "← Events" + editable title.
+  assignments)** / delete. Editor has "← Events" + editable title.
 - **Theming** (light / dark / black / synthwave) persisted to localStorage.
-- **Auth (Clerk):** email/password + Google sign-in, opt-in via env keys (keyless dev fallback).
-  Front-end sign-in gate + session-token Bearer auth on API requests.
+- **Local-first:** IndexedDB storage, no account needed, **offline + installable (PWA)**, URL
+  routing, **backup download/import**.
+- **Optional sign-in (Clerk) with multi-device sync**: versioned whole-document sync, "keep
+  both" conflicts, signed-out events adopted on sign-in.
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Next candidates: **export/print** (chart PNG/PDF + per-table roster), **venue templates**
-("popular venues" gallery), **Apple/Google Wallet passes** (needs Apple Dev Program + Google
-Cloud — start account setup early).
+Next candidates: **export/print** (chart PNG/PDF + per-table roster), **undo/redo** (cheap now:
+history of immutable docs in `documentStore`), **venue templates** (a template is just a document),
+touch-friendly seating, **Apple/Google Wallet passes**. Open audit items: xlsx advisories,
+`npm audit fix`, API rate limiting, ESLint + CI.
 
 ## Git
 
