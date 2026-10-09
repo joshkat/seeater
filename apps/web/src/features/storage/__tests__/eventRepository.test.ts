@@ -46,6 +46,17 @@ describe("eventRepository", () => {
     expect(record?.sync).toEqual({ baseVersion: 3, dirty: true, deleted: false });
   });
 
+  it("recreates a missing record on save instead of dropping the edit", async () => {
+    const doc = createEventDoc({ name: "Moved mid-edit" });
+    const saved = await saveEventDoc(db, doc);
+    expect(saved?.name).toBe("Moved mid-edit");
+    expect((await db.events.get(doc.id))?.sync).toEqual({
+      baseVersion: null,
+      dirty: true,
+      deleted: false,
+    });
+  });
+
   it("deletes never-synced events outright", async () => {
     const doc = createEventDoc({ name: "Local only" });
     await createEvent(db, doc);

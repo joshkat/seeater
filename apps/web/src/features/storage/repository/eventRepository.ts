@@ -43,15 +43,21 @@ export async function createEvent(db: SeatingDb, doc: EventDoc): Promise<void> {
 
 /**
  * Saves an edited document, stamping `updatedAt` and marking it dirty.
- * Returns the stored copy. Silently does nothing if the event was deleted
- * meanwhile (e.g. from another tab), so a stale editor can't resurrect it.
+ * Returns the stored copy.
+ *
+ * An editor save is never dropped: if the record is missing (e.g. mid-way
+ * through moving events into an account on sign-in, or removed by sync while
+ * open), it's recreated as a new unsynced event. The one exception is a
+ * pending-delete tombstone — the user deleted it deliberately — in which case
+ * nothing is written and null is returned.
  */
 export async function saveEventDoc(db: SeatingDb, doc: EventDoc): Promise<EventDoc | null> {
   return db.transaction("rw", db.events, async () => {
     const existing = await db.events.get(doc.id);
-    if (!existing || existing.sync.deleted) return null;
+    if (existing?.sync.deleted) return null;
     const stamped = { ...doc, updatedAt: new Date().toISOString() };
-    await db.events.put(toRecord(stamped, { ...existing.sync, dirty: true }));
+    const sync = existing ? { ...existing.sync, dirty: true } : NEW_SYNC_META;
+    await db.events.put(toRecord(stamped, sync));
     return stamped;
   });
 }
