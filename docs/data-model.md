@@ -243,7 +243,8 @@ What this PR does about it:
    ([`lib/persistentStorage.ts`](../apps/web/src/lib/persistentStorage.ts)).
 2. **Installable app (PWA).** Installed apps are exempt from Safari's 7-day rule.
 3. **Download / import backup** (`<name>.seating.json`) on every event card.
-4. **Sign in to sync.** The server copy survives anything that happens to the browser.
+4. **Sign in to sync** (built, but switched off for now). The server copy survives anything that
+   happens to the browser.
 
 **When would we outgrow this?** Two cases:
 

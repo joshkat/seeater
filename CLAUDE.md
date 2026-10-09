@@ -8,7 +8,8 @@ current: update **Feature status**, **Architecture**, and **Gotchas** whenever a
 A **local-first** web app for building seating charts (weddings, galas, or a two-table dinner).
 Users lay out tables with configurable chairs, manage a guest list, and seat guests. Each **event**
 is one JSON document stored in the browser's IndexedDB. The app works offline with no account.
-Signing in (Clerk) is optional and syncs documents to a small API backed by Postgres.
+Optional sign-in (Clerk) + sync to a small Postgres-backed API is built but **switched off**: the
+product ships local-only. It only runs with `VITE_ENABLE_SYNC=true` (decision: re-enable later).
 
 ## Stack & layout
 
@@ -33,15 +34,22 @@ Docs: `docs/architecture.md` (start), `docs/data-model.md`, `docs/sync.md`,
 npm run build:shared          # after any shared change
 npm run dev:web               # web on :5173 — needs nothing else
 npm run typecheck             # all workspaces
+npm run lint                  # ESLint (typescript-eslint + react-hooks incl. compiler rules)
+npm run format:check          # Prettier check
 npm test                      # shared + web (Node, fake-indexeddb) + api (needs Postgres)
 # Sync (optional):
 npm run db:up                 # Postgres 17 in Docker
 npm run dev:api               # API on :4000
 ```
 
-Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`, Clerk on), `web-keyless`
-:5174 (Clerk forced off), `api` :4000, `web-devsync` :5175 (keyless + `VITE_DEV_SYNC_OWNER=dev-user`,
-syncs to the local API as `dev-user`), `web-preview` :4173 (prod build, service worker active).
+**CI** (`.github/workflows/ci.yml`) runs all of the above on every PR + push to main (Postgres
+service container), plus both production builds. Run `npm run lint && npm run format:check` before
+pushing.
+
+Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync off unless
+`VITE_ENABLE_SYNC=true` there), `web-keyless` :5174 (Clerk forced off), `api` :4000, `web-devsync`
+:5175 (`VITE_ENABLE_SYNC=true` + keyless `VITE_DEV_SYNC_OWNER=dev-user`, syncs to the local API),
+`web-preview` :4173 (prod build, service worker active).
 
 - Smoke-test the API in keyless mode with `curl -H "x-owner-id: dev-user" localhost:4000/api/events`.
 
@@ -82,6 +90,14 @@ syncs to the local API as `dev-user`), `web-preview` :4173 (prod build, service 
   stay put. Shrinking or deleting unseats orphans in the same op.
 - **One guest per seat:** enforced by shared ops and by `eventDocSchema` integrity (also checked on
   API upload).
+- **Sync flag:** `auth/lib/authConfig.ts` → `syncEnabled` (`VITE_ENABLE_SYNC === "true"`) gates
+  `clerkPublishableKey` and `devSyncOwner`; everything downstream keys off those. Clerk is
+  lazy-loaded (`main.tsx` → `AuthRoot`, `AuthControls` → `ClerkAccountButtons`) so it's not in the
+  bundle when off. Copy that mentions accounts checks `syncConfigured`.
+- **Code-splitting:** `/events/:eventId` is a React Router `lazy` route (editor + Konva in their
+  own chunk); `xlsx` is a dynamic import.
+- **API hardening:** `@fastify/helmet` (CORP `cross-origin`), `@fastify/rate-limit`
+  (`RATE_LIMIT_MAX`/min per IP, `/api/health` exempt), `TRUST_PROXY` for real client IPs.
 - **Auth (Clerk), optional:** no gate. `AuthRoot` = `<ClerkProvider>` + `<ClerkIdentityBridge>`
   (pushes userId to `identityStore`, registers `getToken` for `apiClient`). `AuthControls` shows
   "Sign in to sync" or the avatar. API: `clerkPlugin` only when `CLERK_SECRET_KEY` is set;
@@ -114,6 +130,12 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
 - **CORS (dev):** API allows any `localhost` origin in non-production (`apps/api/src/app.ts`).
 - **Synthetic clicks on Konva** are unreliable. For verification, drive real DOM events or store
   actions, or dispatch pointer events at a node's `getAbsolutePosition()`.
+- **Sync is off by default.** If sign-in/sync "doesn't show up", that's `VITE_ENABLE_SYNC` unset —
+  intended. Don't remove the flag or the gated code; it's deliberately parked.
+- **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
+  package is abandoned with open advisories. Upgrade by changing that URL.
+- **`npm audit`** (full) still lists dev-only Vite 5 / Vitest 3 advisories until the major upgrade;
+  `npm audit --omit=dev` is clean.
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
   (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
   them. Without a secret key, the API trusts `x-owner-id` (dev only).
@@ -138,14 +160,17 @@ Done:
 - **Local-first:** IndexedDB storage, no account needed, **offline + installable (PWA)**, URL
   routing, **backup download/import**.
 - **Optional sign-in (Clerk) with multi-device sync**: versioned whole-document sync, "keep
-  both" conflicts, signed-out events adopted on sign-in.
+  both" conflicts, signed-out events adopted on sign-in. **Built but disabled** (`VITE_ENABLE_SYNC`).
+- **Hardening:** ESLint + Prettier check + GitHub Actions CI; API rate limiting + helmet;
+  patched SheetJS; code-split editor and Clerk.
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Next candidates: **export/print** (chart PNG/PDF + per-table roster), **undo/redo** (cheap now:
-history of immutable docs in `documentStore`), **venue templates** (a template is just a document),
-touch-friendly seating, **Apple/Google Wallet passes**. Open audit items: xlsx advisories,
-`npm audit fix`, API rate limiting, ESLint + CI.
+Next candidates: **dependency majors** (React 19, Vite 6+/Vitest 4+, Prisma 6, zod 4 — one PR
+each), **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
+(chart PNG/PDF + per-table roster), **venue templates** (a template is just a document),
+touch-friendly seating, **Apple/Google Wallet passes**. Deferred on purpose: **error reporting**
+(Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 
 ## Git
 
