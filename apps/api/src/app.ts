@@ -6,9 +6,6 @@ import { ZodError } from "zod";
 
 import { env } from "./config/env.js";
 import { eventRoutes } from "./modules/events/event.routes.js";
-import { floorPlanRoutes } from "./modules/floorPlans/floorPlan.routes.js";
-import { guestRoutes } from "./modules/guests/guest.routes.js";
-import { tableRoutes } from "./modules/tables/table.routes.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -38,7 +35,7 @@ function resolveCorsOrigin(
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
-      level: env.NODE_ENV === "production" ? "info" : "debug",
+      level: { production: "info", development: "debug", test: "silent" }[env.NODE_ENV],
     },
   });
 
@@ -55,8 +52,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   }
 
-  // Translate request-validation failures into 400s with field details.
-  app.setErrorHandler((error, _request, reply) => {
+  // Translate request-validation failures into 400s with field details, and
+  // never leak internal error text (e.g. database errors) in production.
+  app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
       return reply.status(400).send({
         statusCode: 400,
@@ -65,15 +63,21 @@ export async function buildApp(): Promise<FastifyInstance> {
         issues: error.issues,
       });
     }
+    const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+    if (statusCode >= 500 && env.NODE_ENV === "production") {
+      request.log.error(error);
+      return reply.status(statusCode).send({
+        statusCode,
+        error: "Internal Server Error",
+        message: "Something went wrong",
+      });
+    }
     return reply.send(error);
   });
 
   // Feature routes are registered under /api.
   await app.register(healthRoutes, { prefix: "/api" });
-  await app.register(floorPlanRoutes, { prefix: "/api" });
-  await app.register(tableRoutes, { prefix: "/api" });
   await app.register(eventRoutes, { prefix: "/api" });
-  await app.register(guestRoutes, { prefix: "/api" });
 
   return app;
 }

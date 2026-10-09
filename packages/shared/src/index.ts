@@ -18,3 +18,4 @@ export * from "./document/summary.js";
 
 export * from "./geometry/constants.js";
 export * from "./geometry/seatLayout.js";
+export * from "./sync/protocol.js";
