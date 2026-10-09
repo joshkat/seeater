@@ -2,7 +2,7 @@ import { RouterProvider, createBrowserRouter } from "react-router";
 
 import { NotFoundPage } from "./components/NotFoundPage";
 import { Dashboard } from "./features/dashboard/components/Dashboard";
-import { EditorRoute } from "./features/editor/components/EditorRoute";
+import { EditorStatusScreen } from "./features/editor/components/EditorStatusScreen";
 
 /**
  * URL routes. Real URLs mean refresh keeps your place, the back button works,
@@ -11,7 +11,16 @@ import { EditorRoute } from "./features/editor/components/EditorRoute";
  */
 const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
-  { path: "/events/:eventId", element: <EditorRoute /> },
+  {
+    path: "/events/:eventId",
+    // The editor (and the Konva canvas library) is code-split: the dashboard
+    // loads without it, and it's fetched the first time an event is opened.
+    lazy: async () => {
+      const { EditorRoute } = await import("./features/editor/components/EditorRoute");
+      return { Component: EditorRoute };
+    },
+    hydrateFallbackElement: <EditorStatusScreen status="loading" />,
+  },
   { path: "*", element: <NotFoundPage /> },
 ]);
 
