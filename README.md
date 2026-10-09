@@ -1,15 +1,18 @@
 # Seating App
 
+[![CI](https://github.com/joshkat/custom-seating-app/actions/workflows/ci.yml/badge.svg)](https://github.com/joshkat/custom-seating-app/actions/workflows/ci.yml)
+
 A visual **seating-chart builder** for weddings, galas, or two tables at a dinner party. Lay out
 round and rectangular tables with auto- or hand-placed chairs, manage the guest list (add, import
 CSV/XLSX, RSVP), and drag guests into seats.
 
 It's **local-first**: the app runs entirely in your browser, works offline, and needs no account.
-Signing in is optional and adds backup plus sync across your devices.
+Optional sign-in with multi-device sync is built but **switched off for now** (behind
+`VITE_ENABLE_SYNC`), so the shipped app is local-only and makes no network calls.
 
-> **Status:** Editor, guest seating, RSVP, multi-event dashboard, theming, offline/installable app,
-> backups, and optional Clerk sign-in with sync are built. Next candidates: export/print, venue
-> templates, undo/redo.
+> **Status:** Editor, guest seating, RSVP, multi-event dashboard, theming, offline/installable app
+> and backups are built. Sign-in + sync exist behind a flag. Next candidates: export/print,
+> undo/redo, venue templates.
 
 ## Documentation
 
@@ -56,12 +59,12 @@ npm run build:shared
 npm run dev:web          # http://localhost:5173
 ```
 
-If `apps/web/.env.local` contains a Clerk key, you'll also see a "Sign in to sync" button. The app
-works fully without using it.
+That's the whole app as shipped today: local-only, no sign-in.
 
-## With sync (optional)
+## With sync (optional, off by default)
 
-Needs Docker, for local Postgres.
+Sign-in and sync are built but disabled unless the web app is started or built with
+`VITE_ENABLE_SYNC=true`. To work on them, you need Docker for local Postgres:
 
 ```bash
 npm run db:up                                   # Postgres 17 in Docker (docker-compose.yml)
@@ -72,12 +75,13 @@ npm run dev:api                                 # http://localhost:4000
 
 Then either:
 
-- **Real accounts:** set `VITE_CLERK_PUBLISHABLE_KEY` in `apps/web/.env.local` and
-  `CLERK_SECRET_KEY` in `apps/api/.env`, run `npm run dev:web`, and click "Sign in to sync".
+- **Real accounts:** set `VITE_ENABLE_SYNC=true` and `VITE_CLERK_PUBLISHABLE_KEY` in
+  `apps/web/.env.local`, and `CLERK_SECRET_KEY` in `apps/api/.env`. Run `npm run dev:web` and
+  click "Sign in to sync".
 - **No accounts (dev only):** run the web app keyless, syncing as a fixed dev user:
 
   ```bash
-  VITE_CLERK_PUBLISHABLE_KEY= VITE_DEV_SYNC_OWNER=dev-user npm run dev --workspace @seating/web
+  VITE_ENABLE_SYNC=true VITE_CLERK_PUBLISHABLE_KEY= VITE_DEV_SYNC_OWNER=dev-user npm run dev --workspace @seating/web
   ```
 
 ### Environment variables
@@ -86,7 +90,8 @@ Then either:
 
 | Variable                     | Default                     | Notes                                                                                 |
 | ---------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
-| `VITE_CLERK_PUBLISHABLE_KEY` | _(unset)_                   | Enables the optional "Sign in to sync". Unset means a purely local app.               |
+| `VITE_ENABLE_SYNC`           | _(unset)_                   | `true` turns sign-in + sync on. Unset: local-only, no Clerk, no network calls.        |
+| `VITE_CLERK_PUBLISHABLE_KEY` | _(unset)_                   | With sync on: enables the optional "Sign in to sync".                                 |
 | `VITE_API_BASE_URL`          | `http://localhost:4000/api` | Where the sync API lives                                                              |
 | `VITE_DEV_SYNC_OWNER`        | _(unset)_                   | Keyless dev only: sync as this owner via `x-owner-id`. Ignored if a Clerk key is set. |
 
@@ -97,6 +102,8 @@ Then either:
 | `DATABASE_URL`          | `postgresql://seating:seating@localhost:5432/seating_app?schema=public` | Matches `docker-compose.yml`                                                                                 |
 | `PORT` / `HOST`         | `4000` / `0.0.0.0`                                                      |                                                                                                              |
 | `CORS_ORIGIN`           | `http://localhost:5173`                                                 | Comma-separated web origins. Any `localhost` port is allowed in dev.                                         |
+| `RATE_LIMIT_MAX`        | `300`                                                                   | Requests per minute per client IP (`/api/health` is exempt).                                                 |
+| `TRUST_PROXY`           | `false`                                                                 | `true` (or proxy IPs/CIDRs) when behind a load balancer, so rate limiting sees real client IPs.              |
 | `CLERK_SECRET_KEY`      | _(unset)_                                                               | When set, every request must carry a valid Clerk session. Unset means keyless dev (owner from `x-owner-id`). |
 | `CLERK_PUBLISHABLE_KEY` | _(unset)_                                                               | Optional, used by Clerk's middleware                                                                         |
 
@@ -113,10 +120,15 @@ changing either.
 | `npm run dev:api`           | API in watch mode                                   |
 | `npm run build:shared`      | Compile `@seating/shared` (re-run after editing it) |
 | `npm run typecheck`         | Typecheck every workspace                           |
+| `npm run lint`              | ESLint (TypeScript + React hooks rules)             |
+| `npm run format:check`      | Prettier check (what CI runs)                       |
 | `npm test`                  | All tests (API tests need `npm run db:up`)          |
 | `npm run db:up` / `db:down` | Start / stop local Postgres in Docker               |
 | `npm run prisma:migrate`    | Apply/create DB migrations                          |
-| `npm run format`            | Prettier                                            |
+| `npm run format`            | Prettier (write)                                    |
+
+**CI** (`.github/workflows/ci.yml`) runs on every PR and push to `main`: lint, format check,
+typecheck, all tests against a real Postgres, and both production builds.
 
 Builds: `npm run build --workspace @seating/web` (static files in `apps/web/dist/`, including the
 service worker) and `npm run build --workspace @seating/api`. To try the offline app locally, run
@@ -132,17 +144,18 @@ service worker) and `npm run build --workspace @seating/api`. To try the offline
 - Rewrite unknown paths to `/index.html` so `/events/:id` works on a fresh load. Netlify:
   `/* /index.html 200`. Cloudflare Pages and Vercel do this for SPAs.
 - Serve over HTTPS. IndexedDB, `crypto.randomUUID` and service workers need a secure context.
-- Set `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_BASE_URL` at build time if you offer sync.
+- Nothing to configure for the local-only app. If you later offer sync, set `VITE_ENABLE_SYNC=true`,
+  `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_BASE_URL` at build time.
 
 That alone is a complete, free-to-run product. Users' data stays in their browsers.
 
-**Sync API (optional):** a small Node service plus Postgres.
+**Sync API (only once sync is enabled):** a small Node service plus Postgres.
 
 - Postgres: any managed provider (Neon, Supabase, RDS). Run
   `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`.
 - API: any Node host (Fly.io, Render, Railway). Build, then `npm run start --workspace
 @seating/api`, with `NODE_ENV=production`, `DATABASE_URL`, `CLERK_SECRET_KEY`, and
-  `CORS_ORIGIN=https://your-web-origin`.
+  `CORS_ORIGIN=https://your-web-origin`, plus `TRUST_PROXY=true` behind the host's load balancer.
 
 ---
 
@@ -154,8 +167,8 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 - **Sync badge says "Offline":** the API isn't reachable. Check `npm run dev:api` and
   `VITE_API_BASE_URL`. Your edits are safe locally and will sync when it's back.
 - **API exits with Prisma `P1001`:** Postgres isn't running. Run `npm run db:up`.
-- **"This event isn't on this device":** events live per browser and per account. Sign in, or
-  import a backup.
+- **"This event isn't on this device":** events live per browser (and per account, when sync is
+  on). Import a backup, or open the browser and port where you made it.
 - **CORS errors:** add the web origin to `CORS_ORIGIN` in `apps/api/.env` (production only;
   localhost is allowed in dev).
 
@@ -167,8 +180,13 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 - [x] Guest list, CSV/XLSX import, drag guests onto seats, RSVP marking
 - [x] Multi-event dashboard (create, rename, duplicate, delete)
 - [x] Local-first: offline, installable, no account required, backups
-- [x] Optional sign-in with multi-device sync
-- [ ] Export / print (chart PDF, per-table rosters, escort cards)
+- [x] Sign-in with multi-device sync (built; disabled until we're ready to run the API)
+- [x] CI, linting, API rate limiting and security headers
+- [ ] Dependency majors: React 19, Vite 6+ / Vitest 4+ (clears the remaining dev-only advisories),
+      Prisma 6, zod 4
 - [ ] Undo / redo
+- [ ] Export / print (chart PDF, per-table rosters, escort cards)
 - [ ] Venue templates
 - [ ] Touch-friendly seating on tablets and phones
+- [ ] Error reporting (Sentry, or a simple "email us about a problem" link)
+- [ ] Turn sign-in + sync back on (deploy the API, enable `VITE_ENABLE_SYNC`)

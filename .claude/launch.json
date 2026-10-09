@@ -34,6 +34,7 @@
       "name": "web-devsync",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "VITE_ENABLE_SYNC=true",
         "VITE_CLERK_PUBLISHABLE_KEY=",
         "VITE_DEV_SYNC_OWNER=dev-user",
         "npm",

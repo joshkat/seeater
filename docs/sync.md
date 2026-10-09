@@ -4,6 +4,9 @@ How a signed-in user's events stay in step between this browser and the server (
 their devices). Signed-out use never touches the network; this whole doc applies only after
 sign-in.
 
+> **Currently disabled.** Everything here is built and tested, but it only runs in builds with
+> `VITE_ENABLE_SYNC=true`. Shipped builds are local-only.
+
 The short version:
 
 - The browser is always the working copy.

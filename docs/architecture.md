@@ -171,7 +171,12 @@ lives in `@seating/shared` and runs in the browser.
 
 ---
 
-## Identity (Clerk), now optional
+## Identity (Clerk), now optional and currently off
+
+> **Currently disabled.** Sign-in and sync only exist in builds made with `VITE_ENABLE_SYNC=true`
+> (`features/auth/lib/authConfig.ts`). Without it, which is the default and what ships, there's no
+> sign-in UI, Clerk is never downloaded (it's lazy-loaded), and the app makes no network requests.
+> The table below describes builds with the flag on.
 
 | Configuration                                                  | What users get                                                                                  |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |

@@ -1,0 +1,79 @@
+# Runs on every pull request and every push to main. Make the "verify" job a
+# required status check on main (Settings → Branches) so a red build can't merge.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch/PR cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Real Postgres for the API integration tests (same image as docker-compose.yml).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: seating
+          POSTGRES_PASSWORD: seating
+          POSTGRES_DB: seating_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U seating -d seating_app"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgresql://seating:seating@localhost:5432/seating_app?schema=public
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build:shared
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema apps/api/prisma/schema.prisma
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
+      - name: Test
+        run: npm test
+
+      - name: Build web
+        run: npm run build --workspace @seating/web
+
+      - name: Build API
+        run: npm run build --workspace @seating/api

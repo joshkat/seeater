@@ -10,6 +10,17 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().default("0.0.0.0"),
+  // Requests per minute allowed from one client IP (all routes but /health).
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  // Set when running behind a reverse proxy / load balancer (Fly, Render, …)
+  // so rate limiting sees the real client IP from X-Forwarded-For: "true" to
+  // trust any proxy, or a comma-separated list of proxy IPs/CIDRs.
+  TRUST_PROXY: z
+    .string()
+    .default("false")
+    .transform((value): boolean | string =>
+      value === "true" ? true : value === "false" ? false : value,
+    ),
   CORS_ORIGIN: z
     .string()
     .default("http://localhost:5173")

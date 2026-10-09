@@ -5,7 +5,8 @@ import type { FastifyInstance } from "fastify";
  * reachable, so deploy/uptime checks can hit a single endpoint.
  */
 export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.get("/health", async () => {
+  // Exempt from rate limiting so uptime checks never trip it.
+  fastify.get("/health", { config: { rateLimit: false } }, async () => {
     await fastify.prisma.$queryRaw`SELECT 1`;
     return { status: "ok", timestamp: new Date().toISOString() };
   });

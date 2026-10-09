@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** "true" turns optional sign-in + sync on. Off by default (local-only app). */
+  readonly VITE_ENABLE_SYNC?: string;
   /** Base URL of the optional sync API. */
   readonly VITE_API_BASE_URL?: string;
   /** Clerk publishable key. Unset → no sign-in; the app is local-only. */
