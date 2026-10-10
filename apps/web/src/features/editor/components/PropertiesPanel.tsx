@@ -5,6 +5,8 @@ import { NumberField } from "../../../components/NumberField";
 import { useTables } from "../hooks/useDocumentSelectors";
 import { tableDisplayName } from "../lib/tableLabel";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useDrawerState } from "../hooks/useDrawerState";
+import { DrawerCloseButton } from "./DrawerCloseButton";
 import { useEditorStore } from "../store/editorStore";
 
 /** Smallest table width/height (matches the canvas resize limit). */
@@ -154,17 +156,27 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
   );
 }
 
-/** Right-hand inspector for the current selection. */
+/** Right-hand inspector for the current selection (a drawer on tablets). */
 export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
+  const { open, inert, close } = useDrawerState("properties");
   const tables = useTables();
 
   const selected = tables.filter((table) => selectedIds.includes(table.id));
   const selectedIndex = selected.length === 1 ? tables.indexOf(selected[0]) : -1;
 
   return (
-    <aside className="w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4">
-      <h2 className="mb-3 text-[15px] font-semibold text-base-content">Properties</h2>
+    <aside
+      aria-label="Properties"
+      inert={inert}
+      className={`w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:w-[min(320px,85vw)] max-xl:shadow-xl max-xl:transition-transform ${
+        open ? "" : "max-xl:translate-x-full"
+      }`}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-base-content">Properties</h2>
+        <DrawerCloseButton label="Close properties" onClose={close} />
+      </div>
       {selected.length === 0 && (
         <p className="text-sm text-base-content/60">
           Select a table to edit it. Add tables from the toolbar, drag to move, and use the handles
