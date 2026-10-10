@@ -8,6 +8,7 @@ import {
 } from "../lib/guestListModel";
 import type { SelectModifiers } from "../lib/selectModifiers";
 import { useGuestStore } from "../store/guestStore";
+import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
 import { HouseholdHeader } from "./HouseholdHeader";
 import { SelectNextControl } from "./SelectNextControl";
@@ -109,7 +110,13 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
     );
   };
 
-  const renderItem = (guestId: string, subtitle: string | null): JSX.Element | null => {
+  const allSelected = guests.length > 0 && guests.every((guest) => selected.has(guest.id));
+
+  const renderItem = (
+    guestId: string,
+    subtitle: string | null,
+    nested = false,
+  ): JSX.Element | null => {
     const guest = guestById.get(guestId);
     if (!guest) return null;
     return (
@@ -118,6 +125,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         guest={guest}
         subtitle={subtitle}
         selected={selected.has(guest.id)}
+        nested={nested}
         onSelect={(modifiers) => handleSelect(guest.id, modifiers)}
         onSetRsvp={(status) => editGuest(guest.id, { rsvpStatus: status })}
         onUnseat={() => assignSeat(guest.id, null)}
@@ -136,6 +144,11 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
+      <GuestColumnHeaders
+        allSelected={allSelected}
+        someSelected={selectedGuestIds.length > 0}
+        onToggleAll={() => setGuestSelection(allSelected ? [] : visibleOrder)}
+      />
       <section>
         <div className="mb-1 flex items-center justify-between gap-2">
           <h3 className={headingClass}>{`Unassigned (${unassignedIds.length})`}</h3>
@@ -157,13 +170,14 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                   shownCount={entry.members.length}
                   allMemberIds={entry.allMemberIds}
                   selected={entry.allMemberIds.every((id) => selected.has(id))}
+                  partlySelected={entry.allMemberIds.some((id) => selected.has(id))}
                   onSelect={(modifiers) => handleSelectHousehold(entry.allMemberIds, modifiers)}
                   onRename={(name) => renameHousehold(entry.household.id, name)}
                   onDissolve={() => dissolveHousehold(entry.household.id)}
                 />
-                <ul className={`${listClass} ml-3 border-l border-base-300 pl-1`}>
+                <ul className={listClass}>
                   {entry.members.map((member) =>
-                    renderItem(member.id, member.email ?? member.phone ?? null),
+                    renderItem(member.id, member.email ?? member.phone ?? null, true),
                   )}
                 </ul>
               </li>

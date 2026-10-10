@@ -17,7 +17,7 @@ export function GuestPanel(): JSX.Element {
 
   const { width, startResize, resizing } = usePanelWidth({
     storageKey: "seating.guestPanelWidth",
-    defaultWidth: 340,
+    defaultWidth: 380,
     min: 280,
     max: 560,
   });

@@ -2,7 +2,9 @@ import type { Household } from "@seating/shared";
 import { useState } from "react";
 
 import { setGuestDragData } from "../lib/dnd";
+import { GUEST_COLUMNS } from "../lib/guestColumns";
 import { type SelectModifiers, selectModifiers } from "../lib/selectModifiers";
+import { SelectCheckbox } from "./SelectCheckbox";
 
 interface HouseholdHeaderProps {
   household: Household;
@@ -12,6 +14,8 @@ interface HouseholdHeaderProps {
   allMemberIds: string[];
   /** Every member is currently selected. */
   selected: boolean;
+  /** At least one member is selected. */
+  partlySelected: boolean;
   onSelect: (modifiers: SelectModifiers) => void;
   onRename: (name: string) => void;
   onDissolve: () => void;
@@ -24,6 +28,7 @@ export function HouseholdHeader({
   shownCount,
   allMemberIds,
   selected,
+  partlySelected,
   onSelect,
   onRename,
   onDissolve,
@@ -65,10 +70,18 @@ export function HouseholdHeader({
       }}
       onClick={(event) => onSelect(selectModifiers(event))}
       title="Click to select the whole household, or drag it onto a table"
-      className={`group flex cursor-grab select-none items-center gap-1.5 rounded-field border px-2 py-1 ${
+      className={`group flex cursor-grab select-none items-center gap-2 rounded-field border px-2 py-1 ${
         selected ? "border-primary bg-primary/5" : "border-transparent"
       }`}
     >
+      <span className={`${GUEST_COLUMNS.select} grid shrink-0 place-items-center`}>
+        <SelectCheckbox
+          checked={selected}
+          indeterminate={partlySelected && !selected}
+          label={`Select the ${household.name} household`}
+          onToggle={(range) => onSelect({ additive: true, range })}
+        />
+      </span>
       <span aria-hidden className="text-xs text-base-content/40">
         ⌂
       </span>
