@@ -30,7 +30,7 @@ export function SelectNextControl({ onSelectNext, disabled }: SelectNextControlP
         min={1}
         max={MAX_SEAT_COUNT}
         aria-label="How many guests to select"
-        className="w-24"
+        className="w-24 pointer-coarse:w-36"
         value={count}
         onChange={setCount}
       />

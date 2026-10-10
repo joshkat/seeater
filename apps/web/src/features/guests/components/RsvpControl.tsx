@@ -26,15 +26,25 @@ export function RsvpControl({ status, onChange }: RsvpControlProps): JSX.Element
         type="button"
         onMouseEnter={() => setHovered(true)}
         onFocus={() => setHovered(true)}
-        onClick={(event) => event.stopPropagation()}
-        title={`RSVP: ${meta.label} — hover to change`}
-        className={`badge badge-soft outline ${tone} shrink-0 cursor-pointer gap-1 border-none font-semibold`}
+        onClick={(event) => {
+          // Tap (touch has no hover, and iOS doesn't focus on tap) opens it too.
+          event.stopPropagation();
+          setHovered(true);
+        }}
+        title={`RSVP: ${meta.label} — hover or tap to change`}
+        className={`badge badge-soft outline ${tone} shrink-0 cursor-pointer gap-1 border-none font-semibold pointer-coarse:min-h-11`}
       >
         <span aria-hidden>{meta.symbol}</span>
         {meta.label}
       </button>
     );
   }
+
+  // Picking collapses it again (needed on touch, where there's no mouse leave).
+  const choose = (next: RsvpStatus): void => {
+    setHovered(false);
+    onChange(next);
+  };
 
   // Expanded: the three-option segmented control.
   return (
@@ -48,21 +58,21 @@ export function RsvpControl({ status, onChange }: RsvpControlProps): JSX.Element
         label="Pending"
         active={status === "pending"}
         activeClass="btn-active"
-        onClick={() => onChange("pending")}
+        onClick={() => choose("pending")}
       />
       <Segment
         label="✓"
         title="Going"
         active={status === "accepted"}
         activeClass="btn-success"
-        onClick={() => onChange("accepted")}
+        onClick={() => choose("accepted")}
       />
       <Segment
         label="✗"
         title="Declined"
         active={status === "declined"}
         activeClass="btn-error"
-        onClick={() => onChange("declined")}
+        onClick={() => choose("declined")}
       />
     </div>
   );

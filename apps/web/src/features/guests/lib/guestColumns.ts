@@ -4,7 +4,8 @@
  * strings (Tailwind scans for them).
  */
 export const GUEST_COLUMNS = {
-  select: "w-9",
-  rsvp: "w-[116px]",
-  actions: "w-[60px]",
+  // Wider on touch screens, where every button is a 44px target.
+  select: "w-9 pointer-coarse:w-11",
+  rsvp: "w-[116px] pointer-coarse:w-[156px]",
+  actions: "w-[60px] pointer-coarse:w-[88px]",
 } as const;
