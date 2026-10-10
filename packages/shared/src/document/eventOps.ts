@@ -26,6 +26,7 @@ export function createEventDoc({ name, dimensions, now }: NewEventOptions): Even
     dimensions: dimensions ?? { ...DEFAULT_FLOOR_PLAN_SIZE },
     tables: [],
     guests: [],
+    households: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -47,8 +48,8 @@ export interface DuplicateOptions {
 
 /**
  * Clones an event into a new, independent document. The layout is always
- * copied with fresh ids; guests and their seat assignments are opt-in, with
- * assignments remapped onto the cloned seat ids.
+ * copied with fresh ids; guests (with their households) and their seat
+ * assignments are opt-in, with references remapped onto the cloned ids.
  */
 export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = {}): EventDoc {
   const timestamp = options.now ?? new Date().toISOString();
@@ -64,12 +65,22 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     }),
   }));
 
+  const householdIdMap = new Map<string, string>();
+  const households = options.copyGuests
+    ? source.households.map((household) => {
+        const id = newId();
+        householdIdMap.set(household.id, id);
+        return { ...household, id };
+      })
+    : [];
+
   const guests = options.copyGuests
     ? source.guests.map((guest) => ({
         ...guest,
         id: newId(),
         seatId:
           options.copyAssignments && guest.seatId ? (seatIdMap.get(guest.seatId) ?? null) : null,
+        householdId: guest.householdId ? (householdIdMap.get(guest.householdId) ?? null) : null,
       }))
     : [];
 
@@ -79,6 +90,7 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     name: `${source.name} (copy)`.slice(0, MAX_EVENT_NAME_LENGTH),
     tables,
     guests,
+    households,
     createdAt: timestamp,
     updatedAt: timestamp,
   };

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { duplicateEventDoc, reidentifyEventDoc, renameEventDoc } from "../eventOps.js";
 import { assignSeat } from "../guestOps.js";
+import { createHousehold } from "../householdOps.js";
 import { eventDocSchema } from "../schema.js";
 import { summarizeEventDoc } from "../summary.js";
 import { fixture, seatIdsOf } from "./fixture.js";
@@ -29,6 +30,18 @@ describe("duplicateEventDoc", () => {
     const seatedGuest = copy.guests.find((g) => g.name === "Ada")!;
     expect(seatedGuest.seatId).toBe(copy.tables[0].seats[2].id);
     expect(eventDocSchema.safeParse(copy).success).toBe(true);
+  });
+
+  it("copies households with fresh ids when guests are copied", () => {
+    const { doc, guestIds } = fixture();
+    const { doc: grouped } = createHousehold(doc, [guestIds[0], guestIds[1]], "Pair");
+    const copy = duplicateEventDoc(grouped, { copyGuests: true });
+    expect(copy.households).toHaveLength(1);
+    expect(copy.households[0]).toMatchObject({ name: "Pair" });
+    expect(copy.households[0].id).not.toBe(grouped.households[0].id);
+    expect(copy.guests.filter((g) => g.householdId === copy.households[0].id)).toHaveLength(2);
+    expect(eventDocSchema.safeParse(copy).success).toBe(true);
+    expect(duplicateEventDoc(grouped).households).toEqual([]);
   });
 
   it("drops assignments when only guests are copied", () => {

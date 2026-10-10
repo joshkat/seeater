@@ -13,13 +13,32 @@ export class EventDocError extends Error {
   }
 }
 
-/**
- * Upgrade steps keyed by the version they upgrade FROM. When v2 ships, add
- * `1: (doc) => ({ ...doc, schemaVersion: 2, newField: default })`.
- */
-const UPGRADES: Record<number, (doc: Record<string, unknown>) => Record<string, unknown>> = {};
+type RawDoc = Record<string, unknown>;
 
-function upgrade(raw: unknown): unknown {
+/**
+ * Upgrade steps keyed by the version they upgrade FROM. Each step only adds or
+ * reshapes fields; validation happens afterwards in `parseEventDoc`.
+ */
+const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
+  // v2: households. Every guest starts outside a household.
+  1: (doc) => ({
+    ...doc,
+    schemaVersion: 2,
+    households: [],
+    guests: Array.isArray(doc.guests)
+      ? doc.guests.map((guest: unknown) =>
+          typeof guest === "object" && guest !== null ? { ...guest, householdId: null } : guest,
+        )
+      : doc.guests,
+  }),
+};
+
+/**
+ * Runs the upgrade steps on a stored or received document, without validating
+ * it. Throws EventDocError if it isn't a document or comes from a newer app.
+ * Current-version input is returned as-is (same object).
+ */
+export function upgradeEventDoc(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null) {
     throw new EventDocError("Not an event document");
   }
@@ -59,7 +78,7 @@ export function normalizeEventDoc(doc: EventDoc): EventDoc {
  * integrity. Throws EventDocError with a readable message on failure.
  */
 export function parseEventDoc(raw: unknown): EventDoc {
-  const shaped = eventDocShapeSchema.safeParse(upgrade(raw));
+  const shaped = eventDocShapeSchema.safeParse(upgradeEventDoc(raw));
   if (!shaped.success) {
     throw new EventDocError(`Invalid event document: ${shaped.error.issues[0]?.message}`);
   }
