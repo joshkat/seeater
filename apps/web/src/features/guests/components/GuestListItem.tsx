@@ -45,13 +45,12 @@ export function GuestListItem({
         nested ? "pl-6" : "pl-2"
       } ${selected ? "border-primary bg-primary/5" : "border-transparent"}`}
     >
-      <span className={`${GUEST_COLUMNS.select} grid shrink-0 place-items-center`}>
-        <SelectCheckbox
-          checked={selected}
-          label={`Select ${guest.name}`}
-          onToggle={(range) => onSelect({ additive: true, range })}
-        />
-      </span>
+      <SelectCheckbox
+        checked={selected}
+        label={`Select ${guest.name}`}
+        onToggle={(range) => onSelect({ additive: true, range })}
+        className="-my-1.5"
+      />
 
       <span className="min-w-0 flex-1">
         <span

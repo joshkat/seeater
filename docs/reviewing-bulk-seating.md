@@ -151,6 +151,10 @@ rewrites every stored doc through `upgradeEventDoc`.
   `lib/guestColumns.ts` (the widths header and rows share). Household members are indented with
   padding inside the row instead of an indented list, so their RSVP column still lines up. The
   guest panel's default width went from 340 to 380px.
+- `fix(web): steady selection bar, bigger checkbox targets`: `AssignBar` is always rendered at
+  one height (controls disable when nothing is selected), so selecting never pushes the list down.
+  `SelectCheckbox` now owns its cell: the full row height × 36px is the hit target, and the box is
+  24px.
 
 ---
 

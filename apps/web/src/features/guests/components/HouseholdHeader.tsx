@@ -2,7 +2,6 @@ import type { Household } from "@seating/shared";
 import { useState } from "react";
 
 import { setGuestDragData } from "../lib/dnd";
-import { GUEST_COLUMNS } from "../lib/guestColumns";
 import { type SelectModifiers, selectModifiers } from "../lib/selectModifiers";
 import { SelectCheckbox } from "./SelectCheckbox";
 
@@ -74,14 +73,13 @@ export function HouseholdHeader({
         selected ? "border-primary bg-primary/5" : "border-transparent"
       }`}
     >
-      <span className={`${GUEST_COLUMNS.select} grid shrink-0 place-items-center`}>
-        <SelectCheckbox
-          checked={selected}
-          indeterminate={partlySelected && !selected}
-          label={`Select the ${household.name} household`}
-          onToggle={(range) => onSelect({ additive: true, range })}
-        />
-      </span>
+      <SelectCheckbox
+        checked={selected}
+        indeterminate={partlySelected && !selected}
+        label={`Select the ${household.name} household`}
+        onToggle={(range) => onSelect({ additive: true, range })}
+        className="-my-1"
+      />
       <span aria-hidden className="text-xs text-base-content/40">
         ⌂
       </span>

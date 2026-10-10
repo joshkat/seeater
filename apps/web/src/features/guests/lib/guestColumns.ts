@@ -4,7 +4,7 @@
  * strings (Tailwind scans for them).
  */
 export const GUEST_COLUMNS = {
-  select: "w-[26px]",
+  select: "w-9",
   rsvp: "w-[116px]",
   actions: "w-[60px]",
 } as const;
