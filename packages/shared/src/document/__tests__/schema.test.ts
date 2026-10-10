@@ -70,8 +70,17 @@ describe("parseEventDoc", () => {
     const v1 = JSON.parse(JSON.stringify(seated));
     v1.schemaVersion = 1;
     delete v1.households;
+    delete v1.settings;
     for (const guest of v1.guests) delete guest.householdId;
     expect(parseEventDoc(v1)).toEqual(seated);
+  });
+
+  it("upgrades a v2 document (no settings) to exact placement 'auto'", () => {
+    const { doc } = fixture();
+    const v2 = JSON.parse(JSON.stringify(doc));
+    v2.schemaVersion = 2;
+    delete v2.settings;
+    expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto" });
   });
 
   it("returns current documents from upgradeEventDoc untouched", () => {

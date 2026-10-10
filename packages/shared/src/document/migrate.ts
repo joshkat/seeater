@@ -31,6 +31,8 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
         )
       : doc.guests,
   }),
+  // v3: per-event settings. Exact seat placement starts on "auto".
+  2: (doc) => ({ ...doc, schemaVersion: 3, settings: { exactSeatPlacement: "auto" } }),
 };
 
 /**

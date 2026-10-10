@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addChairsAndAssign,
   addGuests,
+  applySeatPlan,
   assignGuestsToTable,
   assignSeat,
   openSeatCount,
@@ -198,5 +199,72 @@ describe("addChairsAndAssign", () => {
     expect(result.doc.tables[0].seats).toHaveLength(64);
     expect(result.unseatedIds).toHaveLength(6);
     expect(eventDocSchema.safeParse(result.doc).success).toBe(true);
+  });
+});
+
+describe("applySeatPlan", () => {
+  it("applies several moves at once, unseating whoever is displaced", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace, linus] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const start = assignSeat(assignSeat(doc, ada, seats[0]), linus, seats[2]);
+    const next = applySeatPlan(start, [
+      { guestId: grace, seatId: seats[0] },
+      { guestId: ada, seatId: seats[1] },
+    ]);
+    expect(seatOf(next, grace)).toBe(seats[0]);
+    expect(seatOf(next, ada)).toBe(seats[1]);
+    expect(seatOf(next, linus)).toBe(seats[2]);
+    expect(eventDocSchema.safeParse(next).success).toBe(true);
+  });
+
+  it("swaps two seated guests", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const start = assignSeat(assignSeat(doc, ada, seats[0]), grace, seats[1]);
+    const next = applySeatPlan(start, [
+      { guestId: ada, seatId: seats[1] },
+      { guestId: grace, seatId: seats[0] },
+    ]);
+    expect(seatOf(next, ada)).toBe(seats[1]);
+    expect(seatOf(next, grace)).toBe(seats[0]);
+  });
+
+  it("unseats a guest left out of the plan whose seat is taken", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const start = assignSeat(doc, ada, seats[0]);
+    const next = applySeatPlan(start, [{ guestId: grace, seatId: seats[0] }]);
+    expect(seatOf(next, ada)).toBeNull();
+    expect(eventDocSchema.safeParse(next).success).toBe(true);
+  });
+
+  it("lets the later entry win a contested seat, and can unseat", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace, linus] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const start = assignSeat(doc, linus, seats[3]);
+    const next = applySeatPlan(start, [
+      { guestId: ada, seatId: seats[0] },
+      { guestId: grace, seatId: seats[0] },
+      { guestId: linus, seatId: null },
+    ]);
+    expect(seatOf(next, ada)).toBeNull();
+    expect(seatOf(next, grace)).toBe(seats[0]);
+    expect(seatOf(next, linus)).toBeNull();
+    expect(eventDocSchema.safeParse(next).success).toBe(true);
+  });
+
+  it("skips unknown guests and seats and returns the same doc for no-ops", () => {
+    const { doc, guestIds } = fixture();
+    expect(
+      applySeatPlan(doc, [
+        { guestId: "ghost", seatId: null },
+        { guestId: guestIds[0], seatId: "missing" },
+        { guestId: guestIds[1], seatId: null },
+      ]),
+    ).toBe(doc);
   });
 });

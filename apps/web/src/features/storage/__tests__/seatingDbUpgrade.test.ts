@@ -1,4 +1,9 @@
-import { addGuests, createEventDoc, summarizeEventDoc } from "@seating/shared";
+import {
+  EVENT_DOC_SCHEMA_VERSION,
+  addGuests,
+  createEventDoc,
+  summarizeEventDoc,
+} from "@seating/shared";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -11,10 +16,10 @@ afterEach(async () => {
   await Dexie.delete(name);
 });
 
-/** A record as the v1 app stored it: no households, no guest.householdId. */
+/** A record as the v1 app stored it: no households, no guest.householdId, no settings. */
 function v1Record() {
   const { doc } = addGuests(createEventDoc({ name: "Old wedding" }), [{ name: "Ada" }]);
-  const { households: _households, ...rest } = doc;
+  const { households: _households, settings: _settings, ...rest } = doc;
   const legacyDoc = {
     ...rest,
     schemaVersion: 1,
@@ -40,7 +45,11 @@ describe("SeatingDb upgrade", () => {
     const db = new SeatingDb(name);
     const upgraded = await getEventDoc(db, record.id);
     db.close();
-    expect(upgraded).toMatchObject({ schemaVersion: 2, households: [] });
+    expect(upgraded).toMatchObject({
+      schemaVersion: EVENT_DOC_SCHEMA_VERSION,
+      households: [],
+      settings: { exactSeatPlacement: "auto" },
+    });
     expect(upgraded?.guests[0]).toMatchObject({ name: "Ada", householdId: null });
   });
 });

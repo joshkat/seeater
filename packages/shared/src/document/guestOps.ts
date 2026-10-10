@@ -143,6 +143,50 @@ export function assignSeat(doc: EventDoc, guestId: string, seatId: string | null
   };
 }
 
+/** One line of a seat plan: put this guest in this seat (null = unseat). */
+export interface SeatPlanEntry {
+  guestId: string;
+  seatId: string | null;
+}
+
+/**
+ * Applies many seat changes as a single edit (the placement dialog's
+ * Confirm). Entries naming unknown guests or seats are skipped. If two entries
+ * claim one seat, the later wins and the earlier guest is unseated. Anyone not
+ * in the plan who sits in a seat the plan hands out is unseated. Returns the
+ * same document when nothing changes.
+ */
+export function applySeatPlan(doc: EventDoc, entries: SeatPlanEntry[]): EventDoc {
+  const known = new Set(doc.guests.map((guest) => guest.id));
+  const seatIds = new Set(doc.tables.flatMap((table) => table.seats.map((seat) => seat.id)));
+  const planned = new Map<string, string | null>();
+  const ownerOfSeat = new Map<string, string>();
+  for (const { guestId, seatId } of entries) {
+    if (!known.has(guestId) || (seatId !== null && !seatIds.has(seatId))) continue;
+    const previousSeat = planned.get(guestId);
+    if (previousSeat) ownerOfSeat.delete(previousSeat);
+    if (seatId !== null) {
+      const rival = ownerOfSeat.get(seatId);
+      if (rival && rival !== guestId) planned.set(rival, null);
+      ownerOfSeat.set(seatId, guestId);
+    }
+    planned.set(guestId, seatId);
+  }
+
+  let changed = false;
+  const guests = doc.guests.map((guest) => {
+    const next = planned.has(guest.id)
+      ? (planned.get(guest.id) ?? null)
+      : guest.seatId !== null && ownerOfSeat.has(guest.seatId)
+        ? null
+        : guest.seatId;
+    if (next === guest.seatId) return guest;
+    changed = true;
+    return { ...guest, seatId: next };
+  });
+  return changed ? { ...doc, guests } : doc;
+}
+
 /**
  * Open seats at a table for a group: seats nobody holds, plus seats held by
  * members of the group (they'd be re-packed). Unknown tables have none.

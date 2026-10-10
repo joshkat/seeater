@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 2;
+export const EVENT_DOC_SCHEMA_VERSION = 3;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -101,6 +101,18 @@ export const householdSchema = z.object({
   name: nonBlank(MAX_HOUSEHOLD_NAME_LENGTH),
 });
 
+/**
+ * How seating several guests at a table behaves: `on` opens the seat-by-seat
+ * placement dialog, `off` auto-fills open seats, `auto` picks per event size
+ * (on for events with 2 or fewer tables). See `isExactSeatPlacement`.
+ */
+export const exactSeatPlacementSchema = z.enum(["auto", "on", "off"]);
+
+/** Per-event preferences that travel with the document. */
+export const eventSettingsSchema = z.object({
+  exactSeatPlacement: exactSeatPlacementSchema,
+});
+
 /** Shape-only schema (no cross-reference checks). Used before normalizing. */
 export const eventDocShapeSchema = z.object({
   schemaVersion: z.literal(EVENT_DOC_SCHEMA_VERSION),
@@ -111,6 +123,7 @@ export const eventDocShapeSchema = z.object({
   tables: z.array(tableSchema).max(MAX_TABLES),
   guests: z.array(guestSchema).max(MAX_GUESTS),
   households: z.array(householdSchema).max(MAX_GUESTS),
+  settings: eventSettingsSchema,
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
 });
@@ -125,4 +138,6 @@ export type Table = z.infer<typeof tableSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type Guest = z.infer<typeof guestSchema>;
 export type Household = z.infer<typeof householdSchema>;
+export type ExactSeatPlacement = z.infer<typeof exactSeatPlacementSchema>;
+export type EventSettings = z.infer<typeof eventSettingsSchema>;
 export type EventDoc = z.infer<typeof eventDocShapeSchema>;
