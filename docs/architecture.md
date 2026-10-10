@@ -106,14 +106,15 @@ guest lists racing each other.
 
 ## Client state
 
-| Store / module    | File                                     | Owns                                                                                                                                               |
-| ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **documentStore** | `features/editor/store/documentStore.ts` | The open event document (tables + guests + assignments), its load status, and the local save status. **The single source of truth while editing.** |
-| **editorStore**   | `features/editor/store/editorStore.ts`   | View state only: viewport, zoom/focus, selected tables. Table actions are thin wrappers over shared ops.                                           |
-| **guestStore**    | `features/guests/store/guestStore.ts`    | Guest selection. Guest actions are thin wrappers over shared ops.                                                                                  |
-| **storageStore**  | `features/storage/store/storageStore.ts` | Which IndexedDB database is active (signed-out or a specific account).                                                                             |
-| **identityStore** | `features/auth/store/identityStore.ts`   | Who the data belongs to (Clerk user id, or null).                                                                                                  |
-| **syncStore**     | `features/sync/store/syncStore.ts`       | Sync status for the badge, plus one-off notices.                                                                                                   |
+| Store / module       | File                                        | Owns                                                                                                                                                             |
+| -------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **documentStore**    | `features/editor/store/documentStore.ts`    | The open event document (tables + guests + assignments), its load status, and the local save status. **The single source of truth while editing.**               |
+| **editorStore**      | `features/editor/store/editorStore.ts`      | View state only: viewport, zoom/focus, selected tables. Table actions are thin wrappers over shared ops.                                                         |
+| **guestStore**       | `features/guests/store/guestStore.ts`       | Guest selection (incl. Shift-click anchor). Guest and household actions are thin wrappers over shared ops.                                                       |
+| **seatingFlowStore** | `features/guests/store/seatingFlowStore.ts` | The seating flow's prompts: "split this household?" and the overflow loop for guests who didn't fit. Every way of seating a group goes through `requestSeating`. |
+| **storageStore**     | `features/storage/store/storageStore.ts`    | Which IndexedDB database is active (signed-out or a specific account).                                                                                           |
+| **identityStore**    | `features/auth/store/identityStore.ts`      | Who the data belongs to (Clerk user id, or null).                                                                                                                |
+| **syncStore**        | `features/sync/store/syncStore.ts`          | Sync status for the badge, plus one-off notices.                                                                                                                 |
 
 Components read the document through tiny selector hooks
 (`features/editor/hooks/useDocumentSelectors.ts`: `useTables`, `useGuests`, `useDimensions`, …).

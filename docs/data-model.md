@@ -61,10 +61,12 @@ erDiagram
   EVENT_DOC ||--o{ TABLE : "tables[]"
   TABLE ||--o{ SEAT : "seats[] (ordered)"
   EVENT_DOC ||--o{ GUEST : "guests[]"
+  EVENT_DOC ||--o{ HOUSEHOLD : "households[]"
   GUEST |o--o| SEAT : "seatId (one guest per seat)"
+  GUEST }o--o| HOUSEHOLD : "householdId"
 
   EVENT_DOC {
-    int schemaVersion "1 — bump + add an upgrade step on breaking changes"
+    int schemaVersion "2 — bump + add an upgrade step on breaking changes"
     string id "client UUID"
     string name "max 120"
     size dimensions "floor-plan area, plan units"
@@ -93,6 +95,11 @@ erDiagram
     string phone "nullable"
     enum rsvpStatus "pending | accepted | declined"
     string seatId "nullable → SEAT.id"
+    string householdId "nullable → HOUSEHOLD.id"
+  }
+  HOUSEHOLD {
+    string id "client UUID"
+    string name "required, max 120"
   }
 ```
 
@@ -100,7 +107,7 @@ A trimmed example:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "8906dfcd-cdb8-4d14-b236-851298ba8da2",
   "name": "Sarah & Tom's Wedding",
   "dimensions": { "width": 1600, "height": 1000 },
@@ -126,9 +133,11 @@ A trimmed example:
       "email": null,
       "phone": null,
       "rsvpStatus": "accepted",
-      "seatId": "a41e…"
+      "seatId": "a41e…",
+      "householdId": "5b0e…"
     }
   ],
+  "households": [{ "id": "5b0e…", "name": "Lovelace household" }],
   "createdAt": "2026-10-09T02:00:00.000Z",
   "updatedAt": "2026-10-09T02:16:03.568Z"
 }
@@ -143,10 +152,21 @@ every API upload, sync download and backup import:
 2. Each table's seats are ordered, and `index` equals the seat's position in the array.
 3. A guest's `seatId` points at a seat that exists.
 4. No two guests share a seat.
+5. Household ids are unique, and a guest's `householdId` points at a household that exists.
 
 The edit functions in `packages/shared/src/document/*Ops.ts` keep these true as they go. Deleting
 a table, or lowering its chair count, unseats the affected guests in the same step, so there's no
-separate cleanup pass.
+separate cleanup pass. Likewise, a household whose last member leaves (or is deleted) is dropped
+by the same op, so documents never carry empty households.
+
+### Households
+
+A household (a family, a couple, a party) is a set of guests to seat together. Membership lives on
+the guest (`householdId`). The `households` array only holds ids and names. Seating ops keep a
+household's members in neighbouring seats and never split one unless told to
+(`assignGuestsToTable(…, { splitHouseholds: true })`). The UI asks before any move that would leave
+members at different tables. Import fills households from a "Household" / "Party" column, matching
+names case-insensitively (including households already in the event).
 
 ### Seat identity (why seated guests stay put)
 
@@ -157,7 +177,8 @@ layout.
 
 ### Schema versions
 
-`schemaVersion` is `1`. When the shape changes in a way old documents don't satisfy:
+`schemaVersion` is `2` (v2 added households). When the shape changes in a way old documents don't
+satisfy:
 
 1. Bump `EVENT_DOC_SCHEMA_VERSION` in `schema.ts`.
 2. Add an upgrade step to `UPGRADES` in
@@ -167,6 +188,12 @@ schemaVersion: 2, newField: default })`.
 `parseEventDoc` runs those steps on anything read from outside: sync pulls and backup files. If a
 document comes from a _newer_ app version, it's refused with "Update the app" instead of being
 silently mangled.
+
+Documents already **stored in IndexedDB** are upgraded once, when the database opens: the Dexie
+database version follows `EVENT_DOC_SCHEMA_VERSION` (`SeatingDb.ts`), so a schema bump
+automatically adds a Dexie version whose upgrade runs `upgradeEventDoc` over every stored document.
+There's nothing extra to do per bump beyond the `UPGRADES` step. A document that can't be upgraded
+is logged and left as it was, rather than stopping the database from opening.
 
 ---
 

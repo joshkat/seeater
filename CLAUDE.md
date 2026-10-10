@@ -90,6 +90,14 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   stay put. Shrinking or deleting unseats orphans in the same op.
 - **One guest per seat:** enforced by shared ops and by `eventDocSchema` integrity (also checked on
   API upload).
+- **Seating flow:** every way of seating guests (canvas drop, seat click, "Assign to table…") calls
+  `guests/store/seatingFlowStore.requestSeating`. It asks before splitting a household
+  (`householdSplits`), fills the table keeping households whole (`assignGuestsToTable`), and leaves
+  leftovers **selected** under an overflow prompt (other tables / split here / add chairs / leave),
+  looping until done. Prompts render in `guests/components/seating/SeatingPrompts` over the canvas.
+- **Households (schema v2):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
+  households. The guest list groups unassigned members under a header (`guests/lib/guestListModel`,
+  which also defines display order for Shift-click ranges and "Select next N").
 - **Sync flag:** `auth/lib/authConfig.ts` → `syncEnabled` (`VITE_ENABLE_SYNC === "true"`) gates
   `clerkPublishableKey` and `devSyncOwner`; everything downstream keys off those. Clerk is
   lazy-loaded (`main.tsx` → `AuthRoot`, `AuthControls` → `ClerkAccountButtons`) so it's not in the
@@ -105,6 +113,9 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   `useClerkAppearance` is unchanged.
 - **Offline:** the PWA precaches the app shell (`vite.config.ts`); `navigator.storage.persist()` is
   requested on first event creation; backups are `<name>.seating.json` (`features/backup`).
+- **Stored docs are upgraded on DB open:** the Dexie version **is** `EVENT_DOC_SCHEMA_VERSION`
+  (`storage/db/SeatingDb.ts`), so a schema bump re-runs `upgradeEventDoc` over every stored doc.
+  Local reads don't go through `parseEventDoc`, so this is what keeps old local events loadable.
 - **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts.
 
 ## Gotchas (these cost real time — read before debugging)
@@ -134,7 +145,15 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   DevTools doesn't trip the "ResizeObserver loop" error.
 - **CORS (dev):** API allows any `localhost` origin in non-production (`apps/api/src/app.ts`).
 - **Synthetic clicks on Konva** are unreliable. For verification, drive real DOM events or store
-  actions, or dispatch pointer events at a node's `getAbsolutePosition()`.
+  actions, or dispatch pointer events at a node's `getAbsolutePosition()`. In dev, `window.Konva` exists:
+  `Konva.stages[0].find(n => n.getAttr('tableId'))` gives table bodies; a guest drop is a
+  `DragEvent('drop', { dataTransfer, clientX, clientY })` on the stage container (dispatch
+  `dragstart` on the guest row first to fill the `DataTransfer`). New tables from the toolbar only
+  jitter by 24 units, so they overlap and the topmost wins the hit test.
+- **Controlled `<select>`s (AssignBar) ignore `form_input`.** Set the value with the native
+  `HTMLSelectElement` value setter and dispatch a bubbling `change` event.
+- **HMR on a zustand store module** can leave components bound to two store instances (a prompt
+  "doesn't appear"). Reload the page before concluding it's a bug.
 - **Sync is off by default.** If sign-in/sync "doesn't show up", that's `VITE_ENABLE_SYNC` unset —
   intended. Don't remove the flag or the gated code; it's deliberately parked.
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
@@ -169,7 +188,13 @@ Done:
 - **Zoom-to-table** on select; zoom controls (+/−/reset), recenter on table resize, reset =
   re-fit to current viewport.
 - Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded), drag-to-seat, **multi-select
-  (ctrl/cmd-click) + assign-to-table**, click-to-assign, occupancy initials on chairs.
+  (ctrl/cmd-click, Shift-click ranges, "Select next N") + assign-to-table**, click-to-assign,
+  occupancy initials on chairs.
+- **Bulk seating:** overflow prompt (leftovers stay selected; pick another table with open-seat
+  counts, split a household into the seats left, **add chairs** to this table, or leave them).
+- **Households:** `householdId` (schema v2), grouped in the list (header selects / drags the whole
+  household, rename, ungroup), "Group as household" from a selection, import from a
+  "Household"/"Party" column, never split without asking.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
@@ -185,9 +210,12 @@ Done:
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Next candidates: **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
-(chart PNG/PDF + per-table roster), **venue templates** (a template is just a document),
-touch-friendly seating, **Apple/Google Wallet passes**. Deferred on purpose: **error reporting**
+Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 **exact seat placement** (decided: a
+**per-event** setting stored in the doc as on/off/auto, auto = on for ≤ 2 tables; a placement
+dialog with a live table preview; Confirm = one change) → 3 tablet/touch → 4 **undo/redo** (cheap:
+history of immutable docs in `documentStore`) → 5 **export/print** (chart PNG/PDF, rosters, place
+cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
+passes**. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 
 ## Git

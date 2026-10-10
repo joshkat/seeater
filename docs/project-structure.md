@@ -28,7 +28,8 @@ custom-seating-app/
 │           │   ├── ids.ts          # client-side UUIDs
 │           │   ├── eventOps.ts     # create / rename / duplicate a document
 │           │   ├── tableOps.ts     # add / move / resize / chairs / duplicate / delete tables
-│           │   ├── guestOps.ts     # add / edit / remove guests, assign seats
+│           │   ├── guestOps.ts     # add / edit / remove guests, assign seats, seat a group at a table
+│           │   ├── householdOps.ts # create / rename / ungroup households + split checks
 │           │   ├── summary.ts      # dashboard tile data
 │           │   └── __tests__/      # unit tests (excluded from the build)
 │           ├── sync/protocol.ts    # wire types for /api/events
@@ -91,6 +92,16 @@ features/editor/
 ├── hooks/                      # useDocumentSelectors, useKeyboardShortcuts, useUnsavedChangesGuard
 ├── geometry/                   # viewport + snapping math (pure)
 └── lib/tableLabel.ts
+
+features/guests/
+├── components/                 # GuestPanel, AddGuestForm, ImportButton, AssignBar, GuestList,
+│   │                           # GuestListItem, HouseholdHeader, SelectNextControl, RsvpControl, …
+│   └── seating/                # SeatingPrompts (canvas overlay), HouseholdPrompt, OverflowPrompt,
+│                               # SeatingNoticeToast
+├── store/guestStore.ts         # guest selection (+ Shift-click anchor) and guest/household actions
+├── store/seatingFlowStore.ts   # the seating flow: household question + overflow loop
+└── lib/                        # csv / spreadsheet import, guestListModel (grouping, order,
+                                # "next N"), dnd, selectModifiers, guestDisplay, rsvp
 
 features/sync/
 ├── api/syncApi.ts              # SyncApi interface + HTTP implementation
