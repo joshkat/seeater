@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
   PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().default("0.0.0.0"),
   // Requests per minute allowed from one client IP (all routes but /health).
@@ -34,7 +34,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("Invalid environment configuration:", parsed.error.flatten().fieldErrors);
+  console.error("Invalid environment configuration:", z.flattenError(parsed.error).fieldErrors);
   throw new Error("Invalid environment configuration. See errors above.");
 }
 
