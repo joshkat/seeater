@@ -1,6 +1,8 @@
 import { DEFAULT_SEAT_COUNT, MAX_SEAT_COUNT } from "@seating/shared";
 import { useState } from "react";
 
+import { NumberField } from "../../../components/NumberField";
+
 interface SelectNextControlProps {
   /** Selects the next `count` unassigned guests. */
   onSelectNext: (count: number) => void;
@@ -13,26 +15,24 @@ export function SelectNextControl({ onSelectNext, disabled }: SelectNextControlP
   const [count, setCount] = useState(DEFAULT_SEAT_COUNT);
 
   return (
-    <div className="join">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         disabled={disabled}
         title="Select the next unassigned guests (skips declined)"
-        className="btn join-item btn-xs"
+        className="btn btn-xs"
         onClick={() => onSelectNext(count)}
       >
         Select next
       </button>
-      <input
-        type="number"
+      <NumberField
+        size="xs"
         min={1}
         max={MAX_SEAT_COUNT}
         aria-label="How many guests to select"
-        className="input join-item input-xs w-12 text-base-content"
+        className="w-24"
         value={count}
-        onChange={(event) =>
-          setCount(Math.max(1, Math.min(MAX_SEAT_COUNT, Number(event.target.value) || 1)))
-        }
+        onChange={setCount}
       />
     </div>
   );

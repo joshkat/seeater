@@ -1,8 +1,13 @@
 import type { Table } from "@seating/shared";
+import { MAX_SEAT_COUNT } from "@seating/shared";
 
+import { NumberField } from "../../../components/NumberField";
 import { useTables } from "../hooks/useDocumentSelectors";
 import { tableDisplayName } from "../lib/tableLabel";
 import { useEditorStore } from "../store/editorStore";
+
+/** Smallest table width/height (matches the canvas resize limit). */
+const MIN_TABLE_SIZE = 40;
 
 const labelClass = "mb-1 block text-xs font-semibold text-secondary";
 
@@ -40,14 +45,13 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
         <label className={labelClass} htmlFor="seat-count">
           Chairs ({table.seats.length})
         </label>
-        <input
+        <NumberField
           id="seat-count"
-          type="number"
           min={1}
-          max={64}
-          className="input input-bordered input-sm w-full"
+          max={MAX_SEAT_COUNT}
+          className="w-full"
           value={table.seats.length}
-          onChange={(event) => setSeatCount(table.id, Number(event.target.value))}
+          onChange={(count) => setSeatCount(table.id, count)}
         />
       </div>
 
@@ -79,18 +83,19 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
           <label className={labelClass} htmlFor="table-width">
             {isRound ? "Diameter" : "Width"}
           </label>
-          <input
+          <NumberField
             id="table-width"
-            type="number"
-            min={40}
-            className="input input-bordered input-sm w-full"
+            min={MIN_TABLE_SIZE}
+            step={10}
+            // Blank keeps the current size rather than shrinking to the minimum.
+            emptyValue={Math.round(table.size.width)}
+            className="w-full"
             value={Math.round(table.size.width)}
-            onChange={(event) => {
-              const width = Math.max(40, Number(event.target.value));
+            onChange={(width) =>
               updateTableTransform(table.id, {
                 size: { width, height: isRound ? width : table.size.height },
-              });
-            }}
+              })
+            }
           />
         </div>
         {!isRound && (
@@ -98,19 +103,15 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
             <label className={labelClass} htmlFor="table-height">
               Height
             </label>
-            <input
+            <NumberField
               id="table-height"
-              type="number"
-              min={40}
-              className="input input-bordered input-sm w-full"
+              min={MIN_TABLE_SIZE}
+              step={10}
+              emptyValue={Math.round(table.size.height)}
+              className="w-full"
               value={Math.round(table.size.height)}
-              onChange={(event) =>
-                updateTableTransform(table.id, {
-                  size: {
-                    width: table.size.width,
-                    height: Math.max(40, Number(event.target.value)),
-                  },
-                })
+              onChange={(height) =>
+                updateTableTransform(table.id, { size: { width: table.size.width, height } })
               }
             />
           </div>
