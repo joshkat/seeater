@@ -1,4 +1,4 @@
-import type { Guest, Size, Table } from "@seating/shared";
+import type { Guest, Household, Size, Table } from "@seating/shared";
 import { DEFAULT_FLOOR_PLAN_SIZE } from "@seating/shared";
 
 import { useDocumentStore } from "../store/documentStore";
@@ -10,6 +10,7 @@ import { useDocumentStore } from "../store/documentStore";
 
 const NO_TABLES: Table[] = [];
 const NO_GUESTS: Guest[] = [];
+const NO_HOUSEHOLDS: Household[] = [];
 
 export function useTables(): Table[] {
   return useDocumentStore((state) => state.doc?.tables ?? NO_TABLES);
@@ -17,6 +18,10 @@ export function useTables(): Table[] {
 
 export function useGuests(): Guest[] {
   return useDocumentStore((state) => state.doc?.guests ?? NO_GUESTS);
+}
+
+export function useHouseholds(): Household[] {
+  return useDocumentStore((state) => state.doc?.households ?? NO_HOUSEHOLDS);
 }
 
 export function useDimensions(): Size {
