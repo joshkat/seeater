@@ -183,8 +183,7 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 - [x] Local-first: offline, installable, no account required, backups
 - [x] Sign-in with multi-device sync (built; disabled until we're ready to run the API)
 - [x] CI, linting, API rate limiting and security headers
-- [ ] Dependency majors: React 19, Vite 6+ / Vitest 4+ (clears the remaining dev-only advisories),
-      Prisma 6, zod 4
+- [x] Dependency majors: React 19, Vite 8 + Vitest 5, Prisma 7, zod 4 (`npm audit`: 0)
 - [ ] Undo / redo
 - [ ] Export / print (chart PDF, per-table rosters, escort cards)
 - [ ] Venue templates

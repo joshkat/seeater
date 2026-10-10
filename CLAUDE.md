@@ -139,8 +139,7 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   intended. Don't remove the flag or the gated code; it's deliberately parked.
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
   package is abandoned with open advisories. Upgrade by changing that URL.
-- **`npm audit`** (full) still lists dev-only Vite 5 / Vitest 3 advisories until the major upgrade;
-  `npm audit --omit=dev` is clean.
+- **`npm audit` is at 0** (including dev tools) — keep it there; CI doesn't enforce it yet.
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
   (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
   them. Without a secret key, the API trusts `x-owner-id` (dev only).
@@ -173,12 +172,12 @@ Done:
 - **Optional sign-in (Clerk) with multi-device sync**: versioned whole-document sync, "keep
   both" conflicts, signed-out events adopted on sign-in. **Built but disabled** (`VITE_ENABLE_SYNC`).
 - **Hardening:** ESLint + Prettier check + GitHub Actions CI; API rate limiting + helmet;
-  patched SheetJS; code-split editor and Clerk.
+  patched SheetJS; code-split editor and Clerk. **Current majors:** React 19, Vite 8, Vitest 5,
+  Prisma 7, zod 4, ESLint 10 (TypeScript stays 5.x until typescript-eslint supports 7).
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Next candidates: **dependency majors** (React 19, Vite 6+/Vitest 4+, Prisma 6, zod 4 — one PR
-each), **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
+Next candidates: **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
 (chart PNG/PDF + per-table roster), **venue templates** (a template is just a document),
 touch-friendly seating, **Apple/Google Wallet passes**. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
