@@ -5,6 +5,8 @@ import { AuthControls } from "../../auth/components/AuthControls";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
 import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
+import { DragGhost } from "../../dnd/components/DragGhost";
+import { PlacementDialog } from "../../placement/components/PlacementDialog";
 import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
@@ -91,6 +93,8 @@ export function EditorPage(): JSX.Element {
         </div>
         <PropertiesPanel />
       </div>
+      <PlacementDialog />
+      <DragGhost />
     </div>
   );
 }

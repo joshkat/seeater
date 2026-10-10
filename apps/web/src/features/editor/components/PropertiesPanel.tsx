@@ -4,6 +4,7 @@ import { MAX_SEAT_COUNT } from "@seating/shared";
 import { NumberField } from "../../../components/NumberField";
 import { useTables } from "../hooks/useDocumentSelectors";
 import { tableDisplayName } from "../lib/tableLabel";
+import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useEditorStore } from "../store/editorStore";
 
 /** Smallest table width/height (matches the canvas resize limit). */
@@ -19,6 +20,7 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
   const setSeatCount = useEditorStore((state) => state.setSeatCount);
   const setChairMode = useEditorStore((state) => state.setChairMode);
   const updateTableTransform = useEditorStore((state) => state.updateTableTransform);
+  const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
 
   const isRound = table.shape === "round";
   const rotation = ((Math.round(table.rotation) % 360) + 360) % 360;
@@ -40,6 +42,16 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
           Leave blank to use “{tableDisplayName("", index)}”.
         </p>
       </div>
+
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        disabled={table.seats.length === 0}
+        title="Pick who sits in which chair (also: double-click the table)"
+        onClick={() => openPlacement(table.id, [])}
+      >
+        Edit seating
+      </button>
 
       <div>
         <label className={labelClass} htmlFor="seat-count">

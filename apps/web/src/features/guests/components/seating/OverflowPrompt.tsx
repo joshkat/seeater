@@ -1,6 +1,7 @@
 import { MAX_SEAT_COUNT, openSeatCount, tableIdBySeat } from "@seating/shared";
 import { useMemo } from "react";
 
+import { useExactSeatPlacement } from "../../../editor/hooks/useDocumentSelectors";
 import { tableDisplayName, tableNameById } from "../../../editor/lib/tableLabel";
 import { useDocumentStore } from "../../../editor/store/documentStore";
 import { useGuestStore } from "../../store/guestStore";
@@ -27,6 +28,9 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
   const addChairsForOverflow = useSeatingFlowStore((state) => state.addChairsForOverflow);
   const leaveUnseated = useSeatingFlowStore((state) => state.leaveUnseated);
   const dismiss = useSeatingFlowStore((state) => state.dismiss);
+  // In exact mode every table choice opens the placement dialog, where
+  // households can be split chair by chair, so no separate split button.
+  const exact = useExactSeatPlacement().active;
 
   const model = useMemo(() => {
     if (!doc) return null;
@@ -44,7 +48,11 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
         name: tableDisplayName(candidate.label, index),
         open: openSeatCount(doc, candidate.id, guestIds),
       }))
-      .filter((option) => option.id !== tableId && option.open > 0 && !alreadyAt(option.id));
+      // In exact mode the same table is a fair choice: they may simply not
+      // have been given a chair yet.
+      .filter(
+        (option) => (exact || option.id !== tableId) && option.open > 0 && !alreadyAt(option.id),
+      );
     const canAddChairs =
       table !== undefined &&
       table.chairLayoutMode === "auto" &&
@@ -74,7 +82,7 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
       blockedHouseholds,
       leaveLabel,
     };
-  }, [doc, overflow]);
+  }, [doc, overflow, exact]);
 
   // The user picked other guests: this prompt no longer applies.
   if (!model || !sameIds(selectedGuestIds, overflow.guestIds)) return null;
@@ -90,7 +98,9 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
       <div className="card-body gap-2.5 p-4 text-sm text-base-content">
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold">
-            {count} guest{count === 1 ? "" : "s"} didn’t fit at {model.name} — pick another table
+            {exact
+              ? `${count} guest${count === 1 ? "" : "s"} still need${count === 1 ? "s" : ""} a seat — pick a table`
+              : `${count} guest${count === 1 ? "" : "s"} didn’t fit at ${model.name} — pick another table`}
           </p>
           <button
             type="button"
@@ -103,7 +113,7 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
           </button>
         </div>
 
-        {model.openHere > 0 && model.blockedHouseholds.length > 0 && (
+        {!exact && model.openHere > 0 && model.blockedHouseholds.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-xs">
             <span>
               {model.name} still has {model.openHere} open seat{model.openHere === 1 ? "" : "s"},

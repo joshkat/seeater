@@ -1,14 +1,25 @@
 import type { EventDoc, HouseholdSplit, TableAssignResult } from "@seating/shared";
 import {
+  MAX_SEAT_COUNT,
   addChairsAndAssign,
+  applySeatPlan,
   assignGuestsToTable,
   expandToHouseholds,
   householdSplits,
+  isExactSeatPlacement,
+  openSeatCount,
+  setSeatCount,
 } from "@seating/shared";
 import { create } from "zustand";
 
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { tableNameById } from "../../editor/lib/tableLabel";
+import {
+  type PlacementState,
+  createPlacement,
+  placementPlan,
+  unplacedIncoming,
+} from "../../placement/lib/placementModel";
 import { useGuestStore } from "./guestStore";
 
 /** Where a group of guests is being seated. */
@@ -42,18 +53,32 @@ export interface SeatingNotice {
  *
  * 1. If the move would split a household, ask first (move the whole household,
  *    or only the guests picked).
- * 2. Seat as many as fit, keeping households whole.
+ * 2. With exact seat placement on (per event, see isExactSeatPlacement), open
+ *    the placement dialog to pick chairs. Otherwise seat as many as fit,
+ *    keeping households whole.
  * 3. Anyone left over stays selected and the overflow prompt offers another
  *    table, splitting a household here, adding chairs, or leaving them
  *    unseated — repeated until everyone is placed or skipped.
  *
  * The document edits are pure ops from @seating/shared; this store only holds
- * the prompts' state.
+ * the prompts' state (and the placement dialog's working copy).
  */
 interface SeatingFlowState {
   question: HouseholdQuestion | null;
   overflow: Overflow | null;
   notice: SeatingNotice | null;
+  /** The seat placement dialog, while open. */
+  placement: PlacementState | null;
+
+  /** Opens the placement dialog for a table (prefilled with who's there),
+   * with `incomingIds` waiting in the tray. */
+  openPlacement: (tableId: string, incomingIds: string[]) => void;
+  /** Edits the dialog's working state (pure functions from placementModel). */
+  updatePlacement: (change: (state: PlacementState) => PlacementState) => void;
+  /** Applies the dialog as one document change. */
+  confirmPlacement: () => void;
+  /** Closes the dialog without changing anything. */
+  cancelPlacement: () => void;
 
   requestSeating: (guestIds: string[], target: SeatTarget) => void;
   /** Answers the household question: everyone in the household, or only those picked. */
@@ -115,10 +140,21 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     set({ question: null, overflow: { tableId, guestIds: result.unseatedIds }, notice: null });
   };
 
+  const openPlacementFor = (tableId: string, incomingIds: string[]): void => {
+    const doc = currentDoc();
+    const placement = doc ? createPlacement(doc, tableId, incomingIds) : null;
+    set({ question: null, overflow: null, notice: null, placement });
+  };
+
   const seat = (guestIds: string[], target: SeatTarget): void => {
     if (target.kind === "seat" && guestIds.length === 1) {
       useGuestStore.getState().assignSeat(guestIds[0], target.seatId);
       set({ question: null, overflow: null });
+      return;
+    }
+    const doc = currentDoc();
+    if (doc && isExactSeatPlacement(doc)) {
+      openPlacementFor(target.tableId, guestIds);
       return;
     }
     settle(
@@ -131,6 +167,40 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     question: null,
     overflow: null,
     notice: null,
+    placement: null,
+
+    openPlacement(tableId, incomingIds) {
+      openPlacementFor(tableId, incomingIds);
+    },
+
+    updatePlacement(change) {
+      set((state) => (state.placement ? { placement: change(state.placement) } : state));
+    },
+
+    confirmPlacement() {
+      const { placement } = get();
+      if (!placement) return;
+      const plan = placementPlan(placement);
+      if (plan.length > 0) useDocumentStore.getState().apply((doc) => applySeatPlan(doc, plan));
+      const left = unplacedIncoming(placement);
+      if (left.length > 0) {
+        // Same as auto-fill: leftovers stay selected under the overflow prompt.
+        useGuestStore.getState().setGuestSelection(left);
+        set({ placement: null, overflow: { tableId: placement.tableId, guestIds: left } });
+        return;
+      }
+      useGuestStore.getState().clearGuestSelection();
+      const doc = currentDoc();
+      const name = doc ? tableNameById(doc.tables, placement.tableId) : "the table";
+      set({
+        placement: null,
+        notice: plan.length > 0 ? { id: ++noticeId, text: `Seating saved at ${name}.` } : null,
+      });
+    },
+
+    cancelPlacement() {
+      set({ placement: null });
+    },
 
     requestSeating(guestIds, target) {
       const doc = currentDoc();
@@ -175,7 +245,18 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
 
     addChairsForOverflow() {
       const { overflow } = get();
-      if (!overflow) return;
+      const doc = currentDoc();
+      if (!overflow || !doc) return;
+      if (isExactSeatPlacement(doc)) {
+        // Add the chairs, then let the user pick them in the dialog.
+        const table = doc.tables.find((candidate) => candidate.id === overflow.tableId);
+        if (!table) return;
+        const short = overflow.guestIds.length - openSeatCount(doc, table.id, overflow.guestIds);
+        const count = Math.min(MAX_SEAT_COUNT, table.seats.length + Math.max(0, short));
+        useDocumentStore.getState().apply((current) => setSeatCount(current, table.id, count));
+        openPlacementFor(table.id, overflow.guestIds);
+        return;
+      }
       let added = 0;
       const result = applySeating((doc) => {
         const outcome = addChairsAndAssign(doc, overflow.guestIds, overflow.tableId);
@@ -191,7 +272,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     },
 
     dismiss() {
-      set({ overflow: null, question: null });
+      set({ overflow: null, question: null, placement: null });
     },
 
     clearNotice() {
@@ -199,7 +280,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     },
 
     reset() {
-      set({ question: null, overflow: null, notice: null });
+      set({ question: null, overflow: null, notice: null, placement: null });
     },
   };
 });

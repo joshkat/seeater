@@ -27,6 +27,8 @@ interface TableNodeProps {
   /** Occupancy info keyed by seat id, for rendering seated guests. */
   occupants: Map<string, SeatOccupant>;
   onSelect: (id: string, additive: boolean) => void;
+  /** Double-click / double-tap: open the seat placement dialog. */
+  onOpenSeating: (id: string) => void;
   onTransform: (id: string, patch: { position?: Point; size?: Size; rotation?: number }) => void;
   onSeatMove: (id: string, seatIndex: number, offset: Point) => void;
   onSeatClick: (seatId: string) => void;
@@ -43,6 +45,7 @@ export function TableNode({
   otherCenters,
   occupants,
   onSelect,
+  onOpenSeating,
   onTransform,
   onSeatMove,
   onSeatClick,
@@ -103,6 +106,8 @@ export function TableNode({
       draggable
       onClick={handleSelect}
       onTap={handleSelect}
+      onDblClick={() => table.seats.length > 0 && onOpenSeating(table.id)}
+      onDblTap={() => table.seats.length > 0 && onOpenSeating(table.id)}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onTransformEnd={handleTransformEnd}

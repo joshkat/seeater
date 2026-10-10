@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { THEMES, type ThemeValue, applyTheme, getSavedTheme } from "../../../lib/theme";
 import { useEditorStore } from "../store/editorStore";
+import { ExactPlacementToggle } from "./ExactPlacementToggle";
 
 /** Top toolbar: add tables, act on the current selection, and pick a theme. */
 export function Toolbar(): JSX.Element {
@@ -47,6 +48,8 @@ export function Toolbar(): JSX.Element {
         >
           Delete
         </button>
+        <span className="mx-1 h-6 w-px bg-base-300" />
+        <ExactPlacementToggle />
       </div>
 
       <div className="dropdown dropdown-end">

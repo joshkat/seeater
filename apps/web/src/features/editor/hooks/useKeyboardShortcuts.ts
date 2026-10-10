@@ -4,7 +4,8 @@ import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useEditorStore } from "../store/editorStore";
 
 /** Editor keyboard shortcuts: delete, duplicate (Cmd/Ctrl+D), and Escape
- * (closes a seating prompt if one is open, otherwise clears the selection). */
+ * (backs out of the placement dialog or a seating prompt if one is open,
+ * otherwise clears the selection). */
 export function useKeyboardShortcuts(): void {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
@@ -14,6 +15,17 @@ export function useKeyboardShortcuts(): void {
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+      // The placement dialog is modal: only Escape (back out) applies.
+      const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();
+      if (placement) {
+        if (event.key === "Escape") {
+          if (placement.pending) updatePlacement((state) => ({ ...state, pending: null }));
+          else if (placement.picked) updatePlacement((state) => ({ ...state, picked: null }));
+          else cancelPlacement();
+        }
+        return;
+      }
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();

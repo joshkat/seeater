@@ -62,6 +62,7 @@ export function EditorCanvas(): JSX.Element {
 
   const guests = useGuests();
   const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
+  const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
 
   // seatId -> visual occupant (initials + color) for chair rendering.
   const occupants = useMemo(() => {
@@ -323,6 +324,7 @@ export function EditorCanvas(): JSX.Element {
                 .map((other) => other.position)}
               occupants={occupants}
               onSelect={selectTable}
+              onOpenSeating={(id) => openPlacement(id, [])}
               onTransform={updateTableTransform}
               onSeatMove={setSeatOffset}
               onSeatClick={handleSeatClick}

@@ -1,4 +1,10 @@
-import type { ChairLayoutMode, EventDoc, Point, TableShape } from "@seating/shared";
+import type {
+  ChairLayoutMode,
+  EventDoc,
+  ExactSeatPlacement,
+  Point,
+  TableShape,
+} from "@seating/shared";
 import {
   DEFAULT_FLOOR_PLAN_SIZE,
   addTable,
@@ -6,6 +12,7 @@ import {
   duplicateTables,
   renameEventDoc,
   setChairMode,
+  setExactSeatPlacement,
   setSeatCount,
   setSeatOffset,
   setTableLabel,
@@ -43,6 +50,7 @@ interface EditorState {
   /** Clears per-event view state; called when a different event is opened. */
   resetForNewEvent: () => void;
   renameEvent: (name: string) => void;
+  setExactSeatPlacement: (mode: ExactSeatPlacement) => void;
   setViewport: (viewport: Viewport) => void;
   setStageSize: (size: StageSize) => void;
   fitToView: () => void;
@@ -91,6 +99,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   renameEvent(name) {
     edit((doc) => renameEventDoc(doc, name));
+  },
+
+  setExactSeatPlacement(mode) {
+    edit((doc) => setExactSeatPlacement(doc, mode));
   },
 
   setViewport(viewport) {
