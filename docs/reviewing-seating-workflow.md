@@ -1,16 +1,22 @@
-# Reviewing bulk seating + households
+# Reviewing the seating workflow PR
 
-A guide for auditing the PR for roadmap item 1, **bulk seating at the table level**: the overflow
-prompt, households, and quick multi-select. It covers what changed, the order to read it in, what
-to scrutinize, how to test it yourself, what was and wasn't verified, and the decisions worth
-challenging.
+A guide for auditing the PR for roadmap items 1–3:
 
-> **Size:** about 1.9k lines added and 150 removed across 36 files. Without tests it's about 1.5k
-> added (the shared ops and the web UI). Tests add about 430.
+1. **Bulk seating at the table level:** the overflow prompt, households, quick multi-select.
+2. **Exact seat placement:** a per-event setting and a seat-by-seat placement dialog.
+3. **Tablet & touch:** touch drag-and-drop, canvas gestures, drawers, 44px tap targets.
+
+It covers what changed, the order to read it in, what to scrutinize, how to test it yourself, what
+was and wasn't verified, and the decisions worth challenging.
+
+> **Size:** about 4.6k lines added and 320 removed across 80 files. Without tests it's about 3.8k
+> added. Tests add about 760.
 
 ---
 
 ## What a user notices
+
+### Item 1: bulk seating
 
 - **Leftovers no longer vanish.** Seat 5 guests at a table with 3 open seats: 3 are seated, the
   other 2 **stay selected**, and a prompt at the bottom of the canvas says _"2 guests didn't fit at
@@ -35,6 +41,31 @@ challenging.
 - **Quick multi-select.** Shift-click selects a range (⌘/Ctrl+Shift extends). **Select next [8]**
   grabs the next batch of unassigned guests after the current selection, skipping declined ones.
 - **Escape** closes an open seating prompt (the guests stay selected).
+
+### Item 2: exact seat placement
+
+- **A per-event toolbar switch, "Exact seat placement".** It shows an **auto** badge until you
+  touch it: on for events with 2 or fewer tables, otherwise off.
+- **With it on, seating several guests at a table opens a placement dialog** (after the household
+  question, if any). It shows a live preview of that table's real chair layout, with the guests as
+  chips. Tap a chip then a chair, or drag (mouse or touch). Taking an occupied chair asks first:
+  **Swap** (if the mover came from a chair), **Replace** (the occupant goes back to "To place") or
+  **Cancel**. **Confirm** applies everything as one change; **Cancel** changes nothing.
+- Guests left without a chair stay selected under the overflow prompt, worded _"still need a
+  seat"_, with the same table offered again.
+- **Editing:** double-click (or double-tap) a table, or **Edit seating** in the properties panel,
+  opens the same dialog prefilled. This works in either mode.
+
+### Item 3: tablet & touch
+
+- **Touch drag-and-drop:** press and hold a guest (or household header) for 350 ms, then drag onto
+  a table. A quick swipe still scrolls the list. The table under your finger turns green.
+- **Canvas:** pinch to zoom, two-finger pan, tap a table to select it, tap empty floor to
+  deselect, double-tap a table to edit its seating.
+- **Below 1280px wide (every iPad orientation):** the guest and properties panels become
+  slide-over drawers, opened from toolbar buttons, with a backdrop. Starting a guest drag closes
+  the guest drawer so you can see the canvas.
+- **On touch screens every control is at least 44px.** The RSVP badge can be changed by tapping.
 
 ## The seating flow
 
@@ -64,7 +95,7 @@ Every document change here is a pure op in `@seating/shared`, applied through
 
 ## Review order (commit by commit)
 
-Each commit typechecks and lints on its own, and the branch tip passes everything.
+Each commit was made from a working tree that typechecked and linted, and the branch tip passes everything. Part 1 is commits 1–8 plus the docs. Parts 2 and 3 follow.
 
 ### 1. `feat(shared): households (schema v2) and household-aware table seating`
 
@@ -156,6 +187,68 @@ rewrites every stored doc through `upgradeEventDoc`.
   `SelectCheckbox` now owns its cell: the full row height × 36px is the hit target, and the box is
   24px.
 
+### Part 2: exact seat placement (4 commits)
+
+#### `feat(shared): per-event exact seat placement setting (schema v3) and applySeatPlan`
+
+**Scrutinize.**
+
+- `schema.ts`: `settings.exactSeatPlacement`, plus the v2 → v3 step in `migrate.ts` (`"auto"`).
+  Stored events pick this up automatically via the Dexie-version mechanism from part 1.
+- `eventOps.ts`: `isExactSeatPlacement` (the "≤ 2 tables" rule lives here only; the web hook
+  `useExactSeatPlacement` mirrors it for rendering).
+- `guestOps.ts` → `applySeatPlan`: check how a contested seat resolves (the later entry wins; the
+  earlier guest is unseated) and that someone not in the plan who sits in a planned seat is
+  unseated.
+
+#### `feat(web): pointer-based drag and drop (mouse, pen and touch)`
+
+`features/dnd/`. Check `beginPointerDrag`:
+
+- a press that never moves far enough stays a normal click;
+- after a real drag, the next click is swallowed;
+- with `touchDelayMs`, moving more than 8px before the timer cancels (that's a scroll);
+- once active, `touchmove` is `preventDefault`ed so the page doesn't scroll under the finger.
+
+Listeners are on `window`, so the source element may slide away mid-drag. There are no unit tests,
+because web tests run in Node without a DOM. It was verified in the browser instead (see below).
+
+#### `feat(web): placement dialog model and preview geometry (pure, tested)`
+
+- `placementModel.ts`: the dialog never touches the document. `placementPlan` turns the working
+  copy into seat changes.
+  - A guest left in the tray who came from **another** table keeps that seat.
+  - A guest taken **off this table** is unseated.
+- `previewGeometry.ts`: chairs are spread uniformly when closer than 2.3 × the preview radius, so
+  they stay tappable. Rotation is applied to positions, and labels stay upright.
+
+#### `feat(web): exact seat placement dialog and per-event toggle`
+
+- `seatingFlowStore`:
+  - `seat()` opens the dialog when exact is on, except for a single guest dropped on a specific
+    chair (already exact).
+  - `confirmPlacement` hands leftovers to the overflow prompt.
+  - In exact mode, `addChairsForOverflow` adds the chairs, then reopens the dialog.
+- `PlacementDialog.tsx` and its pieces (one component per file). `useKeyboardShortcuts` ignores
+  Delete/⌘D while the dialog is open, so you can't delete a table from behind the modal.
+- `OverflowPrompt`: no "Split household here" in exact mode, since you split chair by chair in the
+  dialog.
+
+### Part 3: tablet & touch (4 commits)
+
+- `feat(web): drag guests onto the canvas by touch …`: guest rows and headers use
+  `beginPointerDrag` (350 ms hold on touch). The canvas registers the `canvas` drop zone. Its hover
+  highlight is a `dragStore` subscription, so the canvas re-renders only when the target table
+  changes. HTML5 DnD (`guests/lib/dnd.ts`) is removed.
+- `feat(web): canvas touch gestures …`: `pinchViewport` (pure, tested) and `handleTouchMove` in
+  `EditorCanvas`. A second finger stops any drag in progress. `Konva.hitOnDragEnabled = true` is
+  set globally.
+- `feat(web): side panels become slide-over drawers below 1280px …`: `layoutStore`,
+  `useDrawerState` (closed = `inert`, except mid-drag), `DrawerBackdrop`, toolbar buttons. The
+  guest panel's resizable width now goes through a CSS variable, so the drawer width can differ.
+- `feat(web): 44px tap targets on touch screens …`: one `@media (pointer: coarse)` block in
+  `global.css`, plus `pointer-coarse:` column widths in `guestColumns.ts`.
+
 ---
 
 ## How to test it yourself
@@ -166,7 +259,7 @@ npm run build:shared && npm run dev:web
 
 1. **Migration:** open the app on a port where you already have events (5173 has your real dev
    data). They should open normally. In DevTools → Application → IndexedDB → `seating-local`, the
-   docs show `schemaVersion: 2` and `households: []`.
+   docs show `schemaVersion: 3`, `households: []` and `settings: { exactSeatPlacement: "auto" }`.
 2. Create an event, add two round tables (8 chairs each), and import a CSV like:
 
    ```csv
@@ -199,14 +292,44 @@ npm run build:shared && npm run dev:web
 6. **List:** Shift-click a range, ⌘-Shift-click to extend, rename a household (✎), Ungroup it, then
    select two guests and **Group as household**.
 7. **Escape** closes a prompt; the selection survives.
+8. **Exact placement:** make a new event with one table (the toggle shows **on · auto**). Tick a
+   few guests and assign them. In the dialog, tap a chip then a chair, drag another chip, drag a
+   guest onto an occupied chair (Replace / Swap), then **Cancel** (nothing changed) and try again
+   with **Confirm**. Leave someone unplaced: they stay selected under "still need a seat".
+9. **Editing:** double-click the table, or select it and use **Edit seating**.
+10. **Toggle off:** assigning now auto-fills as in item 1.
+11. **Tablet:** open DevTools device mode at iPad sizes (820×1180 and 1180×820). The panels are
+    drawers. Open Guests, then press-and-hold a guest and drag onto a table: the drawer slides away
+    and the table turns green. Pinch and two-finger-pan the canvas, and tap empty floor to
+    deselect.
+12. **Touch sizes:** at a touch-emulated size, every button is at least 44px and the guest list
+    doesn't scroll sideways.
 
 ## What was verified
 
 - `npm run lint`, `format:check`, `typecheck`, the `@seating/web` production build and
-  `npm audit --audit-level=high` all pass. Tests: shared **56** passed, web **51** passed.
+  `npm audit --audit-level=high` all pass. Tests: shared **64** passed, web **65** passed.
 - In the browser (`web-keyless`, :5174): a real pre-existing v1 event was upgraded on open. Steps
-  3–7 above all passed, including a real HTML5 drop onto the canvas (hit-tested through Konva), and
-  both stored documents passed `parseEventDoc` afterwards.
+  3–7 above all passed, and both stored documents passed `parseEventDoc` afterwards.
+- **Item 2:** the following all passed:
+  - tap-to-place and a real mouse drag in the dialog;
+  - Replace (occupant → tray) and Swap (both seated);
+  - Cancel leaves the document untouched, and Confirm saves in one change;
+  - leftovers reach the overflow prompt;
+  - the household question comes before the dialog;
+  - double-click and "Edit seating" open it prefilled;
+  - toggling off goes back to auto-fill.
+- **Item 3:**
+  - Touch drags were simulated with `PointerEvent`s (`pointerType: "touch"`): a quick swipe
+    doesn't drag; press-and-hold drags with a ghost and a green target; the drop seats or asks.
+  - Starting a drag from the drawer closes it; it goes inert afterwards.
+  - A two-finger pinch was simulated with `TouchEvent`s on the Konva stage: about 1.9× zoom for
+    about 1.9× spread, and it pans with the midpoint. Tap selects a table and tap on empty floor
+    deselects.
+  - Drawers were checked at 820×1180 and 1180×820. Desktop (1440) is unchanged.
+  - With touch emulation (767px), every control measured at least 44px, the guest list has no
+    sideways scroll, the dialog chairs render about 77px, and a touch drag inside the dialog moves
+    a guest.
 - Rolling back is safe for storage: Dexie 4 opens a database whose version is higher than the code
   declares (checked against fake-indexeddb), so the previous app still opens.
 
@@ -215,9 +338,12 @@ npm run build:shared && npm run dev:web
 - **API tests**: they need Postgres, and Docker wasn't running locally. CI runs them. The API only
   uses shared ops and the shared schema, so v2 flows through without API code changes.
 - **Sync with mixed app versions** (sync is parked): a v1 client uploading to an API running this
-  code is rejected (`schemaVersion` must be 2). A v1 client _pulling_ a v2 doc refuses it with
+  code is rejected (`schemaVersion` must be 3). A v1 client _pulling_ a v3 doc refuses it with
   "Update the app". Both are the intended behaviour, but untested end to end.
-- **Touch**: dragging on tablets still doesn't work (HTML5 DnD). That's roadmap item 3.
+- **Real iPad hardware.** Everything touch was tested with emulation and synthetic events in
+  Chromium. iOS Safari specifics weren't exercised on a device: the long-press callout
+  suppression, `touchmove` cancellation during a drag, and `inert`. Please try it on an iPad.
+- **Phone layout** is out of scope (roadmap item 15).
 - **Rollback detail**: if you roll back to the old app _and edit_, guests it creates have no
   `householdId`. The Dexie upgrade won't re-run when you come forward again, so those documents
   would fail `parseEventDoc` on backup export. That's an edge case of downgrading, not fixed.
@@ -246,3 +372,20 @@ npm run build:shared && npm run dev:web
    household question when assigned.
 8. **The Dexie version is tied to the schema version.** That's simple and self-maintaining. If the
    object stores themselves ever change shape, we'd want a separate storage version.
+9. **A single click on a table still selects it; double-click opens seating.** The brief said
+   "clicking a table with seated guests" opens the dialog. A modal on every click would make it
+   impossible to select a table to change its chairs or size, so seating is on double-click /
+   double-tap and the **Edit seating** button.
+10. **The dialog is available in both modes** (via Edit seating / double-click). The toggle only
+    decides what _assigning a group_ does.
+11. **Unplaced guests after Confirm go to the overflow prompt** rather than silently staying
+    unassigned, which matches item 1's "keep leftovers selected".
+12. **Drawers start below 1280px**, so iPad landscape (1180) gets drawers too. Side-by-side panels
+    there would leave about 540px of canvas. A 12.9" iPad in landscape (1366) gets the desktop
+    layout.
+13. **One-finger drag on empty floor still pans** (as on desktop). Two fingers pan and zoom.
+14. **Touch drags need a 350 ms hold** in the guest list, so it can scroll. Inside the placement
+    dialog they start on movement (nothing there scrolls).
+15. **Our own pointer drag instead of dnd-kit.** It's about 150 lines, adds no dependency (new
+    dependencies have caused Vite/react-konva cache trouble here before), and it lets one system
+    span the guest list, the Konva canvas and the dialog.

@@ -66,7 +66,8 @@ erDiagram
   GUEST }o--o| HOUSEHOLD : "householdId"
 
   EVENT_DOC {
-    int schemaVersion "2 — bump + add an upgrade step on breaking changes"
+    int schemaVersion "3 — bump + add an upgrade step on breaking changes"
+    object settings "exactSeatPlacement: auto | on | off"
     string id "client UUID"
     string name "max 120"
     size dimensions "floor-plan area, plan units"
@@ -107,7 +108,7 @@ A trimmed example:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "8906dfcd-cdb8-4d14-b236-851298ba8da2",
   "name": "Sarah & Tom's Wedding",
   "dimensions": { "width": 1600, "height": 1000 },
@@ -138,6 +139,7 @@ A trimmed example:
     }
   ],
   "households": [{ "id": "5b0e…", "name": "Lovelace household" }],
+  "settings": { "exactSeatPlacement": "auto" },
   "createdAt": "2026-10-09T02:00:00.000Z",
   "updatedAt": "2026-10-09T02:16:03.568Z"
 }
@@ -159,6 +161,13 @@ a table, or lowering its chair count, unseats the affected guests in the same st
 separate cleanup pass. Likewise, a household whose last member leaves (or is deleted) is dropped
 by the same op, so documents never carry empty households.
 
+### Settings
+
+`settings` holds per-event preferences that travel with the document (backups, sync).
+`exactSeatPlacement` decides what seating a group at a table does: `on` opens the seat-by-seat
+placement dialog, `off` auto-fills open seats, `auto` (the default) means on for events with 2 or
+fewer tables (`isExactSeatPlacement` in `eventOps.ts`).
+
 ### Households
 
 A household (a family, a couple, a party) is a set of guests to seat together. Membership lives on
@@ -177,7 +186,7 @@ layout.
 
 ### Schema versions
 
-`schemaVersion` is `2` (v2 added households). When the shape changes in a way old documents don't
+`schemaVersion` is `3` (v2 added households, v3 added `settings`). When the shape changes in a way old documents don't
 satisfy:
 
 1. Bump `EVENT_DOC_SCHEMA_VERSION` in `schema.ts`.

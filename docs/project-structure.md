@@ -103,6 +103,17 @@ features/guests/
 └── lib/                        # csv / spreadsheet import, guestListModel (grouping, order,
                                 # "next N"), dnd, selectModifiers, guestDisplay, rsvp
 
+features/placement/
+├── components/                 # PlacementDialog, TablePreview, PreviewChair, PlacementTray,
+│                               # PlacementChip, ReplaceConfirm
+└── lib/                        # placementModel (dialog state, pure), previewGeometry (SVG layout)
+
+features/dnd/                   # pointer drag-and-drop (mouse + touch)
+├── lib/pointerDrag.ts          # beginPointerDrag: threshold / long-press, drop dispatch, click swallow
+├── lib/dropZones.ts            # data-drop-zone + registerDropZone
+├── store/dragStore.ts
+└── components/DragGhost.tsx
+
 features/sync/
 ├── api/syncApi.ts              # SyncApi interface + HTTP implementation
 ├── engine/planSync.ts          # pure conflict policy (the decision table)

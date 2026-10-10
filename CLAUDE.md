@@ -100,7 +100,22 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   (`householdSplits`), fills the table keeping households whole (`assignGuestsToTable`), and leaves
   leftovers **selected** under an overflow prompt (other tables / split here / add chairs / leave),
   looping until done. Prompts render in `guests/components/seating/SeatingPrompts` over the canvas.
-- **Households (schema v2):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
+  With **exact seat placement** on (`isExactSeatPlacement`: per-event `settings.exactSeatPlacement`
+  auto/on/off, auto = ≤ 2 tables), a group opens the **placement dialog** instead of auto-filling.
+- **Placement dialog** (`features/placement/`): working copy in `seatingFlowStore.placement`, edited
+  only through the pure `lib/placementModel.ts`; Confirm = one `applySeatPlan` edit (Cancel drops
+  it). SVG preview from `lib/previewGeometry.ts`. Also opened by double-click/double-tap on a table
+  or "Edit seating" (either mode). Keyboard shortcuts are off while it's open (Escape backs out).
+- **Drag and drop is pointer-based** (`features/dnd/`), not HTML5 DnD (which doesn't fire on touch):
+  `beginPointerDrag` (mouse: after 5 px; touch: optional long-press — guest rows use 350 ms so the
+  list scrolls), zones = `data-drop-zone="id"` + `registerDropZone(id, handler)`, `DragGhost` follows
+  the pointer. Zones: `canvas` (Konva hit test → `requestSeating`), `placement-seat`,
+  `placement-tray`.
+- **Tablet layout:** below `xl` (1280px — every iPad orientation) the guest/properties panels are
+  slide-over drawers (`editor/store/layoutStore`, `useDrawerState`; closed = `inert`). Canvas:
+  pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
+  `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
+- **Households (schema v2; v3 added `settings`):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
   households. The guest list groups unassigned members under a header (`guests/lib/guestListModel`,
   which also defines display order for Shift-click ranges and "Select next N").
 - **Sync flag:** `auth/lib/authConfig.ts` → `syncEnabled` (`VITE_ENABLE_SYNC === "true"`) gates
@@ -151,10 +166,14 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
 - **CORS (dev):** API allows any `localhost` origin in non-production (`apps/api/src/app.ts`).
 - **Synthetic clicks on Konva** are unreliable. For verification, drive real DOM events or store
   actions, or dispatch pointer events at a node's `getAbsolutePosition()`. In dev, `window.Konva` exists:
-  `Konva.stages[0].find(n => n.getAttr('tableId'))` gives table bodies; a guest drop is a
-  `DragEvent('drop', { dataTransfer, clientX, clientY })` on the stage container (dispatch
-  `dragstart` on the guest row first to fill the `DataTransfer`). New tables from the toolbar only
-  jitter by 24 units, so they overlap and the topmost wins the hit test.
+  `Konva.stages[0].find(n => n.getAttr('tableId'))` gives table bodies; `group.fire('click' |
+'dblclick', { evt: new MouseEvent(…) }, true)` selects / opens seating. **Guest drags** are
+  `PointerEvent`s: `pointerdown` on the row (`li.cursor-grab` — not the household's wrapper `li`),
+  then `pointermove`/`pointerup` on `window`; with `pointerType: "touch"` wait > 350 ms before
+  moving. Pinch = `TouchEvent`s with two `Touch`es on `stage.content`. New tables from the toolbar
+  only jitter by 24 units, so they overlap and the topmost wins the hit test.
+- **Touch emulation in the preview browser** (and so `pointer: coarse`) only kicks in below 768px
+  wide; check iPad layouts at 820×1180 / 1180×820 for drawers and at 767px for touch sizing.
 - **Controlled `<select>`s (AssignBar) ignore `form_input`.** Set the value with the native
   `HTMLSelectElement` value setter and dispatch a bubbling `change` event.
 - **HMR on a zustand store module** can leave components bound to two store instances (a prompt
@@ -201,6 +220,11 @@ Done:
 - **Households:** `householdId` (schema v2), grouped in the list (header selects / drags the whole
   household, rename, ungroup), "Group as household" from a selection, import from a
   "Household"/"Party" column, never split without asking.
+- **Exact seat placement** (per event, schema v3): toolbar toggle (auto = on for ≤ 2 tables);
+  placement dialog with live table preview, tap or drag, swap/replace asks first, Confirm = one
+  change; "Edit seating" / double-click a table.
+- **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
+  1280px, 44px targets on touch screens. Phone layout not yet (roadmap 15).
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
@@ -216,9 +240,8 @@ Done:
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 **exact seat placement** (decided: a
-**per-event** setting stored in the doc as on/off/auto, auto = on for ≤ 2 tables; a placement
-dialog with a live table preview; Confirm = one change) → 3 tablet/touch → 4 **undo/redo** (cheap:
+Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ → 3 tablet/touch ✅
+(1–3 ship together in one PR) → 4 **undo/redo** (cheap:
 history of immutable docs in `documentStore`) → 5 **export/print** (chart PNG/PDF, rosters, place
 cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
 passes**. Deferred on purpose: **error reporting**
