@@ -139,7 +139,9 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   intended. Don't remove the flag or the gated code; it's deliberately parked.
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
   package is abandoned with open advisories. Upgrade by changing that URL.
-- **`npm audit` is at 0** (including dev tools) — keep it there; CI doesn't enforce it yet.
+- **`npm audit` is at 0** (including dev tools) and CI fails on any high/critical advisory
+  (`npm audit --audit-level=high`). A new upstream advisory can turn CI red with no code change —
+  fix it (bump / override) rather than lowering the level.
 - **Security overrides for the Prisma CLI:** root `overrides` also pins `deepmerge-ts@8.0.2` and
   `mysql2@3.24.5`. Every Prisma 6.13+/7.x/8-RC CLI pins vulnerable versions of both (dev-only; the
   runtime client/adapter aren't affected). Verified the CLI works with them (validate, generate,
