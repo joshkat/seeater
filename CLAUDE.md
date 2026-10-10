@@ -140,6 +140,12 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
   package is abandoned with open advisories. Upgrade by changing that URL.
 - **`npm audit` is at 0** (including dev tools) — keep it there; CI doesn't enforce it yet.
+- **Security overrides for the Prisma CLI:** root `overrides` also pins `deepmerge-ts@8.0.2` and
+  `mysql2@3.24.5`. Every Prisma 6.13+/7.x/8-RC CLI pins vulnerable versions of both (dev-only; the
+  runtime client/adapter aren't affected). Verified the CLI works with them (validate, generate,
+  migrate status/deploy/diff, format). **On each Prisma bump, delete these two overrides and
+  re-run `npm audit`** — drop them once Prisma ships patched versions. If npm reports an override
+  as "invalid", run `npm update <pkg>` (removing lockfile entries makes npm drop the package).
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
   (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
   them. Without a secret key, the API trusts `x-owner-id` (dev only).
