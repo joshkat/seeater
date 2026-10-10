@@ -32,7 +32,7 @@ Optional sign-in with multi-device sync is built but **switched off for now** (b
 
 | Layer   | Tech                                                                                                       |
 | ------- | ---------------------------------------------------------------------------------------------------------- |
-| Web     | React 18 + Vite, react-konva canvas, zustand, React Router, Tailwind v4 + DaisyUI                          |
+| Web     | React 19 + Vite 8, react-konva canvas, zustand, React Router, Tailwind v4 + DaisyUI                        |
 | Storage | **IndexedDB** via [Dexie](https://dexie.org) (one JSON document per event); PWA service worker for offline |
 | Shared  | `@seating/shared`: zod schema for the event document, pure edit operations, seat geometry, sync types      |
 | Sync    | _Optional._ Fastify 5 + Prisma + PostgreSQL, storing versioned documents per account                       |

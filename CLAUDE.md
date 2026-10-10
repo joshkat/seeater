@@ -19,7 +19,7 @@ npm-workspaces monorepo:
   (types inferred from it), **pure edit ops** (`document/*Ops.ts`), `parseEventDoc` (upgrade +
   validate untrusted input), seat geometry, and sync wire types. ESM, builds to `dist/`. **Run
   `npm run build:shared` after editing.**
-- `apps/web` (`@seating/web`): **the product.** React 18 + Vite, react-konva, zustand, React
+- `apps/web` (`@seating/web`): **the product.** React 19 + Vite 8, react-konva, zustand, React
   Router, Dexie (IndexedDB), vite-plugin-pwa, Tailwind v4 + DaisyUI, optional Clerk. Features:
   `src/features/{storage,editor,guests,dashboard,backup,auth,sync}/`.
 - `apps/api` (`@seating/api`): **optional sync service.** Fastify 5 + Prisma + Postgres. One module
@@ -115,6 +115,10 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
 - **IndexedDB is per origin:** each dev port (5173/5174/5175/4173) has separate data. "My events
   vanished" usually means a different port or a different identity scope.
 - **Node:** 22.12+, 24 or 26+ (Vitest 5's range; Node 23/25 unsupported). CI uses 24.
+- **One React for the whole repo:** root `package.json` `overrides` pins `react`/`react-dom`
+  (Clerk's packages otherwise keep React 18 hoisted at the root → duplicate React). When bumping
+  React, change the override and `apps/web` deps together, then check `npm ls react` shows one
+  version.
 - **Vite + react-konva:** after installing ANY new dependency, the canvas may crash in `<StageWrap>`
   (stale optimize cache / duplicate React). Fix: `rm -rf node_modules/.vite apps/web/node_modules/.vite`
   and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.

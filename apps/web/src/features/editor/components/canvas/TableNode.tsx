@@ -53,7 +53,8 @@ export function TableNode({
   const seatPositions = resolveSeatPositions(table);
   const chairsEditable = selected && table.chairLayoutMode === "custom";
 
-  const handleSelect = (event: KonvaEventObject<MouseEvent>): void => {
+  // Shared by onClick (mouse) and onTap (touch).
+  const handleSelect = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
     event.cancelBubble = true;
     onSelect(table.id, event.evt.shiftKey);
   };
