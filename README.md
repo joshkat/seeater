@@ -32,7 +32,7 @@ Optional sign-in with multi-device sync is built but **switched off for now** (b
 
 | Layer   | Tech                                                                                                       |
 | ------- | ---------------------------------------------------------------------------------------------------------- |
-| Web     | React 18 + Vite, react-konva canvas, zustand, React Router, Tailwind v4 + DaisyUI                          |
+| Web     | React 19 + Vite 8, react-konva canvas, zustand, React Router, Tailwind v4 + DaisyUI                        |
 | Storage | **IndexedDB** via [Dexie](https://dexie.org) (one JSON document per event); PWA service worker for offline |
 | Shared  | `@seating/shared`: zod schema for the event document, pure edit operations, seat geometry, sync types      |
 | Sync    | _Optional._ Fastify 5 + Prisma + PostgreSQL, storing versioned documents per account                       |
@@ -51,7 +51,7 @@ apps/api          @seating/api      — optional sync API
 
 ## Quick start (just the app)
 
-You only need Node.js >= 20. No database, no API, no keys.
+You only need Node.js 22.12+, 24, or 26+. No database, no API, no keys.
 
 ```bash
 npm install
@@ -69,7 +69,7 @@ Sign-in and sync are built but disabled unless the web app is started or built w
 ```bash
 npm run db:up                                   # Postgres 17 in Docker (docker-compose.yml)
 cp apps/api/.env.example apps/api/.env          # defaults match the Docker database
-npm run prisma:migrate                          # create the EventDocument table
+npm run prisma:migrate                          # create the EventDocument table + generate the client
 npm run dev:api                                 # http://localhost:4000
 ```
 
@@ -124,7 +124,8 @@ changing either.
 | `npm run format:check`      | Prettier check (what CI runs)                       |
 | `npm test`                  | All tests (API tests need `npm run db:up`)          |
 | `npm run db:up` / `db:down` | Start / stop local Postgres in Docker               |
-| `npm run prisma:migrate`    | Apply/create DB migrations                          |
+| `npm run prisma:migrate`    | Create/apply DB migrations (dev)                    |
+| `npm run prisma:deploy`     | Apply migrations (CI / production)                  |
 | `npm run format`            | Prettier (write)                                    |
 
 **CI** (`.github/workflows/ci.yml`) runs on every PR and push to `main`: lint, format check,
@@ -151,8 +152,8 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 
 **Sync API (only once sync is enabled):** a small Node service plus Postgres.
 
-- Postgres: any managed provider (Neon, Supabase, RDS). Run
-  `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`.
+- Postgres: any managed provider (Neon, Supabase, RDS). Run `npm run prisma:deploy` with
+  `DATABASE_URL` set.
 - API: any Node host (Fly.io, Render, Railway). Build, then `npm run start --workspace
 @seating/api`, with `NODE_ENV=production`, `DATABASE_URL`, `CLERK_SECRET_KEY`, and
   `CORS_ORIGIN=https://your-web-origin`, plus `TRUST_PROXY=true` behind the host's load balancer.
@@ -182,8 +183,7 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 - [x] Local-first: offline, installable, no account required, backups
 - [x] Sign-in with multi-device sync (built; disabled until we're ready to run the API)
 - [x] CI, linting, API rate limiting and security headers
-- [ ] Dependency majors: React 19, Vite 6+ / Vitest 4+ (clears the remaining dev-only advisories),
-      Prisma 6, zod 4
+- [x] Dependency majors: React 19, Vite 8 + Vitest 5, Prisma 7, zod 4 (`npm audit`: 0)
 - [ ] Undo / redo
 - [ ] Export / print (chart PDF, per-table rosters, escort cards)
 - [ ] Venue templates

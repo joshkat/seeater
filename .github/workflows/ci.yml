@@ -51,11 +51,15 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Fail on any high/critical advisory, dev tools included.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Build shared package
         run: npm run build:shared
 
       - name: Generate Prisma client
-        run: npx prisma generate --schema apps/api/prisma/schema.prisma
+        run: npm run prisma:generate
 
       - name: Lint
         run: npm run lint
@@ -67,7 +71,7 @@ jobs:
         run: npm run typecheck
 
       - name: Apply database migrations
-        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+        run: npm run prisma:deploy
 
       - name: Test
         run: npm test

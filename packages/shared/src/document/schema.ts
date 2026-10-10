@@ -28,7 +28,7 @@ export const MAX_GUEST_EMAIL_LENGTH = 200;
 export const MAX_GUEST_PHONE_LENGTH = 40;
 
 const idSchema = z.string().min(1).max(64);
-const isoDateSchema = z.string().datetime({ offset: true });
+const isoDateSchema = z.iso.datetime({ offset: true });
 const nonBlank = (max: number) =>
   z
     .string()

@@ -6,7 +6,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/dev-dist/**", "**/node_modules/**", "**/coverage/**"],
+    ignores: [
+      "**/dist/**",
+      "**/dev-dist/**",
+      "**/node_modules/**",
+      "**/coverage/**",
+      // Prisma 7 generates its client as TypeScript into the API's source tree.
+      "apps/api/src/generated/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

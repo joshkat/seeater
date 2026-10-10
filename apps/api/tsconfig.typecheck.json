@@ -1,0 +1,8 @@
+{
+  // Typecheck-only config: same as tsconfig.json but also covers the
+  // __tests__ folders, which tsconfig.json excludes so they never reach dist/.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "rootDir": "." },
+  "include": ["src/**/*"],
+  "exclude": []
+}

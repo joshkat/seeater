@@ -47,7 +47,8 @@ export function ChairNode({
     onMove({ x: node.x(), y: node.y() });
   };
 
-  const handleClick = (event: KonvaEventObject<MouseEvent>): void => {
+  // Shared by onClick (mouse) and onTap (touch).
+  const handleClick = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
     event.cancelBubble = true;
     onSeatClick(seatId);
   };

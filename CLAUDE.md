@@ -19,7 +19,7 @@ npm-workspaces monorepo:
   (types inferred from it), **pure edit ops** (`document/*Ops.ts`), `parseEventDoc` (upgrade +
   validate untrusted input), seat geometry, and sync wire types. ESM, builds to `dist/`. **Run
   `npm run build:shared` after editing.**
-- `apps/web` (`@seating/web`): **the product.** React 18 + Vite, react-konva, zustand, React
+- `apps/web` (`@seating/web`): **the product.** React 19 + Vite 8, react-konva, zustand, React
   Router, Dexie (IndexedDB), vite-plugin-pwa, Tailwind v4 + DaisyUI, optional Clerk. Features:
   `src/features/{storage,editor,guests,dashboard,backup,auth,sync}/`.
 - `apps/api` (`@seating/api`): **optional sync service.** Fastify 5 + Prisma + Postgres. One module
@@ -114,6 +114,11 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   container isn't running. Only the sync API needs a database; the web app never does.
 - **IndexedDB is per origin:** each dev port (5173/5174/5175/4173) has separate data. "My events
   vanished" usually means a different port or a different identity scope.
+- **Node:** 22.12+, 24 or 26+ (Vitest 5's range; Node 23/25 unsupported). CI uses 24.
+- **One React for the whole repo:** root `package.json` `overrides` pins `react`/`react-dom`
+  (Clerk's packages otherwise keep React 18 hoisted at the root → duplicate React). When bumping
+  React, change the override and `apps/web` deps together, then check `npm ls react` shows one
+  version.
 - **Vite + react-konva:** after installing ANY new dependency, the canvas may crash in `<StageWrap>`
   (stale optimize cache / duplicate React). Fix: `rm -rf node_modules/.vite apps/web/node_modules/.vite`
   and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.
@@ -134,11 +139,24 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   intended. Don't remove the flag or the gated code; it's deliberately parked.
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
   package is abandoned with open advisories. Upgrade by changing that URL.
-- **`npm audit`** (full) still lists dev-only Vite 5 / Vitest 3 advisories until the major upgrade;
-  `npm audit --omit=dev` is clean.
+- **`npm audit` is at 0** (including dev tools) and CI fails on any high/critical advisory
+  (`npm audit --audit-level=high`). A new upstream advisory can turn CI red with no code change —
+  fix it (bump / override) rather than lowering the level.
+- **Security overrides for the Prisma CLI:** root `overrides` also pins `deepmerge-ts@8.0.2` and
+  `mysql2@3.24.5`. Every Prisma 6.13+/7.x/8-RC CLI pins vulnerable versions of both (dev-only; the
+  runtime client/adapter aren't affected). Verified the CLI works with them (validate, generate,
+  migrate status/deploy/diff, format). **On each Prisma bump, delete these two overrides and
+  re-run `npm audit`** — drop them once Prisma ships patched versions. If npm reports an override
+  as "invalid", run `npm update <pkg>` (removing lockfile entries makes npm drop the package).
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
   (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
   them. Without a secret key, the API trusts `x-owner-id` (dev only).
+- **Prisma 7:** the client is generated as TS into `apps/api/src/generated/prisma` (gitignored) —
+  import `PrismaClient`/`Prisma` from there, not `@prisma/client`. The runtime connects via the
+  `@prisma/adapter-pg` driver adapter (`plugins/prisma.ts`). The CLI reads
+  `apps/api/prisma.config.ts` (DATABASE_URL), so run Prisma via the npm scripts (they run in
+  `apps/api`), not `npx prisma --schema …` from the root. `dev`/`typecheck`/`build` regenerate the
+  client first. npm's `latest` tag for `prisma` is an 8.0 RC — pin stable versions explicitly.
 - **API tests hit the real database** in `DATABASE_URL`, using random `test-…` owner ids that are
   cleaned up afterwards.
 
@@ -162,12 +180,12 @@ Done:
 - **Optional sign-in (Clerk) with multi-device sync**: versioned whole-document sync, "keep
   both" conflicts, signed-out events adopted on sign-in. **Built but disabled** (`VITE_ENABLE_SYNC`).
 - **Hardening:** ESLint + Prettier check + GitHub Actions CI; API rate limiting + helmet;
-  patched SheetJS; code-split editor and Clerk.
+  patched SheetJS; code-split editor and Clerk. **Current majors:** React 19, Vite 8, Vitest 5,
+  Prisma 7, zod 4, ESLint 10 (TypeScript stays 5.x until typescript-eslint supports 7).
 
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
-Next candidates: **dependency majors** (React 19, Vite 6+/Vitest 4+, Prisma 6, zod 4 — one PR
-each), **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
+Next candidates: **undo/redo** (cheap now: history of immutable docs in `documentStore`), **export/print**
 (chart PNG/PDF + per-table roster), **venue templates** (a template is just a document),
 touch-friendly seating, **Apple/Google Wallet passes**. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.

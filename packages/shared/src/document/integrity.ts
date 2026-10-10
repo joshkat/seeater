@@ -16,7 +16,7 @@ interface DocLike {
  */
 export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void {
   const issue = (message: string, path: (string | number)[]): void => {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message, path });
+    ctx.addIssue({ code: "custom", message, path });
   };
 
   const tableIds = new Set<string>();
