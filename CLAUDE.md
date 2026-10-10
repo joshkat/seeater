@@ -61,6 +61,11 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   `className="btn btn-primary btn-sm"`. Theme tokens: `bg-base-100/200/300`, `text-base-content`,
   `btn-primary/secondary/accent/error`, `badge-*`, `join`, `dropdown`, `card`, `rounded-box`.
   (Konva canvas nodes use Konva props, not CSS.)
+- **Numbers use `components/NumberField`**, never `<input type="number">`: blank while typing,
+  commits on blur/Enter/−/+ (blank → `emptyValue`, default `min`). Don't commit per keystroke:
+  intermediate values (typing "12" passes "1") hit the document and can unseat guests.
+- **No hidden modifier keys.** Anything reachable by ⌘/Shift-click must also have a visible control
+  (e.g. the guest-list checkboxes). User feedback, 2026-10-09.
 - **Every edit to an event is a pure op in `@seating/shared`** (with a test), applied via
   `useDocumentStore.getState().apply(doc => op(doc, …))`. Don't mutate documents anywhere else.
 - **Schema change?** Edit `document/schema.ts`. If old docs won't satisfy it, bump
@@ -188,7 +193,8 @@ Done:
 - **Zoom-to-table** on select; zoom controls (+/−/reset), recenter on table resize, reset =
   re-fit to current viewport.
 - Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded), drag-to-seat, **multi-select
-  (ctrl/cmd-click, Shift-click ranges, "Select next N") + assign-to-table**, click-to-assign,
+  (checkboxes + select-all, ctrl/cmd-click, Shift-click ranges, "Select next N") +
+  assign-to-table**, labelled list columns, click-to-assign,
   occupancy initials on chairs.
 - **Bulk seating:** overflow prompt (leftovers stay selected; pick another table with open-seat
   counts, split a household into the seats left, **add chairs** to this table, or leave them).

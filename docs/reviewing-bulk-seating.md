@@ -27,6 +27,11 @@ challenging.
   tables first asks: _"Ada is in the Lovelace household… Move whole household (3) to Table 1 /
   Only Ada / Cancel"_. When filling a table, households go in whole or not at all. If one doesn't
   fit, the overflow prompt offers **Split household here** explicitly.
+- **Selecting is visible.** Each guest has a checkbox where the initials used to be (tick to add or
+  remove, no ⌘ needed). Household headers have one too (half-filled when only some members are
+  picked), and the column header has select-all. Columns are labelled (Guest / RSVP).
+- **Number fields** can be blank while you type and apply on blur or Enter, with −/+ buttons and no
+  browser spinner.
 - **Quick multi-select.** Shift-click selects a range (⌘/Ctrl+Shift extends). **Select next [8]**
   grabs the next batch of unassigned guests after the current selection, skipping declined ones.
 - **Escape** closes an open seating prompt (the guests stay selected).
@@ -134,6 +139,19 @@ rewrites every stored doc through `upgradeEventDoc`.
 `CLAUDE.md`, `data-model.md` (households, v2, storage upgrade), `architecture.md`,
 `project-structure.md`, and this guide.
 
+### 7–8. Follow-up from UX feedback
+
+- `feat(web): NumberField …`: `components/NumberField.tsx` + `lib/numberInput.ts` (pure, tested)
+  replace every `type="number"` input. Check `commit` only calls `onChange` on blur, Enter, arrows
+  or −/+, never per keystroke. Before this, typing "12" chairs passed through 1 chair and unseated
+  everyone in seats 2+. Blank → `min`, except table sizes, where blank keeps the current size
+  (falling back to the 40-unit minimum would shrink the table).
+- `feat(web): selection checkboxes and column labels …`: `SelectCheckbox` (stops propagation so the
+  row's replace-selection click doesn't fire), `GuestColumnHeaders` (sticky, with select-all),
+  `lib/guestColumns.ts` (the widths header and rows share). Household members are indented with
+  padding inside the row instead of an indented list, so their RSVP column still lines up. The
+  guest panel's default width went from 340 to 380px.
+
 ---
 
 ## How to test it yourself
@@ -181,7 +199,7 @@ npm run build:shared && npm run dev:web
 ## What was verified
 
 - `npm run lint`, `format:check`, `typecheck`, the `@seating/web` production build and
-  `npm audit --audit-level=high` all pass. Tests: shared **56** passed, web **48** passed.
+  `npm audit --audit-level=high` all pass. Tests: shared **56** passed, web **51** passed.
 - In the browser (`web-keyless`, :5174): a real pre-existing v1 event was upgraded on open. Steps
   3–7 above all passed, including a real HTML5 drop onto the canvas (hit-tested through Konva), and
   both stored documents passed `parseEventDoc` afterwards.
