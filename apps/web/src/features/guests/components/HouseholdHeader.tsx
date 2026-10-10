@@ -1,7 +1,6 @@
 import type { Household } from "@seating/shared";
-import { useState } from "react";
+import { type PointerEvent, useState } from "react";
 
-import { setGuestDragData } from "../lib/dnd";
 import { type SelectModifiers, selectModifiers } from "../lib/selectModifiers";
 import { SelectCheckbox } from "./SelectCheckbox";
 
@@ -16,6 +15,8 @@ interface HouseholdHeaderProps {
   /** At least one member is selected. */
   partlySelected: boolean;
   onSelect: (modifiers: SelectModifiers) => void;
+  /** Starts a possible drag of the whole household. */
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   onRename: (name: string) => void;
   onDissolve: () => void;
 }
@@ -29,6 +30,7 @@ export function HouseholdHeader({
   selected,
   partlySelected,
   onSelect,
+  onPointerDown,
   onRename,
   onDissolve,
 }: HouseholdHeaderProps): JSX.Element {
@@ -61,15 +63,10 @@ export function HouseholdHeader({
 
   return (
     <div
-      draggable
-      onDragStart={(event) => {
-        // Dragging the header carries the whole household.
-        onSelect({ additive: false, range: false });
-        setGuestDragData(event.dataTransfer, allMemberIds[0]);
-      }}
+      onPointerDown={onPointerDown}
       onClick={(event) => onSelect(selectModifiers(event))}
       title="Click to select the whole household, or drag it onto a table"
-      className={`group flex cursor-grab select-none items-center gap-2 rounded-field border px-2 py-1 ${
+      className={`group flex cursor-grab touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2 rounded-field border px-2 py-1 ${
         selected ? "border-primary bg-primary/5" : "border-transparent"
       }`}
     >

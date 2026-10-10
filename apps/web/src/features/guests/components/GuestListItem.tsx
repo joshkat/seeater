@@ -1,6 +1,6 @@
 import type { Guest, RsvpStatus } from "@seating/shared";
+import type { PointerEvent } from "react";
 
-import { setGuestDragData } from "../lib/dnd";
 import { GUEST_COLUMNS } from "../lib/guestColumns";
 import { type SelectModifiers, selectModifiers } from "../lib/selectModifiers";
 import { RsvpControl } from "./RsvpControl";
@@ -16,6 +16,8 @@ interface GuestListItemProps {
   /** `additive`: ctrl/cmd was held or the checkbox was used (toggle).
    * `range`: shift was held. */
   onSelect: (modifiers: SelectModifiers) => void;
+  /** Starts a possible drag (mouse: on movement; touch: long-press). */
+  onPointerDown: (event: PointerEvent<HTMLLIElement>) => void;
   onSetRsvp: (status: RsvpStatus) => void;
   onUnseat: () => void;
   onRemove: () => void;
@@ -29,6 +31,7 @@ export function GuestListItem({
   selected,
   nested = false,
   onSelect,
+  onPointerDown,
   onSetRsvp,
   onUnseat,
   onRemove,
@@ -37,11 +40,10 @@ export function GuestListItem({
 
   return (
     <li
-      draggable
-      onDragStart={(event) => setGuestDragData(event.dataTransfer, guest.id)}
+      onPointerDown={onPointerDown}
       onClick={(event) => onSelect(selectModifiers(event))}
-      title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table or pick a seat"
-      className={`flex cursor-grab select-none items-center gap-2 rounded-field border py-1.5 pr-2 ${
+      title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table (press and hold on touch) or pick a seat"
+      className={`flex cursor-grab touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1.5 pr-2 ${
         nested ? "pl-6" : "pl-2"
       } ${selected ? "border-primary bg-primary/5" : "border-transparent"}`}
     >

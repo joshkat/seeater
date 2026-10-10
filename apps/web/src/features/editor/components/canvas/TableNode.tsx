@@ -17,6 +17,8 @@ const MIN_SIZE = 40;
 interface TableNodeProps {
   table: Table;
   selected: boolean;
+  /** Guests being dragged would land on this table. */
+  dropHighlight: boolean;
   /** 1-based position used for the auto "Table N" name when unlabeled. */
   tableNumber: number;
   /** Floor-plan canvas size, used to clamp the table inside bounds. */
@@ -39,6 +41,7 @@ interface TableNodeProps {
 export function TableNode({
   table,
   selected,
+  dropHighlight,
   tableNumber,
   dimensions,
   threshold,
@@ -117,6 +120,7 @@ export function TableNode({
         shape={table.shape}
         size={table.size}
         selected={selected}
+        dropHighlight={dropHighlight}
       />
 
       {seats.map((seat, index) => (

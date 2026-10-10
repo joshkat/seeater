@@ -4,10 +4,12 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Rect, Stage } from "react-konva";
 
-import { getGuestDragData } from "../../../guests/lib/dnd";
+import type { Point as ScreenPoint } from "../../../dnd/lib/dragTypes";
+import { registerDropZone } from "../../../dnd/lib/dropZones";
+import { useDragStore } from "../../../dnd/store/dragStore";
 import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
-import { useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
+import { type SeatTarget, useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
 import { WHEEL_ZOOM, clampScale } from "../../geometry/viewport";
 import {
   useDimensions,
@@ -100,45 +102,52 @@ export function EditorCanvas(): JSX.Element {
     [requestSeating, tableForSeat],
   );
 
-  // Drag-to-assign. A single guest dropped on a specific chair takes that seat;
-  // otherwise (multiple guests, a drop on the table body, or anywhere while a
-  // table is focused) the group fills that table's open seats. Household
-  // checks and leftovers are handled by the seating flow.
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>): void => {
-      event.preventDefault();
-      const draggedId = getGuestDragData(event.dataTransfer);
+  // Drag-to-assign: what a guest drop at this viewport point would target. A
+  // chair targets that seat (a single guest takes it; a group fills its
+  // table); the table body, or anywhere while a table is focused, fills that
+  // table. Household checks and leftovers are handled by the seating flow.
+  const dropTargetAt = useCallback(
+    (point: ScreenPoint): SeatTarget | null => {
       const stage = stageRef.current;
       const container = containerRef.current;
-      if (!draggedId || !stage || !container) return;
-
+      if (!stage || !container) return null;
       const rect = container.getBoundingClientRect();
-      const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      const shape = stage.getIntersection(point);
+      const shape = stage.getIntersection({ x: point.x - rect.left, y: point.y - rect.top });
       const seatId = shape?.getAttr("seatId") as string | undefined;
-      const bodyTableId = shape?.getAttr("tableId") as string | undefined;
-
-      const { selectedGuestIds } = useGuestStore.getState();
-      const group =
-        selectedGuestIds.includes(draggedId) && selectedGuestIds.length > 1
-          ? selectedGuestIds
-          : [draggedId];
-
       const seatTableId = seatId ? tableForSeat(seatId)?.id : undefined;
-      if (seatId && seatTableId) {
-        requestSeating(group, { kind: "seat", tableId: seatTableId, seatId });
-        return;
-      }
-      const targetTableId = bodyTableId || useEditorStore.getState().focusedTableId;
-      if (targetTableId) requestSeating(group, { kind: "table", tableId: targetTableId });
+      if (seatId && seatTableId) return { kind: "seat", tableId: seatTableId, seatId };
+      const tableId =
+        (shape?.getAttr("tableId") as string | undefined) ||
+        useEditorStore.getState().focusedTableId;
+      return tableId ? { kind: "table", tableId } : null;
     },
-    [requestSeating, tableForSeat],
+    [tableForSeat],
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>): void => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }, []);
+  useEffect(
+    () =>
+      registerDropZone("canvas", (payload, point) => {
+        if (payload.kind !== "guests") return false;
+        const target = dropTargetAt(point);
+        if (!target) return false;
+        requestSeating(payload.guestIds, target);
+        return true;
+      }),
+    [dropTargetAt, requestSeating],
+  );
+
+  // While guests are dragged over the canvas, highlight the table they'd land
+  // on. A subscription (not a render-time read) so the canvas only re-renders
+  // when the highlighted table changes, not on every pointer move.
+  const [dropHighlightTableId, setDropHighlightTableId] = useState<string | null>(null);
+  useEffect(
+    () =>
+      useDragStore.subscribe((state) => {
+        const point = state.drag?.payload.kind === "guests" ? state.drag.point : null;
+        setDropHighlightTableId(point ? (dropTargetAt(point)?.tableId ?? null) : null);
+      }),
+    [dropTargetAt],
+  );
 
   // Track Shift to switch between pan (drag) and marquee (shift+drag).
   useEffect(() => {
@@ -288,9 +297,8 @@ export function EditorCanvas(): JSX.Element {
   return (
     <div
       ref={containerRef}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      className="relative h-full w-full bg-base-200"
+      data-drop-zone="canvas"
+      className="relative h-full w-full touch-none bg-base-200"
     >
       <ZoomControls />
       <Stage
@@ -316,6 +324,7 @@ export function EditorCanvas(): JSX.Element {
               key={table.id}
               table={table}
               selected={selectedIds.includes(table.id)}
+              dropHighlight={dropHighlightTableId === table.id}
               tableNumber={index + 1}
               dimensions={dimensions}
               threshold={SNAP_PX / viewport.scale}

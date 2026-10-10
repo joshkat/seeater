@@ -1,4 +1,7 @@
-import { useMemo } from "react";
+import { type PointerEvent, useMemo } from "react";
+
+import { beginPointerDrag } from "../../dnd/lib/pointerDrag";
+import { useLayoutStore } from "../../editor/store/layoutStore";
 
 import { useGuests, useHouseholds } from "../../editor/hooks/useDocumentSelectors";
 import {
@@ -12,6 +15,9 @@ import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
 import { HouseholdHeader } from "./HouseholdHeader";
 import { SelectNextControl } from "./SelectNextControl";
+
+/** Touch: press and hold this long before dragging, so the list still scrolls. */
+const TOUCH_HOLD_MS = 350;
 
 /** Where a seat lives, for grouping the seated list by table. */
 export interface SeatInfo {
@@ -112,6 +118,33 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   const allSelected = guests.length > 0 && guests.every((guest) => selected.has(guest.id));
 
+  // Dragging a selected guest carries the whole selection.
+  const startGuestDrag = (event: PointerEvent, guestId: string): void => {
+    beginPointerDrag(
+      event,
+      () => {
+        const { selectedGuestIds: current } = useGuestStore.getState();
+        const guestIds = current.includes(guestId) && current.length > 1 ? current : [guestId];
+        return { kind: "guests", guestIds, label: guestById.get(guestId)?.name ?? "Guest" };
+      },
+      // On a tablet the guest drawer covers the canvas: get it out of the way.
+      {
+        touchDelayMs: TOUCH_HOLD_MS,
+        onStart: () => useLayoutStore.getState().setGuestsOpen(false),
+      },
+    );
+  };
+
+  const startHouseholdDrag = (event: PointerEvent, memberIds: string[], name: string): void => {
+    beginPointerDrag(event, () => ({ kind: "guests", guestIds: memberIds, label: name }), {
+      touchDelayMs: TOUCH_HOLD_MS,
+      onStart: () => {
+        setGuestSelection(memberIds);
+        useLayoutStore.getState().setGuestsOpen(false);
+      },
+    });
+  };
+
   const renderItem = (
     guestId: string,
     subtitle: string | null,
@@ -127,6 +160,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         selected={selected.has(guest.id)}
         nested={nested}
         onSelect={(modifiers) => handleSelect(guest.id, modifiers)}
+        onPointerDown={(event) => startGuestDrag(event, guest.id)}
         onSetRsvp={(status) => editGuest(guest.id, { rsvpStatus: status })}
         onUnseat={() => assignSeat(guest.id, null)}
         onRemove={() => removeGuest(guest.id)}
@@ -172,6 +206,9 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                   selected={entry.allMemberIds.every((id) => selected.has(id))}
                   partlySelected={entry.allMemberIds.some((id) => selected.has(id))}
                   onSelect={(modifiers) => handleSelectHousehold(entry.allMemberIds, modifiers)}
+                  onPointerDown={(event) =>
+                    startHouseholdDrag(event, entry.allMemberIds, entry.household.name)
+                  }
                   onRename={(name) => renameHousehold(entry.household.id, name)}
                   onDissolve={() => dissolveHousehold(entry.household.id)}
                 />
