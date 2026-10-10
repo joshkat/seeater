@@ -144,6 +144,12 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
 - **Clerk keys live in real env files, not `.env.example`.** Web: `apps/web/.env.local`
   (`VITE_CLERK_PUBLISHABLE_KEY`). API: `apps/api/.env` (`CLERK_SECRET_KEY`). Restart after changing
   them. Without a secret key, the API trusts `x-owner-id` (dev only).
+- **Prisma 7:** the client is generated as TS into `apps/api/src/generated/prisma` (gitignored) —
+  import `PrismaClient`/`Prisma` from there, not `@prisma/client`. The runtime connects via the
+  `@prisma/adapter-pg` driver adapter (`plugins/prisma.ts`). The CLI reads
+  `apps/api/prisma.config.ts` (DATABASE_URL), so run Prisma via the npm scripts (they run in
+  `apps/api`), not `npx prisma --schema …` from the root. `dev`/`typecheck`/`build` regenerate the
+  client first. npm's `latest` tag for `prisma` is an 8.0 RC — pin stable versions explicitly.
 - **API tests hit the real database** in `DATABASE_URL`, using random `test-…` owner ids that are
   cleaned up afterwards.
 

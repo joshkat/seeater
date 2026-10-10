@@ -19,7 +19,8 @@
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "lint": "eslint .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prisma:deploy": "npm run prisma:deploy --workspace @seating/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

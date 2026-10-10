@@ -69,7 +69,7 @@ Sign-in and sync are built but disabled unless the web app is started or built w
 ```bash
 npm run db:up                                   # Postgres 17 in Docker (docker-compose.yml)
 cp apps/api/.env.example apps/api/.env          # defaults match the Docker database
-npm run prisma:migrate                          # create the EventDocument table
+npm run prisma:migrate                          # create the EventDocument table + generate the client
 npm run dev:api                                 # http://localhost:4000
 ```
 
@@ -124,7 +124,8 @@ changing either.
 | `npm run format:check`      | Prettier check (what CI runs)                       |
 | `npm test`                  | All tests (API tests need `npm run db:up`)          |
 | `npm run db:up` / `db:down` | Start / stop local Postgres in Docker               |
-| `npm run prisma:migrate`    | Apply/create DB migrations                          |
+| `npm run prisma:migrate`    | Create/apply DB migrations (dev)                    |
+| `npm run prisma:deploy`     | Apply migrations (CI / production)                  |
 | `npm run format`            | Prettier (write)                                    |
 
 **CI** (`.github/workflows/ci.yml`) runs on every PR and push to `main`: lint, format check,
@@ -151,8 +152,8 @@ That alone is a complete, free-to-run product. Users' data stays in their browse
 
 **Sync API (only once sync is enabled):** a small Node service plus Postgres.
 
-- Postgres: any managed provider (Neon, Supabase, RDS). Run
-  `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`.
+- Postgres: any managed provider (Neon, Supabase, RDS). Run `npm run prisma:deploy` with
+  `DATABASE_URL` set.
 - API: any Node host (Fly.io, Render, Railway). Build, then `npm run start --workspace
 @seating/api`, with `NODE_ENV=production`, `DATABASE_URL`, `CLERK_SECRET_KEY`, and
   `CORS_ORIGIN=https://your-web-origin`, plus `TRUST_PROXY=true` behind the host's load balancer.

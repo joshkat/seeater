@@ -6,13 +6,19 @@
 // and available on other devices. The server never edits a document; it only
 // stores whole versions and rejects stale writes (optimistic concurrency).
 
+// Prisma 7: the client is generated as TypeScript into src/generated/prisma
+// (gitignored; run `npm run prisma:generate`). The connection URL lives in
+// prisma.config.ts, and the runtime connects through the pg driver adapter
+// (src/plugins/prisma.ts).
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 /// One synced event document per (owner, id).
