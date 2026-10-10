@@ -1,5 +1,10 @@
-import type { EventDoc, EventSummary } from "@seating/shared";
-import Dexie, { type Table } from "dexie";
+import {
+  EVENT_DOC_SCHEMA_VERSION,
+  type EventDoc,
+  type EventSummary,
+  upgradeEventDoc,
+} from "@seating/shared";
+import Dexie, { type Table, type Transaction } from "dexie";
 
 /**
  * Per-document sync bookkeeping. Only meaningful in an account scope; in the
@@ -40,5 +45,25 @@ export class SeatingDb extends Dexie {
       // Primary key `id`; secondary index on `updatedAt`.
       events: "id, updatedAt",
     });
+    // The database version tracks the document schema version: bumping
+    // EVENT_DOC_SCHEMA_VERSION makes Dexie run this once per database, which
+    // brings every stored document up to the current schema.
+    this.version(EVENT_DOC_SCHEMA_VERSION).upgrade(upgradeStoredDocs);
   }
+}
+
+/** Upgrades every stored document in place. A document that can't be
+ * upgraded is left as it was rather than blocking the database from opening. */
+async function upgradeStoredDocs(tx: Transaction): Promise<void> {
+  await tx
+    .table<LocalEventRecord, string>("events")
+    .toCollection()
+    .modify((record) => {
+      if (!record.doc) return;
+      try {
+        record.doc = upgradeEventDoc(record.doc) as EventDoc;
+      } catch (error) {
+        console.error(`Could not upgrade stored event ${record.id}`, error);
+      }
+    });
 }
