@@ -72,6 +72,11 @@ const HEADER_ALIASES: Record<string, keyof GuestInput> = {
   "phone number": "phone",
   mobile: "phone",
   cell: "phone",
+  household: "household",
+  "household name": "household",
+  party: "household",
+  "party name": "household",
+  family: "household",
 };
 
 /** Maps a header row to column indices, or null if no header is recognized. */
@@ -96,8 +101,9 @@ export type CsvImportResult = GuestImportResult;
 /**
  * Maps rows of cells to guest inputs. If the first row looks like a header
  * (contains a recognizable "name" column) it's used to map columns; otherwise
- * columns are read positionally as name, email, phone. Shared by the CSV and
- * spreadsheet (xlsx) importers.
+ * columns are read positionally as name, email, phone. A "Household" / "Party"
+ * column (header only) groups guests with the same value into one household.
+ * Shared by the CSV and spreadsheet (xlsx) importers.
  */
 export function rowsToGuests(rawRows: string[][]): GuestImportResult {
   const rows = rawRows.filter((row) => row.some((cell) => (cell ?? "").trim() !== ""));
@@ -105,27 +111,38 @@ export function rowsToGuests(rawRows: string[][]): GuestImportResult {
 
   const header = detectHeader(rows[0]);
   const dataRows = header ? rows.slice(1) : rows;
-  const col = {
-    name: header?.name ?? 0,
-    email: header?.email ?? 1,
-    phone: header?.phone ?? 2,
-  };
+  // With a header, only the columns it names are read (a "Party" column must
+  // not be taken for email just because it's second). Without one, columns
+  // are positional; households are header-only, so a stray 4th column (notes,
+  // meal) can't invent households.
+  const col = header
+    ? {
+        name: header.name ?? 0,
+        email: header.email,
+        phone: header.phone,
+        household: header.household,
+      }
+    : { name: 0, email: 1, phone: 2, household: undefined };
+  const cell = (row: string[], index: number | undefined): string =>
+    index === undefined ? "" : (row[index] ?? "").trim();
 
   const guests: GuestInput[] = [];
   let skipped = 0;
 
   for (const row of dataRows) {
-    const name = (row[col.name] ?? "").trim();
+    const name = cell(row, col.name);
     if (!name) {
       skipped += 1;
       continue;
     }
-    const email = (row[col.email] ?? "").trim();
-    const phone = (row[col.phone] ?? "").trim();
+    const email = cell(row, col.email);
+    const phone = cell(row, col.phone);
+    const household = cell(row, col.household);
     guests.push({
       name,
       email: email || null,
       phone: phone || null,
+      ...(household ? { household } : {}),
     });
   }
 
