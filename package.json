@@ -40,5 +40,12 @@
     "react-dom": "19.3.0",
     "deepmerge-ts": "8.0.2",
     "mysql2": "3.24.5"
+  },
+  "allowScripts": {
+    "@clerk/shared": false,
+    "@prisma/engines": false,
+    "esbuild": false,
+    "fsevents": false,
+    "prisma": false
   }
 }
