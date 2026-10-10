@@ -192,6 +192,5 @@ touch-friendly seating, **Apple/Google Wallet passes**. Deferred on purpose: **e
 
 ## Git
 
-- Commit after each feature; messages end with `Co-Authored-By: Claude Opus 4.8
-<noreply@anthropic.com>` (author stays the user). Remote: `origin`
+- Commit after each feature. Remote: `origin`
   (github.com/joshkat/custom-seating-app).
