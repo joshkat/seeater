@@ -1,5 +1,5 @@
 import type { Point } from "@seating/shared";
-import type Konva from "konva";
+import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Rect, Stage } from "react-konva";
@@ -10,7 +10,7 @@ import { useDragStore } from "../../../dnd/store/dragStore";
 import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
 import { type SeatTarget, useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
-import { WHEEL_ZOOM, clampScale } from "../../geometry/viewport";
+import { type PinchFrame, WHEEL_ZOOM, clampScale, pinchViewport } from "../../geometry/viewport";
 import {
   useDimensions,
   useDocumentId,
@@ -26,6 +26,9 @@ import { SelectionTransformer } from "./SelectionTransformer";
 import { TableNode } from "./TableNode";
 import { ZoomControls } from "./ZoomControls";
 
+// Keep hit-testing during drags so a second finger can still be read (pinch).
+Konva.hitOnDragEnabled = true;
+
 /** Snap threshold in screen pixels (converted to plan units via scale). */
 const SNAP_PX = 8;
 
@@ -40,6 +43,7 @@ export function EditorCanvas(): JSX.Element {
   const nodeRefs = useRef<Map<string, Konva.Group>>(new Map());
   const fittedFor = useRef<string | null>(null);
   const skipNextClick = useRef(false);
+  const pinch = useRef<PinchFrame | null>(null);
 
   const [guides, setGuides] = useState<AlignmentGuide[]>([]);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
@@ -243,13 +247,44 @@ export function EditorCanvas(): JSX.Element {
     });
   };
 
+  // Two fingers: pinch to zoom and pan together. A second finger turns any
+  // drag in progress (a table, or the one-finger pan) into the pinch.
+  const handleTouchMove = (event: KonvaEventObject<TouchEvent>): void => {
+    const { touches } = event.evt;
+    const stage = stageRef.current;
+    if (touches.length !== 2 || !stage) {
+      pinch.current = null;
+      return;
+    }
+    event.evt.preventDefault();
+    if (stage.isDragging()) stage.stopDrag();
+    nodeRefs.current.forEach((node) => {
+      if (node.isDragging()) node.stopDrag();
+    });
+    const rect = stage.container().getBoundingClientRect();
+    const a = { x: touches[0].clientX - rect.left, y: touches[0].clientY - rect.top };
+    const b = { x: touches[1].clientX - rect.left, y: touches[1].clientY - rect.top };
+    const frame: PinchFrame = {
+      center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+    };
+    if (pinch.current) {
+      setViewport(pinchViewport(useEditorStore.getState().viewport, pinch.current, frame));
+    }
+    pinch.current = frame;
+  };
+
+  const handleTouchEnd = (event: KonvaEventObject<TouchEvent>): void => {
+    if (event.evt.touches.length < 2) pinch.current = null;
+  };
+
   const handleStageDragEnd = (event: KonvaEventObject<DragEvent>): void => {
     if (event.target !== stageRef.current) return;
     const stage = stageRef.current;
     setViewport({ scale: viewport.scale, x: stage.x(), y: stage.y() });
   };
 
-  const isEmptyTarget = (event: KonvaEventObject<MouseEvent>): boolean =>
+  const isEmptyTarget = (event: KonvaEventObject<MouseEvent | TouchEvent>): boolean =>
     event.target === event.target.getStage();
 
   const handleMouseDown = (event: KonvaEventObject<MouseEvent>): void => {
@@ -286,7 +321,8 @@ export function EditorCanvas(): JSX.Element {
     skipNextClick.current = true;
   };
 
-  const handleClick = (event: KonvaEventObject<MouseEvent>): void => {
+  // Click (mouse) or tap (touch) on empty floor clears the selection.
+  const handleClick = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
     if (skipNextClick.current) {
       skipNextClick.current = false;
       return;
@@ -316,6 +352,9 @@ export function EditorCanvas(): JSX.Element {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onClick={handleClick}
+        onTap={handleClick}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <GridLayer dimensions={dimensions} />
         <Layer>
