@@ -7,6 +7,7 @@ import { Layer, Rect, Stage } from "react-konva";
 import { getGuestDragData } from "../../../guests/lib/dnd";
 import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
+import { useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
 import { WHEEL_ZOOM, clampScale } from "../../geometry/viewport";
 import {
   useDimensions,
@@ -60,8 +61,7 @@ export function EditorCanvas(): JSX.Element {
   const clearFocus = useEditorStore((state) => state.clearFocus);
 
   const guests = useGuests();
-  const assignSeat = useGuestStore((state) => state.assignSeat);
-  const assignGuestsToTable = useGuestStore((state) => state.assignGuestsToTable);
+  const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
 
   // seatId -> visual occupant (initials + color) for chair rendering.
   const occupants = useMemo(() => {
@@ -92,20 +92,17 @@ export function EditorCanvas(): JSX.Element {
   const handleSeatClick = useCallback(
     (seatId: string): void => {
       const { selectedGuestIds } = useGuestStore.getState();
-      if (selectedGuestIds.length === 0) return;
-      if (selectedGuestIds.length === 1) {
-        assignSeat(selectedGuestIds[0], seatId);
-        return;
-      }
       const table = tableForSeat(seatId);
-      if (table) assignGuestsToTable(selectedGuestIds, table.id);
+      if (selectedGuestIds.length === 0 || !table) return;
+      requestSeating(selectedGuestIds, { kind: "seat", tableId: table.id, seatId });
     },
-    [assignSeat, assignGuestsToTable, tableForSeat],
+    [requestSeating, tableForSeat],
   );
 
   // Drag-to-assign. A single guest dropped on a specific chair takes that seat;
   // otherwise (multiple guests, a drop on the table body, or anywhere while a
-  // table is focused) the group fills that table's open seats.
+  // table is focused) the group fills that table's open seats. Household
+  // checks and leftovers are handled by the seating flow.
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>): void => {
       event.preventDefault();
@@ -126,16 +123,15 @@ export function EditorCanvas(): JSX.Element {
           ? selectedGuestIds
           : [draggedId];
 
-      if (group.length === 1 && seatId) {
-        assignSeat(group[0], seatId);
+      const seatTableId = seatId ? tableForSeat(seatId)?.id : undefined;
+      if (seatId && seatTableId) {
+        requestSeating(group, { kind: "seat", tableId: seatTableId, seatId });
         return;
       }
-
-      const focusedTableId = useEditorStore.getState().focusedTableId;
-      const targetTableId = (seatId && tableForSeat(seatId)?.id) || bodyTableId || focusedTableId;
-      if (targetTableId) assignGuestsToTable(group, targetTableId);
+      const targetTableId = bodyTableId || useEditorStore.getState().focusedTableId;
+      if (targetTableId) requestSeating(group, { kind: "table", tableId: targetTableId });
     },
-    [assignSeat, assignGuestsToTable, tableForSeat],
+    [requestSeating, tableForSeat],
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>): void => {

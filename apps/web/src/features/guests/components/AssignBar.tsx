@@ -1,36 +1,47 @@
-import { useState } from "react";
+import { openSeatCount } from "@seating/shared";
+import { useMemo } from "react";
 
-import { useTables } from "../../editor/hooks/useDocumentSelectors";
 import { tableDisplayName } from "../../editor/lib/tableLabel";
+import { useDocumentStore } from "../../editor/store/documentStore";
 import { useGuestStore } from "../store/guestStore";
+import { useSeatingFlowStore } from "../store/seatingFlowStore";
 
-/** Action bar shown when one or more guests are selected: assign the whole
- * selection to a table's open seats, or clear the selection. */
+/** Action bar shown when one or more guests are selected: seat the whole
+ * selection at a table (with household checks and the overflow prompt), group
+ * or ungroup them as a household, or clear the selection. */
 export function AssignBar(): JSX.Element | null {
+  const doc = useDocumentStore((state) => state.doc);
   const selectedGuestIds = useGuestStore((state) => state.selectedGuestIds);
-  const assignGuestsToTable = useGuestStore((state) => state.assignGuestsToTable);
   const clearGuestSelection = useGuestStore((state) => state.clearGuestSelection);
-  const tables = useTables();
+  const groupAsHousehold = useGuestStore((state) => state.groupAsHousehold);
+  const removeFromHousehold = useGuestStore((state) => state.removeFromHousehold);
+  const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
 
-  const [message, setMessage] = useState<string | null>(null);
+  const tableOptions = useMemo(
+    () =>
+      (doc?.tables ?? []).map((table, index) => ({
+        id: table.id,
+        name: tableDisplayName(table.label, index),
+        open: doc ? openSeatCount(doc, table.id, selectedGuestIds) : 0,
+      })),
+    [doc, selectedGuestIds],
+  );
+
+  const householdIds = useMemo(() => {
+    const selected = new Set(selectedGuestIds);
+    return new Set(
+      (doc?.guests ?? [])
+        .filter((guest) => selected.has(guest.id))
+        .map((guest) => guest.householdId),
+    );
+  }, [doc, selectedGuestIds]);
 
   if (selectedGuestIds.length === 0) return null;
 
   const count = selectedGuestIds.length;
-
-  function handleAssign(tableId: string): void {
-    const index = tables.findIndex((t) => t.id === tableId);
-    if (index === -1) return;
-    const name = tableDisplayName(tables[index].label, index);
-    const { assigned, capacity } = assignGuestsToTable(selectedGuestIds, tableId);
-    if (assigned === 0) {
-      setMessage(`${name} is full — no open seats.`);
-    } else if (assigned < count) {
-      setMessage(`Seated ${assigned} of ${count} at ${name} (only ${capacity} open).`);
-    } else {
-      setMessage(`Seated ${assigned} at ${name}.`);
-    }
-  }
+  // Grouping only makes sense if they aren't already exactly one household.
+  const canGroup = count > 1 && (householdIds.size > 1 || householdIds.has(null));
+  const canUngroup = [...householdIds].some((id) => id !== null);
 
   return (
     <div className="flex flex-col gap-1.5 rounded-box border border-primary/30 bg-primary/5 p-2">
@@ -38,35 +49,52 @@ export function AssignBar(): JSX.Element | null {
         <span className="text-xs font-semibold text-primary">
           {count} guest{count === 1 ? "" : "s"} selected
         </span>
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs"
-          onClick={() => {
-            clearGuestSelection();
-            setMessage(null);
-          }}
-        >
+        <button type="button" className="btn btn-ghost btn-xs" onClick={clearGuestSelection}>
           Clear
         </button>
       </div>
       <select
         className="select select-bordered select-sm w-full"
+        aria-label="Assign selected guests to a table"
         value=""
         onChange={(event) => {
-          if (event.target.value) handleAssign(event.target.value);
+          const tableId = event.target.value;
+          if (tableId) requestSeating(selectedGuestIds, { kind: "table", tableId });
           event.target.value = "";
         }}
       >
         <option value="" disabled>
           Assign to table…
         </option>
-        {tables.map((table, index) => (
-          <option key={table.id} value={table.id}>
-            {tableDisplayName(table.label, index)}
+        {tableOptions.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name} ({option.open === 0 ? "full" : `${option.open} open`})
           </option>
         ))}
       </select>
-      {message && <span className="text-[11px] text-base-content/60">{message}</span>}
+      {(canGroup || canUngroup) && (
+        <div className="flex flex-wrap gap-1.5">
+          {canGroup && (
+            <button
+              type="button"
+              className="btn btn-outline btn-xs"
+              title="Seat these guests together from now on"
+              onClick={() => groupAsHousehold(selectedGuestIds)}
+            >
+              Group as household
+            </button>
+          )}
+          {canUngroup && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => removeFromHousehold(selectedGuestIds)}
+            >
+              Remove from household
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

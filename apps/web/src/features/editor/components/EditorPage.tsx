@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
 import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
@@ -86,6 +87,7 @@ export function EditorPage(): JSX.Element {
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
           <EditorCanvas />
+          <SeatingPrompts />
         </div>
         <PropertiesPanel />
       </div>

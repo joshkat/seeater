@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 
+import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useEditorStore } from "../store/editorStore";
 
-/** Editor keyboard shortcuts: delete, duplicate (Cmd/Ctrl+D), and Escape. */
+/** Editor keyboard shortcuts: delete, duplicate (Cmd/Ctrl+D), and Escape
+ * (closes a seating prompt if one is open, otherwise clears the selection). */
 export function useKeyboardShortcuts(): void {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
@@ -20,7 +22,9 @@ export function useKeyboardShortcuts(): void {
         event.preventDefault();
         duplicateSelected();
       } else if (event.key === "Escape") {
-        clearSelection();
+        const seating = useSeatingFlowStore.getState();
+        if (seating.question || seating.overflow) seating.dismiss();
+        else clearSelection();
       }
     };
 
