@@ -4,7 +4,8 @@ import { z } from "zod";
  * locally (not imported from schema.ts) to avoid a circular import. */
 interface DocLike {
   tables: { id: string; seats: { id: string; index: number }[] }[];
-  guests: { id: string; seatId: string | null }[];
+  guests: { id: string; seatId: string | null; householdId: string | null }[];
+  households: { id: string }[];
 }
 
 /**
@@ -12,7 +13,8 @@ interface DocLike {
  * - table, seat and guest ids are unique within the document;
  * - each table's seats are ordered with `index` equal to array position;
  * - a guest's `seatId` points at a seat that exists;
- * - no two guests share a seat (one guest per seat).
+ * - no two guests share a seat (one guest per seat);
+ * - household ids are unique and a guest's `householdId` points at one.
  */
 export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void {
   const issue = (message: string, path: (string | number)[]): void => {
@@ -32,12 +34,23 @@ export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void
     });
   });
 
+  const householdIds = new Set<string>();
+  doc.households.forEach((household, householdIndex) => {
+    if (householdIds.has(household.id)) {
+      issue(`Duplicate household id ${household.id}`, ["households", householdIndex]);
+    }
+    householdIds.add(household.id);
+  });
+
   const guestIds = new Set<string>();
   const occupied = new Set<string>();
   doc.guests.forEach((guest, guestIndex) => {
     const path = ["guests", guestIndex];
     if (guestIds.has(guest.id)) issue(`Duplicate guest id ${guest.id}`, path);
     guestIds.add(guest.id);
+    if (guest.householdId !== null && !householdIds.has(guest.householdId)) {
+      issue(`Guest household ${guest.householdId} does not exist`, path);
+    }
     if (guest.seatId === null) return;
     if (!seatIds.has(guest.seatId)) issue(`Guest seat ${guest.seatId} does not exist`, path);
     if (occupied.has(guest.seatId)) issue(`Seat ${guest.seatId} has more than one guest`, path);

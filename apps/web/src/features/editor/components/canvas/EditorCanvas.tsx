@@ -1,13 +1,16 @@
 import type { Point } from "@seating/shared";
-import type Konva from "konva";
+import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Rect, Stage } from "react-konva";
 
-import { getGuestDragData } from "../../../guests/lib/dnd";
+import type { Point as ScreenPoint } from "../../../dnd/lib/dragTypes";
+import { registerDropZone } from "../../../dnd/lib/dropZones";
+import { useDragStore } from "../../../dnd/store/dragStore";
 import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
-import { WHEEL_ZOOM, clampScale } from "../../geometry/viewport";
+import { type SeatTarget, useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
+import { type PinchFrame, WHEEL_ZOOM, clampScale, pinchViewport } from "../../geometry/viewport";
 import {
   useDimensions,
   useDocumentId,
@@ -23,6 +26,9 @@ import { SelectionTransformer } from "./SelectionTransformer";
 import { TableNode } from "./TableNode";
 import { ZoomControls } from "./ZoomControls";
 
+// Keep hit-testing during drags so a second finger can still be read (pinch).
+Konva.hitOnDragEnabled = true;
+
 /** Snap threshold in screen pixels (converted to plan units via scale). */
 const SNAP_PX = 8;
 
@@ -37,6 +43,7 @@ export function EditorCanvas(): JSX.Element {
   const nodeRefs = useRef<Map<string, Konva.Group>>(new Map());
   const fittedFor = useRef<string | null>(null);
   const skipNextClick = useRef(false);
+  const pinch = useRef<PinchFrame | null>(null);
 
   const [guides, setGuides] = useState<AlignmentGuide[]>([]);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
@@ -60,8 +67,8 @@ export function EditorCanvas(): JSX.Element {
   const clearFocus = useEditorStore((state) => state.clearFocus);
 
   const guests = useGuests();
-  const assignSeat = useGuestStore((state) => state.assignSeat);
-  const assignGuestsToTable = useGuestStore((state) => state.assignGuestsToTable);
+  const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
+  const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
 
   // seatId -> visual occupant (initials + color) for chair rendering.
   const occupants = useMemo(() => {
@@ -92,56 +99,59 @@ export function EditorCanvas(): JSX.Element {
   const handleSeatClick = useCallback(
     (seatId: string): void => {
       const { selectedGuestIds } = useGuestStore.getState();
-      if (selectedGuestIds.length === 0) return;
-      if (selectedGuestIds.length === 1) {
-        assignSeat(selectedGuestIds[0], seatId);
-        return;
-      }
       const table = tableForSeat(seatId);
-      if (table) assignGuestsToTable(selectedGuestIds, table.id);
+      if (selectedGuestIds.length === 0 || !table) return;
+      requestSeating(selectedGuestIds, { kind: "seat", tableId: table.id, seatId });
     },
-    [assignSeat, assignGuestsToTable, tableForSeat],
+    [requestSeating, tableForSeat],
   );
 
-  // Drag-to-assign. A single guest dropped on a specific chair takes that seat;
-  // otherwise (multiple guests, a drop on the table body, or anywhere while a
-  // table is focused) the group fills that table's open seats.
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>): void => {
-      event.preventDefault();
-      const draggedId = getGuestDragData(event.dataTransfer);
+  // Drag-to-assign: what a guest drop at this viewport point would target. A
+  // chair targets that seat (a single guest takes it; a group fills its
+  // table); the table body, or anywhere while a table is focused, fills that
+  // table. Household checks and leftovers are handled by the seating flow.
+  const dropTargetAt = useCallback(
+    (point: ScreenPoint): SeatTarget | null => {
       const stage = stageRef.current;
       const container = containerRef.current;
-      if (!draggedId || !stage || !container) return;
-
+      if (!stage || !container) return null;
       const rect = container.getBoundingClientRect();
-      const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      const shape = stage.getIntersection(point);
+      const shape = stage.getIntersection({ x: point.x - rect.left, y: point.y - rect.top });
       const seatId = shape?.getAttr("seatId") as string | undefined;
-      const bodyTableId = shape?.getAttr("tableId") as string | undefined;
-
-      const { selectedGuestIds } = useGuestStore.getState();
-      const group =
-        selectedGuestIds.includes(draggedId) && selectedGuestIds.length > 1
-          ? selectedGuestIds
-          : [draggedId];
-
-      if (group.length === 1 && seatId) {
-        assignSeat(group[0], seatId);
-        return;
-      }
-
-      const focusedTableId = useEditorStore.getState().focusedTableId;
-      const targetTableId = (seatId && tableForSeat(seatId)?.id) || bodyTableId || focusedTableId;
-      if (targetTableId) assignGuestsToTable(group, targetTableId);
+      const seatTableId = seatId ? tableForSeat(seatId)?.id : undefined;
+      if (seatId && seatTableId) return { kind: "seat", tableId: seatTableId, seatId };
+      const tableId =
+        (shape?.getAttr("tableId") as string | undefined) ||
+        useEditorStore.getState().focusedTableId;
+      return tableId ? { kind: "table", tableId } : null;
     },
-    [assignSeat, assignGuestsToTable, tableForSeat],
+    [tableForSeat],
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>): void => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }, []);
+  useEffect(
+    () =>
+      registerDropZone("canvas", (payload, point) => {
+        if (payload.kind !== "guests") return false;
+        const target = dropTargetAt(point);
+        if (!target) return false;
+        requestSeating(payload.guestIds, target);
+        return true;
+      }),
+    [dropTargetAt, requestSeating],
+  );
+
+  // While guests are dragged over the canvas, highlight the table they'd land
+  // on. A subscription (not a render-time read) so the canvas only re-renders
+  // when the highlighted table changes, not on every pointer move.
+  const [dropHighlightTableId, setDropHighlightTableId] = useState<string | null>(null);
+  useEffect(
+    () =>
+      useDragStore.subscribe((state) => {
+        const point = state.drag?.payload.kind === "guests" ? state.drag.point : null;
+        setDropHighlightTableId(point ? (dropTargetAt(point)?.tableId ?? null) : null);
+      }),
+    [dropTargetAt],
+  );
 
   // Track Shift to switch between pan (drag) and marquee (shift+drag).
   useEffect(() => {
@@ -237,13 +247,44 @@ export function EditorCanvas(): JSX.Element {
     });
   };
 
+  // Two fingers: pinch to zoom and pan together. A second finger turns any
+  // drag in progress (a table, or the one-finger pan) into the pinch.
+  const handleTouchMove = (event: KonvaEventObject<TouchEvent>): void => {
+    const { touches } = event.evt;
+    const stage = stageRef.current;
+    if (touches.length !== 2 || !stage) {
+      pinch.current = null;
+      return;
+    }
+    event.evt.preventDefault();
+    if (stage.isDragging()) stage.stopDrag();
+    nodeRefs.current.forEach((node) => {
+      if (node.isDragging()) node.stopDrag();
+    });
+    const rect = stage.container().getBoundingClientRect();
+    const a = { x: touches[0].clientX - rect.left, y: touches[0].clientY - rect.top };
+    const b = { x: touches[1].clientX - rect.left, y: touches[1].clientY - rect.top };
+    const frame: PinchFrame = {
+      center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+    };
+    if (pinch.current) {
+      setViewport(pinchViewport(useEditorStore.getState().viewport, pinch.current, frame));
+    }
+    pinch.current = frame;
+  };
+
+  const handleTouchEnd = (event: KonvaEventObject<TouchEvent>): void => {
+    if (event.evt.touches.length < 2) pinch.current = null;
+  };
+
   const handleStageDragEnd = (event: KonvaEventObject<DragEvent>): void => {
     if (event.target !== stageRef.current) return;
     const stage = stageRef.current;
     setViewport({ scale: viewport.scale, x: stage.x(), y: stage.y() });
   };
 
-  const isEmptyTarget = (event: KonvaEventObject<MouseEvent>): boolean =>
+  const isEmptyTarget = (event: KonvaEventObject<MouseEvent | TouchEvent>): boolean =>
     event.target === event.target.getStage();
 
   const handleMouseDown = (event: KonvaEventObject<MouseEvent>): void => {
@@ -280,7 +321,8 @@ export function EditorCanvas(): JSX.Element {
     skipNextClick.current = true;
   };
 
-  const handleClick = (event: KonvaEventObject<MouseEvent>): void => {
+  // Click (mouse) or tap (touch) on empty floor clears the selection.
+  const handleClick = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
     if (skipNextClick.current) {
       skipNextClick.current = false;
       return;
@@ -291,9 +333,8 @@ export function EditorCanvas(): JSX.Element {
   return (
     <div
       ref={containerRef}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      className="relative h-full w-full bg-base-200"
+      data-drop-zone="canvas"
+      className="relative h-full w-full touch-none bg-base-200"
     >
       <ZoomControls />
       <Stage
@@ -311,6 +352,9 @@ export function EditorCanvas(): JSX.Element {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onClick={handleClick}
+        onTap={handleClick}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <GridLayer dimensions={dimensions} />
         <Layer>
@@ -319,6 +363,7 @@ export function EditorCanvas(): JSX.Element {
               key={table.id}
               table={table}
               selected={selectedIds.includes(table.id)}
+              dropHighlight={dropHighlightTableId === table.id}
               tableNumber={index + 1}
               dimensions={dimensions}
               threshold={SNAP_PX / viewport.scale}
@@ -327,6 +372,7 @@ export function EditorCanvas(): JSX.Element {
                 .map((other) => other.position)}
               occupants={occupants}
               onSelect={selectTable}
+              onOpenSeating={(id) => openPlacement(id, [])}
               onTransform={updateTableTransform}
               onSeatMove={setSeatOffset}
               onSeatClick={handleSeatClick}

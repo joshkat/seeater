@@ -4,11 +4,15 @@ import { Link } from "react-router";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
+import { DragGhost } from "../../dnd/components/DragGhost";
+import { PlacementDialog } from "../../placement/components/PlacementDialog";
 import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
+import { DrawerBackdrop } from "./DrawerBackdrop";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { SaveStatusBadge } from "./SaveStatusBadge";
 import { Toolbar } from "./Toolbar";
@@ -82,13 +86,17 @@ export function EditorPage(): JSX.Element {
         <Toolbar />
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
           <EditorCanvas />
+          <SeatingPrompts />
         </div>
         <PropertiesPanel />
+        <DrawerBackdrop />
       </div>
+      <PlacementDialog />
+      <DragGhost />
     </div>
   );
 }

@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 1;
+export const EVENT_DOC_SCHEMA_VERSION = 3;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -26,6 +26,7 @@ export const MAX_TABLE_LABEL_LENGTH = 80;
 export const MAX_GUEST_NAME_LENGTH = 120;
 export const MAX_GUEST_EMAIL_LENGTH = 200;
 export const MAX_GUEST_PHONE_LENGTH = 40;
+export const MAX_HOUSEHOLD_NAME_LENGTH = 120;
 
 const idSchema = z.string().min(1).max(64);
 const isoDateSchema = z.iso.datetime({ offset: true });
@@ -86,6 +87,30 @@ export const guestSchema = z.object({
   rsvpStatus: rsvpStatusSchema,
   /** The seat this guest occupies, if any. A seat holds at most one guest. */
   seatId: idSchema.nullable(),
+  /** The household (family / party) this guest belongs to, if any. */
+  householdId: idSchema.nullable(),
+});
+
+/**
+ * A household (family, couple, party): guests who should be seated together.
+ * Membership lives on the guest (`householdId`); the ops drop a household once
+ * it has no members.
+ */
+export const householdSchema = z.object({
+  id: idSchema,
+  name: nonBlank(MAX_HOUSEHOLD_NAME_LENGTH),
+});
+
+/**
+ * How seating several guests at a table behaves: `on` opens the seat-by-seat
+ * placement dialog, `off` auto-fills open seats, `auto` picks per event size
+ * (on for events with 2 or fewer tables). See `isExactSeatPlacement`.
+ */
+export const exactSeatPlacementSchema = z.enum(["auto", "on", "off"]);
+
+/** Per-event preferences that travel with the document. */
+export const eventSettingsSchema = z.object({
+  exactSeatPlacement: exactSeatPlacementSchema,
 });
 
 /** Shape-only schema (no cross-reference checks). Used before normalizing. */
@@ -97,6 +122,8 @@ export const eventDocShapeSchema = z.object({
   dimensions: sizeSchema,
   tables: z.array(tableSchema).max(MAX_TABLES),
   guests: z.array(guestSchema).max(MAX_GUESTS),
+  households: z.array(householdSchema).max(MAX_GUESTS),
+  settings: eventSettingsSchema,
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
 });
@@ -110,4 +137,7 @@ export type ChairLayoutMode = z.infer<typeof chairLayoutModeSchema>;
 export type Table = z.infer<typeof tableSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type Guest = z.infer<typeof guestSchema>;
+export type Household = z.infer<typeof householdSchema>;
+export type ExactSeatPlacement = z.infer<typeof exactSeatPlacementSchema>;
+export type EventSettings = z.infer<typeof eventSettingsSchema>;
 export type EventDoc = z.infer<typeof eventDocShapeSchema>;

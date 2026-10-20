@@ -1,8 +1,16 @@
 import type { Table } from "@seating/shared";
+import { MAX_SEAT_COUNT } from "@seating/shared";
 
+import { NumberField } from "../../../components/NumberField";
 import { useTables } from "../hooks/useDocumentSelectors";
 import { tableDisplayName } from "../lib/tableLabel";
+import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useDrawerState } from "../hooks/useDrawerState";
+import { DrawerCloseButton } from "./DrawerCloseButton";
 import { useEditorStore } from "../store/editorStore";
+
+/** Smallest table width/height (matches the canvas resize limit). */
+const MIN_TABLE_SIZE = 40;
 
 const labelClass = "mb-1 block text-xs font-semibold text-secondary";
 
@@ -14,6 +22,7 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
   const setSeatCount = useEditorStore((state) => state.setSeatCount);
   const setChairMode = useEditorStore((state) => state.setChairMode);
   const updateTableTransform = useEditorStore((state) => state.updateTableTransform);
+  const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
 
   const isRound = table.shape === "round";
   const rotation = ((Math.round(table.rotation) % 360) + 360) % 360;
@@ -36,18 +45,27 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
         </p>
       </div>
 
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        disabled={table.seats.length === 0}
+        title="Pick who sits in which chair (also: double-click the table)"
+        onClick={() => openPlacement(table.id, [])}
+      >
+        Edit seating
+      </button>
+
       <div>
         <label className={labelClass} htmlFor="seat-count">
           Chairs ({table.seats.length})
         </label>
-        <input
+        <NumberField
           id="seat-count"
-          type="number"
           min={1}
-          max={64}
-          className="input input-bordered input-sm w-full"
+          max={MAX_SEAT_COUNT}
+          className="w-full"
           value={table.seats.length}
-          onChange={(event) => setSeatCount(table.id, Number(event.target.value))}
+          onChange={(count) => setSeatCount(table.id, count)}
         />
       </div>
 
@@ -79,18 +97,19 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
           <label className={labelClass} htmlFor="table-width">
             {isRound ? "Diameter" : "Width"}
           </label>
-          <input
+          <NumberField
             id="table-width"
-            type="number"
-            min={40}
-            className="input input-bordered input-sm w-full"
+            min={MIN_TABLE_SIZE}
+            step={10}
+            // Blank keeps the current size rather than shrinking to the minimum.
+            emptyValue={Math.round(table.size.width)}
+            className="w-full"
             value={Math.round(table.size.width)}
-            onChange={(event) => {
-              const width = Math.max(40, Number(event.target.value));
+            onChange={(width) =>
               updateTableTransform(table.id, {
                 size: { width, height: isRound ? width : table.size.height },
-              });
-            }}
+              })
+            }
           />
         </div>
         {!isRound && (
@@ -98,19 +117,15 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
             <label className={labelClass} htmlFor="table-height">
               Height
             </label>
-            <input
+            <NumberField
               id="table-height"
-              type="number"
-              min={40}
-              className="input input-bordered input-sm w-full"
+              min={MIN_TABLE_SIZE}
+              step={10}
+              emptyValue={Math.round(table.size.height)}
+              className="w-full"
               value={Math.round(table.size.height)}
-              onChange={(event) =>
-                updateTableTransform(table.id, {
-                  size: {
-                    width: table.size.width,
-                    height: Math.max(40, Number(event.target.value)),
-                  },
-                })
+              onChange={(height) =>
+                updateTableTransform(table.id, { size: { width: table.size.width, height } })
               }
             />
           </div>
@@ -141,17 +156,27 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
   );
 }
 
-/** Right-hand inspector for the current selection. */
+/** Right-hand inspector for the current selection (a drawer on tablets). */
 export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
+  const { open, inert, close } = useDrawerState("properties");
   const tables = useTables();
 
   const selected = tables.filter((table) => selectedIds.includes(table.id));
   const selectedIndex = selected.length === 1 ? tables.indexOf(selected[0]) : -1;
 
   return (
-    <aside className="w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4">
-      <h2 className="mb-3 text-[15px] font-semibold text-base-content">Properties</h2>
+    <aside
+      aria-label="Properties"
+      inert={inert}
+      className={`w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:w-[min(320px,85vw)] max-xl:shadow-xl max-xl:transition-transform ${
+        open ? "" : "max-xl:translate-x-full"
+      }`}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-base-content">Properties</h2>
+        <DrawerCloseButton label="Close properties" onClose={close} />
+      </div>
       {selected.length === 0 && (
         <p className="text-sm text-base-content/60">
           Select a table to edit it. Add tables from the toolbar, drag to move, and use the handles

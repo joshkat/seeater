@@ -17,6 +17,8 @@ const MIN_SIZE = 40;
 interface TableNodeProps {
   table: Table;
   selected: boolean;
+  /** Guests being dragged would land on this table. */
+  dropHighlight: boolean;
   /** 1-based position used for the auto "Table N" name when unlabeled. */
   tableNumber: number;
   /** Floor-plan canvas size, used to clamp the table inside bounds. */
@@ -27,6 +29,8 @@ interface TableNodeProps {
   /** Occupancy info keyed by seat id, for rendering seated guests. */
   occupants: Map<string, SeatOccupant>;
   onSelect: (id: string, additive: boolean) => void;
+  /** Double-click / double-tap: open the seat placement dialog. */
+  onOpenSeating: (id: string) => void;
   onTransform: (id: string, patch: { position?: Point; size?: Size; rotation?: number }) => void;
   onSeatMove: (id: string, seatIndex: number, offset: Point) => void;
   onSeatClick: (seatId: string) => void;
@@ -37,12 +41,14 @@ interface TableNodeProps {
 export function TableNode({
   table,
   selected,
+  dropHighlight,
   tableNumber,
   dimensions,
   threshold,
   otherCenters,
   occupants,
   onSelect,
+  onOpenSeating,
   onTransform,
   onSeatMove,
   onSeatClick,
@@ -103,6 +109,8 @@ export function TableNode({
       draggable
       onClick={handleSelect}
       onTap={handleSelect}
+      onDblClick={() => table.seats.length > 0 && onOpenSeating(table.id)}
+      onDblTap={() => table.seats.length > 0 && onOpenSeating(table.id)}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onTransformEnd={handleTransformEnd}
@@ -112,6 +120,7 @@ export function TableNode({
         shape={table.shape}
         size={table.size}
         selected={selected}
+        dropHighlight={dropHighlight}
       />
 
       {seats.map((seat, index) => (

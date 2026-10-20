@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { assignSeat } from "../guestOps.js";
-import { EventDocError, parseEventDoc } from "../migrate.js";
+import { EventDocError, parseEventDoc, upgradeEventDoc } from "../migrate.js";
 import { EVENT_DOC_SCHEMA_VERSION, eventDocSchema } from "../schema.js";
 import { fixture, seatIdsOf } from "./fixture.js";
 
@@ -31,6 +31,12 @@ describe("eventDocSchema integrity", () => {
     expect(eventDocSchema.safeParse(broken).success).toBe(false);
   });
 
+  it("rejects a guest pointing at a missing household", () => {
+    const { doc } = fixture();
+    const broken = { ...doc, guests: [{ ...doc.guests[0], householdId: "nope" }] };
+    expect(eventDocSchema.safeParse(broken).success).toBe(false);
+  });
+
   it("rejects blank names", () => {
     const { doc } = fixture();
     expect(eventDocSchema.safeParse({ ...doc, name: "   " }).success).toBe(false);
@@ -56,6 +62,30 @@ describe("parseEventDoc", () => {
     const parsed = parseEventDoc(shuffled);
     expect(parsed.tables[0].seats.map((s) => s.index)).toEqual([0, 1, 2, 3]);
     expect(parsed.tables[0].seats.map((s) => s.id)).toEqual(doc.tables[0].seats.map((s) => s.id));
+  });
+
+  it("upgrades a v1 document (no households)", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const seated = assignSeat(doc, guestIds[0], seatIdsOf(doc, tableId)[1]);
+    const v1 = JSON.parse(JSON.stringify(seated));
+    v1.schemaVersion = 1;
+    delete v1.households;
+    delete v1.settings;
+    for (const guest of v1.guests) delete guest.householdId;
+    expect(parseEventDoc(v1)).toEqual(seated);
+  });
+
+  it("upgrades a v2 document (no settings) to exact placement 'auto'", () => {
+    const { doc } = fixture();
+    const v2 = JSON.parse(JSON.stringify(doc));
+    v2.schemaVersion = 2;
+    delete v2.settings;
+    expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto" });
+  });
+
+  it("returns current documents from upgradeEventDoc untouched", () => {
+    const { doc } = fixture();
+    expect(upgradeEventDoc(doc)).toBe(doc);
   });
 
   it("refuses documents from a newer schema version", () => {

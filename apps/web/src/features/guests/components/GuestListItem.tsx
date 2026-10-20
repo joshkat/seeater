@@ -1,28 +1,37 @@
 import type { Guest, RsvpStatus } from "@seating/shared";
+import type { PointerEvent } from "react";
 
-import { setGuestDragData } from "../lib/dnd";
-import { guestColor, guestInitials } from "../lib/guestDisplay";
+import { GUEST_COLUMNS } from "../lib/guestColumns";
+import { type SelectModifiers, selectModifiers } from "../lib/selectModifiers";
 import { RsvpControl } from "./RsvpControl";
+import { SelectCheckbox } from "./SelectCheckbox";
 
 interface GuestListItemProps {
   guest: Guest;
   /** Secondary line: seat location when seated, else email/phone. */
   subtitle: string | null;
   selected: boolean;
-  /** `additive` is true when ctrl/cmd was held (multi-select). */
-  onSelect: (additive: boolean) => void;
+  /** Shown under a household header (indented). */
+  nested?: boolean;
+  /** `additive`: ctrl/cmd was held or the checkbox was used (toggle).
+   * `range`: shift was held. */
+  onSelect: (modifiers: SelectModifiers) => void;
+  /** Starts a possible drag (mouse: on movement; touch: long-press). */
+  onPointerDown: (event: PointerEvent<HTMLLIElement>) => void;
   onSetRsvp: (status: RsvpStatus) => void;
   onUnseat: () => void;
   onRemove: () => void;
 }
 
-/** A single guest row: draggable onto a seat, clickable for click-to-assign,
- * with a segmented RSVP control and seat/remove buttons. */
+/** A single guest row: a selection checkbox, draggable onto a seat, clickable
+ * for click-to-assign, with a segmented RSVP control and seat/remove buttons. */
 export function GuestListItem({
   guest,
   subtitle,
   selected,
+  nested = false,
   onSelect,
+  onPointerDown,
   onSetRsvp,
   onUnseat,
   onRemove,
@@ -31,21 +40,19 @@ export function GuestListItem({
 
   return (
     <li
-      draggable
-      onDragStart={(event) => setGuestDragData(event.dataTransfer, guest.id)}
-      onClick={(event) => onSelect(event.ctrlKey || event.metaKey)}
-      title="Click to select (⌘/Ctrl-click for multiple), then drag onto a table or pick a seat"
-      className={`flex cursor-grab items-center gap-2 rounded-field border px-2 py-1.5 ${
-        selected ? "border-primary bg-primary/5" : "border-transparent"
-      }`}
+      onPointerDown={onPointerDown}
+      onClick={(event) => onSelect(selectModifiers(event))}
+      title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table (press and hold on touch) or pick a seat"
+      className={`flex cursor-grab touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1.5 pr-2 ${
+        nested ? "pl-6" : "pl-2"
+      } ${selected ? "border-primary bg-primary/5" : "border-transparent"}`}
     >
-      <span
-        aria-hidden
-        className="grid size-[26px] shrink-0 place-items-center rounded-full text-[11px] font-semibold text-white"
-        style={{ background: guestColor(guest.id) }}
-      >
-        {guestInitials(guest.name)}
-      </span>
+      <SelectCheckbox
+        checked={selected}
+        label={`Select ${guest.name}`}
+        onToggle={(range) => onSelect({ additive: true, range })}
+        className="-my-1.5"
+      />
 
       <span className="min-w-0 flex-1">
         <span
@@ -60,32 +67,36 @@ export function GuestListItem({
         )}
       </span>
 
-      <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} />
+      <div className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center`}>
+        <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} />
+      </div>
 
-      {guest.seatId && (
+      <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end`}>
+        {guest.seatId && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUnseat();
+            }}
+            title="Remove from seat"
+            className={iconButtonClass}
+          >
+            ⤺
+          </button>
+        )}
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onUnseat();
+            onRemove();
           }}
-          title="Remove from seat"
+          title="Delete guest"
           className={iconButtonClass}
         >
-          ⤺
+          ×
         </button>
-      )}
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onRemove();
-        }}
-        title="Delete guest"
-        className={iconButtonClass}
-      >
-        ×
-      </button>
+      </div>
     </li>
   );
 }

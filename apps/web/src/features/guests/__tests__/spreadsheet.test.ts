@@ -38,4 +38,23 @@ describe("parseGuestFile", () => {
       { name: "Lovelace, Ada", email: "ada@example.com", phone: null },
     ]);
   });
+
+  it("reads a Household or Party column into household names", async () => {
+    const csv = new File(
+      ["Guest,Party,Notes\nAda,Lovelace,\nByron,lovelace,veg\nGrace,,\n"],
+      "guests.csv",
+    );
+    const result = await parseGuestFile(csv);
+    expect(result.guests).toEqual([
+      { name: "Ada", email: null, phone: null, household: "Lovelace" },
+      { name: "Byron", email: null, phone: null, household: "lovelace" },
+      { name: "Grace", email: null, phone: null },
+    ]);
+  });
+
+  it("never reads households from a headerless file", async () => {
+    const csv = new File(["Ada,ada@x.com,555,vegetarian\n"], "guests.csv");
+    const result = await parseGuestFile(csv);
+    expect(result.guests).toEqual([{ name: "Ada", email: "ada@x.com", phone: "555" }]);
+  });
 });

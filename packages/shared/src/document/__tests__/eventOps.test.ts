@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { duplicateEventDoc, reidentifyEventDoc, renameEventDoc } from "../eventOps.js";
+import {
+  duplicateEventDoc,
+  isExactSeatPlacement,
+  reidentifyEventDoc,
+  renameEventDoc,
+  setExactSeatPlacement,
+} from "../eventOps.js";
 import { assignSeat } from "../guestOps.js";
+import { createHousehold } from "../householdOps.js";
+import { addTable } from "../tableOps.js";
 import { eventDocSchema } from "../schema.js";
 import { summarizeEventDoc } from "../summary.js";
 import { fixture, seatIdsOf } from "./fixture.js";
@@ -31,6 +39,18 @@ describe("duplicateEventDoc", () => {
     expect(eventDocSchema.safeParse(copy).success).toBe(true);
   });
 
+  it("copies households with fresh ids when guests are copied", () => {
+    const { doc, guestIds } = fixture();
+    const { doc: grouped } = createHousehold(doc, [guestIds[0], guestIds[1]], "Pair");
+    const copy = duplicateEventDoc(grouped, { copyGuests: true });
+    expect(copy.households).toHaveLength(1);
+    expect(copy.households[0]).toMatchObject({ name: "Pair" });
+    expect(copy.households[0].id).not.toBe(grouped.households[0].id);
+    expect(copy.guests.filter((g) => g.householdId === copy.households[0].id)).toHaveLength(2);
+    expect(eventDocSchema.safeParse(copy).success).toBe(true);
+    expect(duplicateEventDoc(grouped).households).toEqual([]);
+  });
+
   it("drops assignments when only guests are copied", () => {
     const copy = duplicateEventDoc(seatedFixture(), { copyGuests: true });
     expect(copy.guests).toHaveLength(3);
@@ -54,5 +74,33 @@ describe("renameEventDoc", () => {
     expect(renameEventDoc(doc, "  ")).toBe(doc);
     expect(renameEventDoc(doc, "Fixture")).toBe(doc);
     expect(renameEventDoc(doc, " Gala ").name).toBe("Gala");
+  });
+});
+
+describe("exact seat placement setting", () => {
+  it("defaults to auto: on for 2 or fewer tables", () => {
+    const { doc } = fixture(); // one table
+    expect(doc.settings.exactSeatPlacement).toBe("auto");
+    expect(isExactSeatPlacement(doc)).toBe(true);
+    const two = addTable(doc, { shape: "round", position: { x: 0, y: 0 } }).doc;
+    expect(isExactSeatPlacement(two)).toBe(true);
+    const three = addTable(two, { shape: "round", position: { x: 0, y: 0 } }).doc;
+    expect(isExactSeatPlacement(three)).toBe(false);
+  });
+
+  it("follows an explicit on/off regardless of size", () => {
+    const { doc } = fixture();
+    const off = setExactSeatPlacement(doc, "off");
+    expect(isExactSeatPlacement(off)).toBe(false);
+    expect(setExactSeatPlacement(off, "off")).toBe(off);
+    const big = addTable(
+      addTable(addTable(doc, { shape: "round", position: { x: 0, y: 0 } }).doc, {
+        shape: "round",
+        position: { x: 0, y: 0 },
+      }).doc,
+      { shape: "round", position: { x: 0, y: 0 } },
+    ).doc;
+    expect(isExactSeatPlacement(setExactSeatPlacement(big, "on"))).toBe(true);
+    expect(eventDocSchema.safeParse(off).success).toBe(true);
   });
 });

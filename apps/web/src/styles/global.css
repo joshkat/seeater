@@ -105,3 +105,17 @@ body,
 body {
   margin: 0;
 }
+
+/* Touch screens (tablets): every control is at least a 44px tap target
+   (Apple's HIG minimum). Fine pointers keep the compact desktop sizes. The
+   guest list widens its columns to match (see guests/lib/guestColumns.ts). */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .input,
+  .select {
+    min-height: 2.75rem;
+  }
+}

@@ -93,3 +93,24 @@ export function isAwayFromHome(viewport: Viewport, home: Viewport | null): boole
     Math.abs(viewport.y - home.y) > 0.5
   );
 }
+
+/** Two fingers on the canvas: their midpoint (stage pixels) and spread. */
+export interface PinchFrame {
+  center: { x: number; y: number };
+  distance: number;
+}
+
+/**
+ * One step of a pinch: scales by how much the fingers spread and keeps the
+ * plan point under their midpoint moving with it, so a single gesture both
+ * zooms and pans (two-finger pan is a pinch with constant spread).
+ */
+export function pinchViewport(viewport: Viewport, from: PinchFrame, to: PinchFrame): Viewport {
+  if (from.distance <= 0 || to.distance <= 0) return viewport;
+  const scale = clampScale(viewport.scale * (to.distance / from.distance));
+  const anchor = {
+    x: (from.center.x - viewport.x) / viewport.scale,
+    y: (from.center.y - viewport.y) / viewport.scale,
+  };
+  return { scale, x: to.center.x - anchor.x * scale, y: to.center.y - anchor.y * scale };
+}

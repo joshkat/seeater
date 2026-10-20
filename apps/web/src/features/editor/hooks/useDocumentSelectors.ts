@@ -1,5 +1,5 @@
-import type { Guest, Size, Table } from "@seating/shared";
-import { DEFAULT_FLOOR_PLAN_SIZE } from "@seating/shared";
+import type { ExactSeatPlacement, Guest, Household, Size, Table } from "@seating/shared";
+import { DEFAULT_FLOOR_PLAN_SIZE, EXACT_SEAT_PLACEMENT_MAX_TABLES } from "@seating/shared";
 
 import { useDocumentStore } from "../store/documentStore";
 
@@ -10,6 +10,7 @@ import { useDocumentStore } from "../store/documentStore";
 
 const NO_TABLES: Table[] = [];
 const NO_GUESTS: Guest[] = [];
+const NO_HOUSEHOLDS: Household[] = [];
 
 export function useTables(): Table[] {
   return useDocumentStore((state) => state.doc?.tables ?? NO_TABLES);
@@ -17,6 +18,10 @@ export function useTables(): Table[] {
 
 export function useGuests(): Guest[] {
   return useDocumentStore((state) => state.doc?.guests ?? NO_GUESTS);
+}
+
+export function useHouseholds(): Household[] {
+  return useDocumentStore((state) => state.doc?.households ?? NO_HOUSEHOLDS);
 }
 
 export function useDimensions(): Size {
@@ -29,4 +34,13 @@ export function useEventName(): string {
 
 export function useDocumentId(): string | null {
   return useDocumentStore((state) => state.doc?.id ?? null);
+}
+
+/** This event's exact-seat-placement setting and whether it's in effect now
+ * (same rule as the shared `isExactSeatPlacement`). */
+export function useExactSeatPlacement(): { mode: ExactSeatPlacement; active: boolean } {
+  const mode = useDocumentStore((state) => state.doc?.settings.exactSeatPlacement ?? "auto");
+  const tableCount = useDocumentStore((state) => state.doc?.tables.length ?? 0);
+  const active = mode === "auto" ? tableCount <= EXACT_SEAT_PLACEMENT_MAX_TABLES : mode === "on";
+  return { mode, active };
 }
