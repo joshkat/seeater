@@ -71,7 +71,19 @@ describe("parseEventDoc", () => {
     v1.schemaVersion = 1;
     delete v1.households;
     delete v1.settings;
-    for (const guest of v1.guests) delete guest.householdId;
+    for (const guest of v1.guests) {
+      for (const key of [
+        "householdId",
+        "meal",
+        "dietary",
+        "accessibility",
+        "notes",
+        "tags",
+        "isChild",
+      ]) {
+        delete guest[key];
+      }
+    }
     expect(parseEventDoc(v1)).toEqual(seated);
   });
 
@@ -80,7 +92,24 @@ describe("parseEventDoc", () => {
     const v2 = JSON.parse(JSON.stringify(doc));
     v2.schemaVersion = 2;
     delete v2.settings;
+    for (const guest of v2.guests) {
+      for (const key of ["meal", "dietary", "accessibility", "notes", "tags", "isChild"]) {
+        delete guest[key];
+      }
+    }
     expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto" });
+  });
+
+  it("upgrades a v3 document: guests get empty details", () => {
+    const { doc } = fixture();
+    const v3 = JSON.parse(JSON.stringify(doc));
+    v3.schemaVersion = 3;
+    for (const guest of v3.guests) {
+      for (const key of ["meal", "dietary", "accessibility", "notes", "tags", "isChild"]) {
+        delete guest[key];
+      }
+    }
+    expect(parseEventDoc(v3)).toEqual(doc);
   });
 
   it("returns current documents from upgradeEventDoc untouched", () => {

@@ -33,6 +33,26 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
   }),
   // v3: per-event settings. Exact seat placement starts on "auto".
   2: (doc) => ({ ...doc, schemaVersion: 3, settings: { exactSeatPlacement: "auto" } }),
+  // v4: more detail per guest, all empty to start.
+  3: (doc) => ({
+    ...doc,
+    schemaVersion: 4,
+    guests: Array.isArray(doc.guests)
+      ? doc.guests.map((guest: unknown) =>
+          typeof guest === "object" && guest !== null
+            ? {
+                ...guest,
+                meal: null,
+                dietary: null,
+                accessibility: null,
+                notes: null,
+                tags: [],
+                isChild: false,
+              }
+            : guest,
+        )
+      : doc.guests,
+  }),
 };
 
 /**

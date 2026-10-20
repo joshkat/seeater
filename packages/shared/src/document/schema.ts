@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 3;
+export const EVENT_DOC_SCHEMA_VERSION = 4;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -27,6 +27,11 @@ export const MAX_GUEST_NAME_LENGTH = 120;
 export const MAX_GUEST_EMAIL_LENGTH = 200;
 export const MAX_GUEST_PHONE_LENGTH = 40;
 export const MAX_HOUSEHOLD_NAME_LENGTH = 120;
+export const MAX_MEAL_LENGTH = 60;
+export const MAX_GUEST_NOTE_LENGTH = 1000;
+export const MAX_GUEST_NEED_LENGTH = 200;
+export const MAX_TAG_LENGTH = 40;
+export const MAX_TAGS_PER_GUEST = 20;
 
 const idSchema = z.string().min(1).max(64);
 const isoDateSchema = z.iso.datetime({ offset: true });
@@ -89,6 +94,17 @@ export const guestSchema = z.object({
   seatId: idSchema.nullable(),
   /** The household (family / party) this guest belongs to, if any. */
   householdId: idSchema.nullable(),
+  /** Meal choice, e.g. "Chicken". Free text; matched case-insensitively to
+   * other guests' meals so totals group correctly. */
+  meal: z.string().max(MAX_MEAL_LENGTH).nullable(),
+  /** Dietary needs and allergies, e.g. "Nut allergy". */
+  dietary: z.string().max(MAX_GUEST_NEED_LENGTH).nullable(),
+  /** Accessibility needs, e.g. "Wheelchair — aisle seat". */
+  accessibility: z.string().max(MAX_GUEST_NEED_LENGTH).nullable(),
+  notes: z.string().max(MAX_GUEST_NOTE_LENGTH).nullable(),
+  /** Groups such as "Bride's side", "Family", "Work". */
+  tags: z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_GUEST),
+  isChild: z.boolean(),
 });
 
 /**
