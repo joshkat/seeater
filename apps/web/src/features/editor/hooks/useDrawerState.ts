@@ -12,6 +12,9 @@ export function useDrawerState(panel: "guests" | "properties"): {
   drawer: boolean;
   open: boolean;
   inert: boolean;
+  /** A drag is in progress: the drawer must not catch the drop (it may still
+   * be sliding away), so it ignores pointer hit-testing. */
+  passThrough: boolean;
   close: () => void;
 } {
   const desktop = useMediaQuery(DESKTOP_QUERY);
@@ -27,6 +30,7 @@ export function useDrawerState(panel: "guests" | "properties"): {
     drawer,
     open: drawer && open,
     inert: drawer && !open && !dragging,
+    passThrough: drawer && dragging,
     close: () => setOpen(false),
   };
 }

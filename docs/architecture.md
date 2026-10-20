@@ -108,7 +108,7 @@ guest lists racing each other.
 
 | Store / module       | File                                        | Owns                                                                                                                                                                         |
 | -------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **documentStore**    | `features/editor/store/documentStore.ts`    | The open event document (tables + guests + assignments), its load status, and the local save status. **The single source of truth while editing.**                           |
+| **documentStore**    | `features/editor/store/documentStore.ts`    | The open event document (tables + guests + assignments), its load status, the local save status, and the undo/redo history. **The single source of truth while editing.**    |
 | **editorStore**      | `features/editor/store/editorStore.ts`      | View state only: viewport, zoom/focus, selected tables. Table actions are thin wrappers over shared ops.                                                                     |
 | **guestStore**       | `features/guests/store/guestStore.ts`       | Guest selection (incl. Shift-click anchor). Guest and household actions are thin wrappers over shared ops.                                                                   |
 | **seatingFlowStore** | `features/guests/store/seatingFlowStore.ts` | The seating flow's prompts: "split this household?", the overflow loop, and the placement dialog's working copy. Every way of seating a group goes through `requestSeating`. |

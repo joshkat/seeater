@@ -209,7 +209,10 @@ is logged and left as it was, rather than stopping the database from opening.
 ## The local record (IndexedDB)
 
 [`apps/web/src/features/storage/db/SeatingDb.ts`](../apps/web/src/features/storage/db/SeatingDb.ts):
-a Dexie database with one object store, `events`, keyed by `id` and indexed on `updatedAt`.
+a Dexie database with two object stores: `events` (keyed by `id`, indexed on `updatedAt`) and
+`versions` (version history, indexed on `eventId` and `[eventId+createdAt]`). Its version is
+`DATABASE_VERSION` = store layout × 100 + document schema version (currently 103), so changing
+either upgrades every database once.
 
 ```ts
 interface LocalEventRecord {
@@ -222,8 +225,23 @@ interface LocalEventRecord {
     dirty: boolean; // local changes the server hasn't accepted yet
     deleted: boolean; // deleted here, delete not yet confirmed by the server
   };
+  trashedAt?: string | null; // in the trash since (ISO); purged after 30 days
+}
+
+interface EventVersionRecord {
+  id: string;
+  eventId: string;
+  createdAt: string;
+  kind: "auto" | "named";
+  label: string; // "Opened", "Autosave", "Before restoring …", or the user's name for it
+  doc: EventDoc; // as it was; may be an older schema version, so parse before use
+  summary: EventSummary;
 }
 ```
+
+**Trash** keeps the whole record; only `trashedAt` changes. **Versions** are local: they aren't
+synced or put in backups, and they're deleted with their event. Automatic versions skip unchanged
+content and keep the newest 50 per event; named versions are kept until deleted.
 
 The `sync` block is meaningless while signed out, but it's kept up to date anyway. That way, events
 made signed out upload correctly the moment you sign in.

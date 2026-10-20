@@ -51,11 +51,13 @@ custom-seating-app/
     │           ├── storage/        # IndexedDB: SeatingDb, scopes, repository, coalesced writer
     │           ├── editor/         # canvas editor + documentStore (the open event)
     │           ├── guests/         # guest panel, import (CSV/XLSX), seating actions
-    │           ├── dashboard/      # "My Events" list (live query), create/rename/duplicate/delete
+    │           ├── dashboard/      # "My Events" list (live query), create/rename/duplicate/trash, /trash
+    │           ├── versions/       # version history: auto + named versions, restore / copy
     │           ├── backup/         # download / import `.seating.json`
     │           ├── auth/           # optional Clerk: identity store, bridge, controls, theming
     │           └── sync/           # sync API client, planner, runner, scheduler, status UI
     │
+    ├── e2e/                    # @seating/e2e — Playwright tests (desktop Chrome + iPad WebKit)
     └── api/                    # @seating/api — optional sync service (Fastify + Prisma + Postgres)
         ├── prisma/
         │   ├── schema.prisma       # one model: EventDocument

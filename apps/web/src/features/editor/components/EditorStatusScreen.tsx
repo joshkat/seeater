@@ -27,13 +27,20 @@ export function EditorStatusScreen({ status }: EditorStatusScreenProps): JSX.Ele
         <p className="mt-1 text-sm text-base-content/60">
           {status === "missing"
             ? syncConfigured
-              ? "It may have been deleted, or it lives in another browser or account."
-              : "It may have been deleted, or it was made in a different browser."
+              ? "It may be in the trash, or it lives in another browser or account."
+              : "It may be in the trash, or it was made in a different browser."
             : "Try reloading the page."}
         </p>
-        <Link to="/" className="btn btn-primary btn-sm mt-4">
-          Back to events
-        </Link>
+        <div className="mt-4 flex justify-center gap-2">
+          <Link to="/" className="btn btn-primary btn-sm">
+            Back to events
+          </Link>
+          {status === "missing" && (
+            <Link to="/trash" className="btn btn-ghost btn-sm">
+              Open trash
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

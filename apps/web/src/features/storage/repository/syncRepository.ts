@@ -56,6 +56,8 @@ export async function applyPulled(
       summary: summarizeEventDoc(doc),
       updatedAt: doc.updatedAt,
       sync: { baseVersion: version, dirty: false, deleted: false },
+      // Trash is local: a pull mustn't take an event back out of it.
+      trashedAt: record?.trashedAt ?? null,
     });
     return true;
   });

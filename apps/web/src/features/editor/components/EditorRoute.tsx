@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 
 import { useGuestStore } from "../../guests/store/guestStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useDocumentStore } from "../store/documentStore";
 import { useEditorStore } from "../store/editorStore";
 import { EditorPage } from "./EditorPage";
@@ -21,6 +22,7 @@ export function EditorRoute(): JSX.Element {
     if (!eventId) return;
     useGuestStore.getState().reset();
     useSeatingFlowStore.getState().reset();
+    useVersionDialogStore.getState().setOpen(false);
     useEditorStore.getState().resetForNewEvent();
     void useDocumentStore.getState().open(eventId);
     return () => {

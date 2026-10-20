@@ -37,6 +37,7 @@ npm run typecheck             # all workspaces
 npm run lint                  # ESLint (typescript-eslint + react-hooks incl. compiler rules)
 npm run format:check          # Prettier check
 npm test                      # shared + web (Node, fake-indexeddb) + api (needs Postgres)
+npm run e2e                   # Playwright: builds web, serves :4280, desktop Chrome + iPad WebKit
 # Sync (optional):
 npm run db:up                 # Postgres 17 in Docker
 npm run dev:api               # API on :4000
@@ -68,6 +69,8 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   (e.g. the guest-list checkboxes). User feedback, 2026-10-09.
 - **Every edit to an event is a pure op in `@seating/shared`** (with a test), applied via
   `useDocumentStore.getState().apply(doc => op(doc, …))`. Don't mutate documents anywhere else.
+  One user action = one `apply` (compose ops inside it) so it's one undo step.
+- **Global shortcuts skip only text entry** (`lib/isTextEntry`), not checkboxes/toggles/buttons.
 - **Schema change?** Edit `document/schema.ts`. If old docs won't satisfy it, bump
   `EVENT_DOC_SCHEMA_VERSION` and add an upgrade step in `document/migrate.ts`.
 - Storage access goes through `features/storage/repository/*` with `activeDb()`.
@@ -78,6 +81,12 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   of truth while editing. `apply(op)` updates memory and schedules a save through a
   **coalescedWriter** (serialized, latest-wins). Local saves are immediate; there's no debounce
   and no Save button.
+- **Undo/redo:** every `apply` is an undo step (`editor/lib/history.ts`, whole-doc snapshots, cap
+  200, session-only — reset on open/close/reload). Edits that fire per keystroke pass
+  `apply(edit, { coalesceKey })` so a burst is one step (table names do). User-facing
+  `undoEdit`/`redoEdit` (`editor/store/historyActions.ts`) also prune stale selections and close
+  seating prompts; they're off while the placement dialog is open. **A user action must be one
+  `apply`**, or it takes several ⌘Z to undo.
 - **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
   only. Both expose actions that wrap shared ops. Components read via
   `editor/hooks/useDocumentSelectors.ts` (`useTables`, `useGuests`, …).
@@ -133,9 +142,19 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   `useClerkAppearance` is unchanged.
 - **Offline:** the PWA precaches the app shell (`vite.config.ts`); `navigator.storage.persist()` is
   requested on first event creation; backups are `<name>.seating.json` (`features/backup`).
-- **Stored docs are upgraded on DB open:** the Dexie version **is** `EVENT_DOC_SCHEMA_VERSION`
-  (`storage/db/SeatingDb.ts`), so a schema bump re-runs `upgradeEventDoc` over every stored doc.
-  Local reads don't go through `parseEventDoc`, so this is what keeps old local events loadable.
+- **Stored docs are upgraded on DB open:** the Dexie version is `DATABASE_VERSION` = store layout ×
+  100 + `EVENT_DOC_SCHEMA_VERSION` (`storage/db/SeatingDb.ts`, currently 103). A schema bump **or**
+  a store change (bump `STORE_LAYOUT_VERSION`) re-runs the upgrade, which re-declares the stores
+  and runs `upgradeEventDoc` over every stored doc. Local reads don't go through `parseEventDoc`, so
+  this is what keeps old local events loadable.
+- **Trash:** dashboard "Move to trash" sets `record.trashedAt`; trashed events drop out of
+  `listEventSummaries`/`getEventDoc`, are restorable at `/trash`, and are purged after 30 days
+  (on dashboard/trash visit). `deleteEvent` is the permanent delete (also removes versions). Trash is
+  local: sync pulls keep `trashedAt`.
+- **Version history** (`features/versions/`, `versions` store): automatic versions on open + every
+  10 min of edits (`useAutoVersions`; unchanged content skipped; newest 50 kept), named versions
+  kept forever. Restore = save "Before restoring…" + one `apply(restoreEventDoc)` (undoable). Old
+  versions go through `parseEventDoc`. Local only: not synced, not in backups.
 - **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts.
 
 ## Gotchas (these cost real time — read before debugging)
@@ -155,6 +174,11 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.
   **Do NOT add `react`/`react-dom` to `optimizeDeps.include`**: it triggers an "Outdated Optimize
   Dep" reload loop (blank page). Only `react-konva`/`konva` belong there.
+- **Playwright (`apps/e2e`):** WebKit refuses some ports (4190 = ManageSieve) with "Not allowed to
+  use restricted network port" — that's why e2e uses 4280. Root `npm run e2e -- --flag` swallows
+  flags (same as below); run `npx playwright test …` inside `apps/e2e`. Guest checkboxes ignore
+  pointer events (their cell is the hit area): click `checkbox.locator("..")`. A closed drawer is
+  `inert`, so it's absent from `getByRole` — open it first (`guestPanel()` helper).
 - **Passing Vite flags through npm:** use `npm run dev --workspace @seating/web -- --port N`. Going
   via the root `dev:web` script swallows the flags.
 - **Service worker only in production builds.** To test offline, build and run `web-preview`.
@@ -225,10 +249,16 @@ Done:
   change; "Edit seating" / double-click a table.
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
   1280px, 44px targets on touch screens. Phone layout not yet (roadmap 15).
+- **Undo/redo:** ⌘/Ctrl+Z, Shift+⌘/Ctrl+Z or Ctrl+Y, toolbar ↶ ↷. Typing a name is one step; the
+  placement dialog's Confirm is one step. Session-only (not kept across reloads).
+- **Version history:** "History" in the editor: automatic (on open, every 10 min) + named versions;
+  restore (undoable), copy as new event, delete.
+- **Trash:** "Move to trash" with Undo; `/trash` restore / delete forever / empty; 30-day purge.
+- **End-to-end tests:** Playwright, desktop Chrome + iPad Pro 11 WebKit (portrait/landscape), in CI.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
-  assignments)** / delete. Editor has "← Events" + editable title.
+  assignments)** / move to trash. Editor has "← Events" + editable title.
 - **Theming** (light / dark / black / synthwave) persisted to localStorage.
 - **Local-first:** IndexedDB storage, no account needed, **offline + installable (PWA)**, URL
   routing, **backup download/import**.
@@ -241,8 +271,9 @@ Done:
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
 Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ → 3 tablet/touch ✅
-(1–3 ship together in one PR) → 4 **undo/redo** (cheap:
-history of immutable docs in `documentStore`) → 5 **export/print** (chart PNG/PDF, rosters, place
+(1–3 shipped together in PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e). Next: **phase B** —
+13 multiple layouts + 6 guest details (schema; needs the multiple-layouts decision) → C find/stats
+→ D 5 **export/print** (chart PNG/PDF, rosters, place
 cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
 passes**. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.

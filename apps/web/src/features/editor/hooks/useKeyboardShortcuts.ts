@@ -1,9 +1,13 @@
 import { useEffect } from "react";
 
+import { isTextEntry } from "../../../lib/isTextEntry";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
+import { redoEdit, undoEdit } from "../store/historyActions";
 
-/** Editor keyboard shortcuts: delete, duplicate (Cmd/Ctrl+D), and Escape
+/** Editor keyboard shortcuts: undo (Cmd/Ctrl+Z), redo (Shift+Cmd/Ctrl+Z or
+ * Ctrl+Y), delete, duplicate (Cmd/Ctrl+D), and Escape
  * (backs out of the placement dialog or a seating prompt if one is open,
  * otherwise clears the selection). */
 export function useKeyboardShortcuts(): void {
@@ -13,8 +17,14 @@ export function useKeyboardShortcuts(): void {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (isTextEntry(event.target)) return;
+
+      // Version history is modal too: Escape closes it, nothing else applies.
+      const versions = useVersionDialogStore.getState();
+      if (versions.open) {
+        if (event.key === "Escape") versions.setOpen(false);
+        return;
+      }
 
       // The placement dialog is modal: only Escape (back out) applies.
       const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();
@@ -24,6 +34,20 @@ export function useKeyboardShortcuts(): void {
           else if (placement.picked) updatePlacement((state) => ({ ...state, picked: null }));
           else cancelPlacement();
         }
+        return;
+      }
+
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (mod && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoEdit();
+        else undoEdit();
+        return;
+      }
+      if (event.ctrlKey && !event.metaKey && key === "y") {
+        event.preventDefault();
+        redoEdit();
         return;
       }
 

@@ -29,15 +29,51 @@ export interface LocalEventRecord {
   /** Mirrors doc.updatedAt; indexed for "most recent first" listing. */
   updatedAt: string;
   sync: SyncMeta;
+  /**
+   * When the event was moved to the trash (ISO), or null/absent if it isn't.
+   * Trashed events keep their document and are purged after 30 days.
+   */
+  trashedAt?: string | null;
+}
+
+/** Why a version was saved. */
+export type VersionKind = "auto" | "named";
+
+/**
+ * A saved version of an event (version history). Local to this device:
+ * versions aren't synced or included in backups.
+ */
+export interface EventVersionRecord {
+  id: string;
+  eventId: string;
+  /** ISO time the version was taken; indexed with eventId for listing. */
+  createdAt: string;
+  kind: VersionKind;
+  /** Named: what the user called it. Auto: why it was taken ("Opened", …). */
+  label: string;
+  /** The document as it was. May be an older schema version — parse before use. */
+  doc: EventDoc;
+  summary: EventSummary;
 }
 
 /**
+ * Bump when object stores or indexes change. The Dexie version combines it
+ * with the document schema version, so either kind of change upgrades every
+ * database once (see the constructor).
+ */
+const STORE_LAYOUT_VERSION = 1;
+
+/** Dexie version: store layout × 100 + document schema version (e.g. 103). */
+export const DATABASE_VERSION = STORE_LAYOUT_VERSION * 100 + EVENT_DOC_SCHEMA_VERSION;
+
+/**
  * The app's IndexedDB database. There is one per storage scope (signed-out,
- * or one per signed-in account — see scope.ts), each with a single `events`
- * object store keyed by document id.
+ * or one per signed-in account — see scope.ts), with an `events` store keyed
+ * by document id and a `versions` store for version history.
  */
 export class SeatingDb extends Dexie {
   events!: Table<LocalEventRecord, string>;
+  versions!: Table<EventVersionRecord, string>;
 
   constructor(name: string) {
     super(name);
@@ -45,10 +81,15 @@ export class SeatingDb extends Dexie {
       // Primary key `id`; secondary index on `updatedAt`.
       events: "id, updatedAt",
     });
-    // The database version tracks the document schema version: bumping
-    // EVENT_DOC_SCHEMA_VERSION makes Dexie run this once per database, which
-    // brings every stored document up to the current schema.
-    this.version(EVENT_DOC_SCHEMA_VERSION).upgrade(upgradeStoredDocs);
+    // Bumping EVENT_DOC_SCHEMA_VERSION or STORE_LAYOUT_VERSION raises this
+    // version, so Dexie runs the upgrade once per database: it creates any new
+    // stores and brings every stored document up to the current schema.
+    this.version(DATABASE_VERSION)
+      .stores({
+        events: "id, updatedAt",
+        versions: "id, eventId, [eventId+createdAt]",
+      })
+      .upgrade(upgradeStoredDocs);
   }
 }
 

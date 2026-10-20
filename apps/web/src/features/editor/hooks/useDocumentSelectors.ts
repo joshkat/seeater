@@ -44,3 +44,10 @@ export function useExactSeatPlacement(): { mode: ExactSeatPlacement; active: boo
   const active = mode === "auto" ? tableCount <= EXACT_SEAT_PLACEMENT_MAX_TABLES : mode === "on";
   return { mode, active };
 }
+
+/** Whether there's anything to undo or redo in the open document. */
+export function useHistoryAvailability(): { canUndo: boolean; canRedo: boolean } {
+  const canUndo = useDocumentStore((state) => state.history.past.length > 0);
+  const canRedo = useDocumentStore((state) => state.history.future.length > 0);
+  return { canUndo, canRedo };
+}

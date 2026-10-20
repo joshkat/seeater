@@ -129,3 +129,12 @@ export function isExactSeatPlacement(doc: EventDoc): boolean {
   if (mode === "auto") return doc.tables.length <= EXACT_SEAT_PLACEMENT_MAX_TABLES;
   return mode === "on";
 }
+
+/**
+ * Restores an earlier version of an event in place: the version's content
+ * (layout, guests, seating, name, settings) under the current document's
+ * identity, so it stays the same event (same id, same URL).
+ */
+export function restoreEventDoc(current: EventDoc, version: EventDoc): EventDoc {
+  return { ...version, id: current.id, createdAt: current.createdAt, updatedAt: current.updatedAt };
+}

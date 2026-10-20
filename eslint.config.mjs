@@ -33,6 +33,11 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
+    // Playwright: Node test code plus browser code inside page.evaluate.
+    files: ["apps/e2e/**/*.ts"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ["apps/api/**/*.ts", "**/*.config.{ts,mjs,js}", "**/vite.config.ts"],
     languageOptions: { globals: globals.node },
   },

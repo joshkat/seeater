@@ -21,19 +21,40 @@ import type { LocalEventRecord, SeatingDb, SyncMeta } from "../db/SeatingDb";
 
 const NEW_SYNC_META: SyncMeta = { baseVersion: null, dirty: true, deleted: false };
 
-function toRecord(doc: EventDoc, sync: SyncMeta): LocalEventRecord {
-  return { id: doc.id, doc, summary: summarizeEventDoc(doc), updatedAt: doc.updatedAt, sync };
+/** How long a trashed event can be restored before it's deleted for good. */
+export const TRASH_RETENTION_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toRecord(
+  doc: EventDoc,
+  sync: SyncMeta,
+  trashedAt: string | null = null,
+): LocalEventRecord {
+  return {
+    id: doc.id,
+    doc,
+    summary: summarizeEventDoc(doc),
+    updatedAt: doc.updatedAt,
+    sync,
+    trashedAt,
+  };
 }
 
-/** Dashboard listing: live (non-deleted) events, most recently edited first. */
+/** An event that exists and isn't deleted or in the trash. */
+function isLive(record: LocalEventRecord): boolean {
+  return !record.sync.deleted && !record.trashedAt && record.doc !== null;
+}
+
+/** Dashboard listing: live events, most recently edited first. */
 export async function listEventSummaries(db: SeatingDb): Promise<EventSummary[]> {
   const records = await db.events.orderBy("updatedAt").reverse().toArray();
-  return records.filter((record) => !record.sync.deleted).map((record) => record.summary);
+  return records.filter(isLive).map((record) => record.summary);
 }
 
+/** The document of a live event (null if missing, deleted or in the trash). */
 export async function getEventDoc(db: SeatingDb, id: string): Promise<EventDoc | null> {
   const record = await db.events.get(id);
-  return record && !record.sync.deleted ? record.doc : null;
+  return record && isLive(record) ? record.doc : null;
 }
 
 /** Stores a brand-new document. */
@@ -57,7 +78,8 @@ export async function saveEventDoc(db: SeatingDb, doc: EventDoc): Promise<EventD
     if (existing?.sync.deleted) return null;
     const stamped = { ...doc, updatedAt: new Date().toISOString() };
     const sync = existing ? { ...existing.sync, dirty: true } : NEW_SYNC_META;
-    await db.events.put(toRecord(stamped, sync));
+    // An editor still open on a trashed event (another tab) keeps it trashed.
+    await db.events.put(toRecord(stamped, sync, existing?.trashedAt ?? null));
     return stamped;
   });
 }
@@ -103,14 +125,57 @@ export async function importEvent(db: SeatingDb, doc: EventDoc): Promise<EventDo
   return toStore;
 }
 
+/** A trashed event, for the Trash page. */
+export interface TrashedEvent {
+  summary: EventSummary;
+  trashedAt: string;
+  /** When it will be deleted for good. */
+  purgeAt: string;
+}
+
+/** Moves an event to the trash (restorable for TRASH_RETENTION_DAYS). */
+export async function trashEvent(db: SeatingDb, id: string, now = new Date()): Promise<void> {
+  await db.events.update(id, { trashedAt: now.toISOString() });
+}
+
+/** Takes an event back out of the trash. */
+export async function restoreFromTrash(db: SeatingDb, id: string): Promise<void> {
+  await db.events.update(id, { trashedAt: null });
+}
+
+/** Events in the trash, most recently trashed first. */
+export async function listTrashedEvents(db: SeatingDb): Promise<TrashedEvent[]> {
+  const records = await db.events.toArray();
+  return records
+    .filter((record) => record.trashedAt && !record.sync.deleted && record.doc)
+    .map((record) => {
+      const trashedAt = record.trashedAt as string;
+      const purgeAt = new Date(Date.parse(trashedAt) + TRASH_RETENTION_DAYS * DAY_MS);
+      return { summary: record.summary, trashedAt, purgeAt: purgeAt.toISOString() };
+    })
+    .sort((a, b) => b.trashedAt.localeCompare(a.trashedAt));
+}
+
+/** Permanently deletes events that have been in the trash too long. Returns how many. */
+export async function purgeExpiredTrash(db: SeatingDb, now = new Date()): Promise<number> {
+  const expired = (await listTrashedEvents(db)).filter(
+    (event) => Date.parse(event.purgeAt) <= now.getTime(),
+  );
+  for (const event of expired) await deleteEvent(db, event.summary.id);
+  return expired.length;
+}
+
 /**
- * Deletes an event. Never-synced events are removed outright; synced ones
- * become a tombstone until the sync engine has deleted them on the server.
+ * Deletes an event for good, with its version history. (The UI moves events
+ * to the trash first; this is "Delete forever" and the 30-day purge.)
+ * Never-synced events are removed outright; synced ones become a tombstone
+ * until the sync engine has deleted them on the server.
  */
 export async function deleteEvent(db: SeatingDb, id: string): Promise<void> {
-  await db.transaction("rw", db.events, async () => {
+  await db.transaction("rw", db.events, db.versions, async () => {
     const existing = await db.events.get(id);
     if (!existing) return;
+    await db.versions.where("eventId").equals(id).delete();
     if (existing.sync.baseVersion === null) {
       await db.events.delete(id);
       return;

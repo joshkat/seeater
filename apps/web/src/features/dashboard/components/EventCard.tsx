@@ -2,20 +2,21 @@ import type { EventSummary } from "@seating/shared";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { syncConfigured } from "../../auth/lib/authConfig";
 import { downloadEventBackup } from "../../backup/lib/backupActions";
-import { deleteEvent, renameEvent } from "../../storage/repository/eventRepository";
+import { renameEvent, trashEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
 import { relativeTime } from "../lib/relativeTime";
 import { DuplicateDialog } from "./DuplicateDialog";
 
 interface EventCardProps {
   summary: EventSummary;
+  /** Called after the event is moved to the trash (for the Undo banner). */
+  onTrashed: (event: { id: string; name: string }) => void;
 }
 
-/** A single event tile on the dashboard: open it, or rename/duplicate/delete.
+/** A single event tile on the dashboard: open it, or rename/duplicate/trash.
  * The dashboard list is live, so changes here re-render it automatically. */
-export function EventCard({ summary }: EventCardProps): JSX.Element {
+export function EventCard({ summary, onTrashed }: EventCardProps): JSX.Element {
   const navigate = useNavigate();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(summary.name);
@@ -31,14 +32,10 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
     await renameEvent(activeDb(), summary.id, trimmed);
   }
 
-  async function handleDelete(): Promise<void> {
-    const ok = window.confirm(
-      `Delete “${summary.name}” and its ${summary.guestCount} guest(s)? This removes it from this device${
-        syncConfigured ? " (and your account, if you're signed in)" : ""
-      }. Use “Download backup” first if you might need it.`,
-    );
-    if (!ok) return;
-    await deleteEvent(activeDb(), summary.id);
+  // Reversible (trash + Undo banner), so no confirmation dialog.
+  async function handleTrash(): Promise<void> {
+    await trashEvent(activeDb(), summary.id);
+    onTrashed({ id: summary.id, name: summary.name });
   }
 
   return (
@@ -73,8 +70,8 @@ export function EventCard({ summary }: EventCardProps): JSX.Element {
             </button>
           </li>
           <li>
-            <button type="button" className="text-error" onClick={() => void handleDelete()}>
-              Delete
+            <button type="button" className="text-error" onClick={() => void handleTrash()}>
+              Move to trash
             </button>
           </li>
         </ul>
