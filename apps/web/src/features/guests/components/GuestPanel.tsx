@@ -16,7 +16,7 @@ import { ResizeHandle } from "./ResizeHandle";
  * resizable column on desktop; a slide-over drawer on tablets. */
 export function GuestPanel(): JSX.Element {
   const tables = useTables();
-  const { open, inert, close } = useDrawerState("guests");
+  const { open, inert, passThrough, close } = useDrawerState("guests");
   const hasSelection = useGuestStore((state) => state.selectedGuestIds.length > 0);
 
   const { width, startResize, resizing } = usePanelWidth({
@@ -49,7 +49,7 @@ export function GuestPanel(): JSX.Element {
       inert={inert}
       className={`relative flex min-h-0 shrink-0 flex-col gap-2.5 border-r border-base-300 bg-base-100 p-3 xl:w-(--panel-width) max-xl:absolute max-xl:inset-y-0 max-xl:left-0 max-xl:z-30 max-xl:w-[min(460px,92vw)] max-xl:shadow-xl max-xl:transition-transform ${
         open ? "" : "max-xl:-translate-x-full"
-      }`}
+      } ${passThrough ? "pointer-events-none" : ""}`}
       style={{ "--panel-width": `${width}px` } as CSSProperties}
     >
       <ResizeHandle onMouseDown={startResize} active={resizing} />

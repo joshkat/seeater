@@ -159,7 +159,7 @@ function SingleTableEditor({ table, index }: { table: Table; index: number }): J
 /** Right-hand inspector for the current selection (a drawer on tablets). */
 export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const { open, inert, close } = useDrawerState("properties");
+  const { open, inert, passThrough, close } = useDrawerState("properties");
   const tables = useTables();
 
   const selected = tables.filter((table) => selectedIds.includes(table.id));
@@ -171,7 +171,7 @@ export function PropertiesPanel(): JSX.Element {
       inert={inert}
       className={`w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:w-[min(320px,85vw)] max-xl:shadow-xl max-xl:transition-transform ${
         open ? "" : "max-xl:translate-x-full"
-      }`}
+      } ${passThrough ? "pointer-events-none" : ""}`}
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[15px] font-semibold text-base-content">Properties</h2>

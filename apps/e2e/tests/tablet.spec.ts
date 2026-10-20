@@ -67,6 +67,8 @@ test("press, hold and drag a guest onto a table by touch", async ({ page }) => {
         window.dispatchEvent(new PointerEvent("pointermove", at(x, y)));
         await new Promise((resolve) => setTimeout(resolve, 30));
       }
+      // A finger rests a moment before lifting.
+      await new Promise((resolve) => setTimeout(resolve, 150));
       window.dispatchEvent(new PointerEvent("pointerup", at(end.x, end.y)));
     },
     { start, end },
