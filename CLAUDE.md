@@ -68,6 +68,8 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   (e.g. the guest-list checkboxes). User feedback, 2026-10-09.
 - **Every edit to an event is a pure op in `@seating/shared`** (with a test), applied via
   `useDocumentStore.getState().apply(doc => op(doc, …))`. Don't mutate documents anywhere else.
+  One user action = one `apply` (compose ops inside it) so it's one undo step.
+- **Global shortcuts skip only text entry** (`lib/isTextEntry`), not checkboxes/toggles/buttons.
 - **Schema change?** Edit `document/schema.ts`. If old docs won't satisfy it, bump
   `EVENT_DOC_SCHEMA_VERSION` and add an upgrade step in `document/migrate.ts`.
 - Storage access goes through `features/storage/repository/*` with `activeDb()`.
@@ -78,6 +80,12 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   of truth while editing. `apply(op)` updates memory and schedules a save through a
   **coalescedWriter** (serialized, latest-wins). Local saves are immediate; there's no debounce
   and no Save button.
+- **Undo/redo:** every `apply` is an undo step (`editor/lib/history.ts`, whole-doc snapshots, cap
+  200, session-only — reset on open/close/reload). Edits that fire per keystroke pass
+  `apply(edit, { coalesceKey })` so a burst is one step (table names do). User-facing
+  `undoEdit`/`redoEdit` (`editor/store/historyActions.ts`) also prune stale selections and close
+  seating prompts; they're off while the placement dialog is open. **A user action must be one
+  `apply`**, or it takes several ⌘Z to undo.
 - **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
   only. Both expose actions that wrap shared ops. Components read via
   `editor/hooks/useDocumentSelectors.ts` (`useTables`, `useGuests`, …).
@@ -225,6 +233,8 @@ Done:
   change; "Edit seating" / double-click a table.
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
   1280px, 44px targets on touch screens. Phone layout not yet (roadmap 15).
+- **Undo/redo:** ⌘/Ctrl+Z, Shift+⌘/Ctrl+Z or Ctrl+Y, toolbar ↶ ↷. Typing a name is one step; the
+  placement dialog's Confirm is one step. Session-only (not kept across reloads).
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
@@ -241,8 +251,8 @@ Done:
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
 Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ → 3 tablet/touch ✅
-(1–3 ship together in one PR) → 4 **undo/redo** (cheap:
-history of immutable docs in `documentStore`) → 5 **export/print** (chart PNG/PDF, rosters, place
+(1–3 shipped together in PR #7) → 4 undo/redo ✅ (phase A, with 12 version history + trash
+and Playwright e2e next) → 5 **export/print** (chart PNG/PDF, rosters, place
 cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
 passes**. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
