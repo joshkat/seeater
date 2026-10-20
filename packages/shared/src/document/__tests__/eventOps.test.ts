@@ -5,6 +5,7 @@ import {
   isExactSeatPlacement,
   reidentifyEventDoc,
   renameEventDoc,
+  restoreEventDoc,
   setExactSeatPlacement,
 } from "../eventOps.js";
 import { assignSeat } from "../guestOps.js";
@@ -102,5 +103,26 @@ describe("exact seat placement setting", () => {
     ).doc;
     expect(isExactSeatPlacement(setExactSeatPlacement(big, "on"))).toBe(true);
     expect(eventDocSchema.safeParse(off).success).toBe(true);
+  });
+});
+
+describe("restoreEventDoc", () => {
+  it("brings back an old version's content under the current identity", () => {
+    const { doc } = fixture();
+    const old = {
+      ...renameEventDoc(doc, "Old name"),
+      id: "other-id",
+      createdAt: "2020-01-01T00:00:00.000Z",
+    };
+    const current = { ...doc, guests: [], updatedAt: "2026-05-05T00:00:00.000Z" };
+    const restored = restoreEventDoc(current, old);
+    expect(restored).toMatchObject({
+      id: doc.id,
+      createdAt: doc.createdAt,
+      updatedAt: current.updatedAt,
+      name: "Old name",
+    });
+    expect(restored.guests).toHaveLength(3);
+    expect(eventDocSchema.safeParse(restored).success).toBe(true);
   });
 });

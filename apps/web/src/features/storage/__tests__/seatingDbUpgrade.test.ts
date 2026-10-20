@@ -7,7 +7,7 @@ import {
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SeatingDb } from "../db/SeatingDb";
+import { DATABASE_VERSION, SeatingDb } from "../db/SeatingDb";
 import { getEventDoc } from "../repository/eventRepository";
 
 const name = `upgrade-${crypto.randomUUID()}`;
@@ -51,5 +51,25 @@ describe("SeatingDb upgrade", () => {
       settings: { exactSeatPlacement: "auto" },
     });
     expect(upgraded?.guests[0]).toMatchObject({ name: "Ada", householdId: null });
+  });
+
+  it("adds the versions store to a database from the previous release (v3)", async () => {
+    const doc = createEventDoc({ name: "Current" });
+    const previous = new Dexie(name);
+    previous.version(3).stores({ events: "id, updatedAt" });
+    await previous.table("events").put({
+      id: doc.id,
+      doc,
+      summary: summarizeEventDoc(doc),
+      updatedAt: doc.updatedAt,
+      sync: { baseVersion: null, dirty: true, deleted: false },
+    });
+    previous.close();
+
+    const db = new SeatingDb(name);
+    expect(await getEventDoc(db, doc.id)).toEqual(doc);
+    expect(await db.versions.count()).toBe(0);
+    expect(db.verno).toBe(DATABASE_VERSION);
+    db.close();
   });
 });

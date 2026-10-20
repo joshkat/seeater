@@ -1,4 +1,4 @@
-import { addGuests, createEventDoc } from "@seating/shared";
+import { addGuests, createEventDoc, renameEventDoc } from "@seating/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SeatingDb } from "../db/SeatingDb";
@@ -6,10 +6,15 @@ import {
   createEvent,
   deleteEvent,
   duplicateEvent,
+  TRASH_RETENTION_DAYS,
   getEventDoc,
   listEventSummaries,
+  listTrashedEvents,
+  purgeExpiredTrash,
   renameEvent,
+  restoreFromTrash,
   saveEventDoc,
+  trashEvent,
 } from "../repository/eventRepository";
 
 let db: SeatingDb;
@@ -92,5 +97,41 @@ describe("eventRepository", () => {
     const names = (await listEventSummaries(db)).map((s) => s.name).sort();
     expect(names).toEqual(["Spring Gala", "Spring Gala (copy)"]);
     expect(copyId).not.toBe(doc.id);
+  });
+
+  it("trash hides an event, keeps it restorable, and survives saves", async () => {
+    const doc = createEventDoc({ name: "Wedding" });
+    await createEvent(db, doc);
+    await trashEvent(db, doc.id, new Date("2026-10-01T00:00:00.000Z"));
+
+    expect(await listEventSummaries(db)).toEqual([]);
+    expect(await getEventDoc(db, doc.id)).toBeNull();
+    const [trashed] = await listTrashedEvents(db);
+    expect(trashed).toMatchObject({
+      summary: { name: "Wedding" },
+      trashedAt: "2026-10-01T00:00:00.000Z",
+      purgeAt: "2026-10-31T00:00:00.000Z",
+    });
+
+    // A stale editor tab saving doesn't pull it out of the trash.
+    await saveEventDoc(db, renameEventDoc(doc, "Wedding!"));
+    expect(await listEventSummaries(db)).toEqual([]);
+
+    await restoreFromTrash(db, doc.id);
+    expect((await listEventSummaries(db)).map((s) => s.name)).toEqual(["Wedding!"]);
+    expect(await listTrashedEvents(db)).toEqual([]);
+  });
+
+  it(`purges events trashed more than ${TRASH_RETENTION_DAYS} days ago`, async () => {
+    const old = createEventDoc({ name: "Old" });
+    const recent = createEventDoc({ name: "Recent" });
+    await createEvent(db, old);
+    await createEvent(db, recent);
+    await trashEvent(db, old.id, new Date("2026-09-01T00:00:00.000Z"));
+    await trashEvent(db, recent.id, new Date("2026-10-15T00:00:00.000Z"));
+
+    expect(await purgeExpiredTrash(db, new Date("2026-10-20T00:00:00.000Z"))).toBe(1);
+    expect(await db.events.get(old.id)).toBeUndefined();
+    expect((await listTrashedEvents(db)).map((t) => t.summary.name)).toEqual(["Recent"]);
   });
 });
