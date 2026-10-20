@@ -1,6 +1,7 @@
 import { MAX_SEAT_COUNT } from "../geometry/constants.js";
 import { cleanHouseholdName, householdNameKey, pruneEmptyHouseholds } from "./householdOps.js";
 import { newId } from "./ids.js";
+import { dropGuestsFromStoredLayouts } from "./layoutOps.js";
 import { setSeatCount } from "./tableOps.js";
 import {
   type EventDoc,
@@ -206,13 +207,16 @@ export function updateGuest(doc: EventDoc, guestId: string, patch: GuestPatch): 
   };
 }
 
-/** Deletes a guest (and their household, if they were its last member). */
+/** Deletes a guest (and their household, if they were its last member), from
+ * every layout. */
 export function removeGuest(doc: EventDoc, guestId: string): EventDoc {
   if (!doc.guests.some((guest) => guest.id === guestId)) return doc;
-  return pruneEmptyHouseholds({
-    ...doc,
-    guests: doc.guests.filter((guest) => guest.id !== guestId),
-  });
+  return pruneEmptyHouseholds(
+    dropGuestsFromStoredLayouts(
+      { ...doc, guests: doc.guests.filter((guest) => guest.id !== guestId) },
+      [guestId],
+    ),
+  );
 }
 
 function seatExists(doc: EventDoc, seatId: string): boolean {

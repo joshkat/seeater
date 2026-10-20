@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 4;
+export const EVENT_DOC_SCHEMA_VERSION = 5;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -32,6 +32,8 @@ export const MAX_GUEST_NOTE_LENGTH = 1000;
 export const MAX_GUEST_NEED_LENGTH = 200;
 export const MAX_TAG_LENGTH = 40;
 export const MAX_TAGS_PER_GUEST = 20;
+export const MAX_LAYOUTS = 20;
+export const MAX_LAYOUT_NAME_LENGTH = 60;
 
 const idSchema = z.string().min(1).max(64);
 const isoDateSchema = z.iso.datetime({ offset: true });
@@ -129,6 +131,28 @@ export const eventSettingsSchema = z.object({
   exactSeatPlacement: exactSeatPlacementSchema,
 });
 
+/**
+ * An inactive layout's content: its own floor plan, tables and seating
+ * (guest id → seat id). The guest list is shared by every layout.
+ */
+export const storedLayoutSchema = z.object({
+  dimensions: sizeSchema,
+  tables: z.array(tableSchema).max(MAX_TABLES),
+  seating: z.record(idSchema, idSchema),
+});
+
+/**
+ * One layout of the event (e.g. "Ceremony", "Reception"). The active layout's
+ * content lives in the document's top-level `dimensions`, `tables` and each
+ * guest's `seatId` — so every edit works on it unchanged — and its `stored`
+ * is null. Every other layout keeps its content in `stored`.
+ */
+export const layoutSchema = z.object({
+  id: idSchema,
+  name: nonBlank(MAX_LAYOUT_NAME_LENGTH),
+  stored: storedLayoutSchema.nullable(),
+});
+
 /** Shape-only schema (no cross-reference checks). Used before normalizing. */
 export const eventDocShapeSchema = z.object({
   schemaVersion: z.literal(EVENT_DOC_SCHEMA_VERSION),
@@ -140,6 +164,8 @@ export const eventDocShapeSchema = z.object({
   guests: z.array(guestSchema).max(MAX_GUESTS),
   households: z.array(householdSchema).max(MAX_GUESTS),
   settings: eventSettingsSchema,
+  layouts: z.array(layoutSchema).min(1).max(MAX_LAYOUTS),
+  activeLayoutId: idSchema,
   createdAt: isoDateSchema,
   updatedAt: isoDateSchema,
 });
@@ -156,4 +182,6 @@ export type Guest = z.infer<typeof guestSchema>;
 export type Household = z.infer<typeof householdSchema>;
 export type ExactSeatPlacement = z.infer<typeof exactSeatPlacementSchema>;
 export type EventSettings = z.infer<typeof eventSettingsSchema>;
+export type StoredLayout = z.infer<typeof storedLayoutSchema>;
+export type Layout = z.infer<typeof layoutSchema>;
 export type EventDoc = z.infer<typeof eventDocShapeSchema>;

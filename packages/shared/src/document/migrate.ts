@@ -1,6 +1,7 @@
 import {
   EVENT_DOC_SCHEMA_VERSION,
   type EventDoc,
+  type Table,
   eventDocSchema,
   eventDocShapeSchema,
 } from "./schema.js";
@@ -53,6 +54,14 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
         )
       : doc.guests,
   }),
+  // v5: layouts. Everything so far becomes the one (active) layout. A fixed
+  // id, so two devices upgrading the same event agree on it.
+  4: (doc) => ({
+    ...doc,
+    schemaVersion: 5,
+    layouts: [{ id: "main", name: "Main", stored: null }],
+    activeLayoutId: "main",
+  }),
 };
 
 /**
@@ -81,16 +90,25 @@ export function upgradeEventDoc(raw: unknown): unknown {
   return doc;
 }
 
-/** Re-sorts each table's seats by index and renumbers them 0..n-1. */
+function normalizeTables(tables: Table[]): Table[] {
+  return tables.map((table) => ({
+    ...table,
+    seats: [...table.seats]
+      .sort((a, b) => a.index - b.index)
+      .map((seat, index) => ({ ...seat, index })),
+  }));
+}
+
+/** Re-sorts each table's seats by index and renumbers them 0..n-1 (in every layout). */
 export function normalizeEventDoc(doc: EventDoc): EventDoc {
   return {
     ...doc,
-    tables: doc.tables.map((table) => ({
-      ...table,
-      seats: [...table.seats]
-        .sort((a, b) => a.index - b.index)
-        .map((seat, index) => ({ ...seat, index })),
-    })),
+    tables: normalizeTables(doc.tables),
+    layouts: doc.layouts.map((layout) =>
+      layout.stored
+        ? { ...layout, stored: { ...layout.stored, tables: normalizeTables(layout.stored.tables) } }
+        : layout,
+    ),
   };
 }
 

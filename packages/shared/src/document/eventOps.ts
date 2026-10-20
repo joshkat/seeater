@@ -6,7 +6,15 @@ import {
   type EventDoc,
   type ExactSeatPlacement,
   MAX_EVENT_NAME_LENGTH,
+  type Table,
 } from "./schema.js";
+
+/** A fresh id for `oldId`, recorded in `map`. */
+function remember(map: Map<string, string>, oldId: string): string {
+  const id = newId();
+  map.set(oldId, id);
+  return id;
+}
 
 /** Whole-document operations: create, rename, duplicate, settings. */
 
@@ -27,6 +35,7 @@ export interface NewEventOptions {
 /** A brand-new, empty event document. */
 export function createEventDoc({ name, dimensions, now }: NewEventOptions): EventDoc {
   const timestamp = now ?? new Date().toISOString();
+  const layoutId = newId();
   return {
     schemaVersion: EVENT_DOC_SCHEMA_VERSION,
     id: newId(),
@@ -36,6 +45,8 @@ export function createEventDoc({ name, dimensions, now }: NewEventOptions): Even
     guests: [],
     households: [],
     settings: { exactSeatPlacement: "auto" },
+    layouts: [{ id: layoutId, name: "Main", stored: null }],
+    activeLayoutId: layoutId,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -63,16 +74,18 @@ export interface DuplicateOptions {
 export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = {}): EventDoc {
   const timestamp = options.now ?? new Date().toISOString();
   const seatIdMap = new Map<string, string>();
+  const cloneTables = (tables: Table[]): Table[] =>
+    tables.map((table) => ({
+      ...table,
+      id: newId(),
+      seats: table.seats.map((seat) => {
+        const id = newId();
+        seatIdMap.set(seat.id, id);
+        return { ...seat, id };
+      }),
+    }));
 
-  const tables = source.tables.map((table) => ({
-    ...table,
-    id: newId(),
-    seats: table.seats.map((seat) => {
-      const id = newId();
-      seatIdMap.set(seat.id, id);
-      return { ...seat, id };
-    }),
-  }));
+  const tables = cloneTables(source.tables);
 
   const householdIdMap = new Map<string, string>();
   const households = options.copyGuests
@@ -83,15 +96,33 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
       })
     : [];
 
+  const guestIdMap = new Map<string, string>();
   const guests = options.copyGuests
     ? source.guests.map((guest) => ({
         ...guest,
-        id: newId(),
+        id: remember(guestIdMap, guest.id),
         seatId:
           options.copyAssignments && guest.seatId ? (seatIdMap.get(guest.seatId) ?? null) : null,
         householdId: guest.householdId ? (householdIdMap.get(guest.householdId) ?? null) : null,
       }))
     : [];
+
+  // Other layouts: fresh table/seat ids; seating follows the guests (or is
+  // dropped when guests or assignments aren't copied).
+  const keepSeating = options.copyGuests && options.copyAssignments;
+  const layouts = source.layouts.map((layout) => {
+    if (!layout.stored) return layout;
+    const storedTables = cloneTables(layout.stored.tables);
+    const seating: Record<string, string> = {};
+    if (keepSeating) {
+      for (const [guestId, seatId] of Object.entries(layout.stored.seating)) {
+        const newGuest = guestIdMap.get(guestId);
+        const newSeat = seatIdMap.get(seatId);
+        if (newGuest && newSeat) seating[newGuest] = newSeat;
+      }
+    }
+    return { ...layout, stored: { ...layout.stored, tables: storedTables, seating } };
+  });
 
   return {
     ...source,
@@ -100,6 +131,7 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     tables,
     guests,
     households,
+    layouts,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
