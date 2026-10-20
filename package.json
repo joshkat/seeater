@@ -16,6 +16,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "test": "npm run test --workspaces --if-present",
+    "e2e": "npm run e2e --workspace @seating/e2e",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "lint": "eslint .",

@@ -81,3 +81,41 @@ jobs:
 
       - name: Build API
         run: npm run build --workspace @seating/api
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build:shared
+
+      # Desktop Chrome + WebKit (Safari's engine) for the iPad projects.
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+        working-directory: apps/e2e
+
+      # Builds the web app and serves it with `vite preview` (playwright.config.ts).
+      - name: Run end-to-end tests
+        run: npm run e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/e2e/playwright-report/
+            apps/e2e/test-results/
+          retention-days: 7
