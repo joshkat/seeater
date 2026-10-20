@@ -7,6 +7,9 @@ import { GuestPanel } from "../../guests/components/GuestPanel";
 import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
 import { DragGhost } from "../../dnd/components/DragGhost";
 import { PlacementDialog } from "../../placement/components/PlacementDialog";
+import { VersionHistoryButton } from "../../versions/components/VersionHistoryButton";
+import { VersionHistoryDialog } from "../../versions/components/VersionHistoryDialog";
+import { useAutoVersions } from "../../versions/hooks/useAutoVersions";
 import { useEventName } from "../hooks/useDocumentSelectors";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
@@ -65,6 +68,7 @@ function EventTitle(): JSX.Element {
 export function EditorPage(): JSX.Element {
   useKeyboardShortcuts();
   useUnsavedChangesGuard();
+  useAutoVersions();
 
   return (
     <div className="flex h-screen flex-col">
@@ -76,6 +80,7 @@ export function EditorPage(): JSX.Element {
           <EventTitle />
         </div>
         <div className="flex items-center gap-3">
+          <VersionHistoryButton />
           <SaveStatusBadge />
           <SyncStatusBadge />
           <AuthControls />
@@ -96,6 +101,7 @@ export function EditorPage(): JSX.Element {
         <DrawerBackdrop />
       </div>
       <PlacementDialog />
+      <VersionHistoryDialog />
       <DragGhost />
     </div>
   );

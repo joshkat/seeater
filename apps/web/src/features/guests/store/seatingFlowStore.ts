@@ -95,6 +95,8 @@ interface SeatingFlowState {
   /** Closes whichever prompt is open without seating anyone. */
   dismiss: () => void;
   clearNotice: () => void;
+  /** Shows a short confirmation in the canvas toast slot. */
+  showNotice: (text: string) => void;
   reset: () => void;
 }
 
@@ -277,6 +279,10 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
 
     clearNotice() {
       set({ notice: null });
+    },
+
+    showNotice(text) {
+      set({ notice: { id: ++noticeId, text } });
     },
 
     reset() {

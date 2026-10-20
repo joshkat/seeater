@@ -14,12 +14,14 @@ function step(direction: "undo" | "redo"): boolean {
   const documents = useDocumentStore.getState();
   const changed = direction === "undo" ? documents.undo() : documents.redo();
   if (!changed) return false;
-  pruneSelections();
+  pruneStaleSelections();
   useSeatingFlowStore.getState().dismiss();
   return true;
 }
 
-function pruneSelections(): void {
+/** Drops selected tables/guests that no longer exist in the open document
+ * (after an undo, redo or version restore). */
+export function pruneStaleSelections(): void {
   const doc = useDocumentStore.getState().doc;
   if (!doc) return;
   const tableIds = new Set(doc.tables.map((table) => table.id));

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { isTextEntry } from "../../../lib/isTextEntry";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
 import { redoEdit, undoEdit } from "../store/historyActions";
 
@@ -17,6 +18,13 @@ export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (isTextEntry(event.target)) return;
+
+      // Version history is modal too: Escape closes it, nothing else applies.
+      const versions = useVersionDialogStore.getState();
+      if (versions.open) {
+        if (event.key === "Escape") versions.setOpen(false);
+        return;
+      }
 
       // The placement dialog is modal: only Escape (back out) applies.
       const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();
