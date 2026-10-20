@@ -77,7 +77,47 @@ const HEADER_ALIASES: Record<string, keyof GuestInput> = {
   party: "household",
   "party name": "household",
   family: "household",
+  meal: "meal",
+  "meal choice": "meal",
+  entree: "meal",
+  entrée: "meal",
+  menu: "meal",
+  dietary: "dietary",
+  diet: "dietary",
+  "dietary needs": "dietary",
+  "dietary requirements": "dietary",
+  allergies: "dietary",
+  allergy: "dietary",
+  accessibility: "accessibility",
+  "accessibility needs": "accessibility",
+  mobility: "accessibility",
+  notes: "notes",
+  note: "notes",
+  comments: "notes",
+  tags: "tags",
+  tag: "tags",
+  group: "tags",
+  groups: "tags",
+  side: "tags",
+  child: "isChild",
+  kid: "isChild",
+  "is child": "isChild",
+  "age group": "isChild",
+  type: "isChild",
 };
+
+/** "yes", "x", "Child", "infant"… in a Child / Age group column. */
+function looksLikeChild(value: string): boolean {
+  return /^(y|yes|x|true|1)$/i.test(value) || /child|kid|infant|baby|toddler/i.test(value);
+}
+
+/** Tags written in one cell: "Bride's side; Family" or "Work, Team". */
+function splitTags(value: string): string[] {
+  return value
+    .split(/[;,|]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 /** Maps a header row to column indices, or null if no header is recognized. */
 function detectHeader(cells: string[]): Partial<Record<keyof GuestInput, number>> | null {
@@ -101,8 +141,10 @@ export type CsvImportResult = GuestImportResult;
 /**
  * Maps rows of cells to guest inputs. If the first row looks like a header
  * (contains a recognizable "name" column) it's used to map columns; otherwise
- * columns are read positionally as name, email, phone. A "Household" / "Party"
- * column (header only) groups guests with the same value into one household.
+ * columns are read positionally as name, email, phone. Header-only columns:
+ * Household / Party (groups guests), Meal, Dietary / Allergies,
+ * Accessibility, Notes, Tags / Group / Side (split on , ; |), and Child or
+ * Age group (yes / child / infant …).
  * Shared by the CSV and spreadsheet (xlsx) importers.
  */
 export function rowsToGuests(rawRows: string[][]): GuestImportResult {
@@ -121,8 +163,14 @@ export function rowsToGuests(rawRows: string[][]): GuestImportResult {
         email: header.email,
         phone: header.phone,
         household: header.household,
+        meal: header.meal,
+        dietary: header.dietary,
+        accessibility: header.accessibility,
+        notes: header.notes,
+        tags: header.tags,
+        isChild: header.isChild,
       }
-    : { name: 0, email: 1, phone: 2, household: undefined };
+    : { name: 0, email: 1, phone: 2 };
   const cell = (row: string[], index: number | undefined): string =>
     index === undefined ? "" : (row[index] ?? "").trim();
 
@@ -137,13 +185,20 @@ export function rowsToGuests(rawRows: string[][]): GuestImportResult {
     }
     const email = cell(row, col.email);
     const phone = cell(row, col.phone);
-    const household = cell(row, col.household);
-    guests.push({
-      name,
-      email: email || null,
-      phone: phone || null,
-      ...(household ? { household } : {}),
-    });
+    const guest: GuestInput = { name, email: email || null, phone: phone || null };
+    // Detail columns only exist with a header (see above).
+    if ("household" in col) {
+      const household = cell(row, col.household);
+      if (household) guest.household = household;
+      for (const key of ["meal", "dietary", "accessibility", "notes"] as const) {
+        const value = cell(row, col[key]);
+        if (value) guest[key] = value;
+      }
+      const tags = splitTags(cell(row, col.tags));
+      if (tags.length > 0) guest.tags = tags;
+      if (looksLikeChild(cell(row, col.isChild))) guest.isChild = true;
+    }
+    guests.push(guest);
   }
 
   return { guests, skipped };
