@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { isTextEntry } from "../../../lib/isTextEntry";
+import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
@@ -19,10 +20,16 @@ export function useKeyboardShortcuts(): void {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (isTextEntry(event.target)) return;
 
-      // Version history is modal too: Escape closes it, nothing else applies.
+      // Version history and guest details are modal too: Escape closes them,
+      // nothing else applies.
       const versions = useVersionDialogStore.getState();
       if (versions.open) {
         if (event.key === "Escape") versions.setOpen(false);
+        return;
+      }
+      const details = useGuestDetailsStore.getState();
+      if (details.guestId) {
+        if (event.key === "Escape") details.close();
         return;
       }
 

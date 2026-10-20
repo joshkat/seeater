@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { GuestDetailsDialog } from "../../guests/components/details/GuestDetailsDialog";
 import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
 import { DragGhost } from "../../dnd/components/DragGhost";
 import { PlacementDialog } from "../../placement/components/PlacementDialog";
@@ -102,6 +103,7 @@ export function EditorPage(): JSX.Element {
       </div>
       <PlacementDialog />
       <VersionHistoryDialog />
+      <GuestDetailsDialog />
       <DragGhost />
     </div>
   );
