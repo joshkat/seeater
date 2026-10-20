@@ -32,6 +32,8 @@ export function useKeyboardShortcuts(): void {
         if (event.key === "Escape") details.close();
         return;
       }
+      // Any other open modal (e.g. New layout) handles its own keys.
+      if (document.querySelector(".modal.modal-open")) return;
 
       // The placement dialog is modal: only Escape (back out) applies.
       const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();

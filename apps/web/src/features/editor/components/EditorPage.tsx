@@ -17,6 +17,7 @@ import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
 import { DrawerBackdrop } from "./DrawerBackdrop";
+import { LayoutTabs } from "./layouts/LayoutTabs";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { SaveStatusBadge } from "./SaveStatusBadge";
 import { Toolbar } from "./Toolbar";
@@ -96,6 +97,7 @@ export function EditorPage(): JSX.Element {
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
           <EditorCanvas />
+          <LayoutTabs />
           <SeatingPrompts />
         </div>
         <PropertiesPanel />
