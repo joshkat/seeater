@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { createCoalescedWriter } from "../../storage/repository/coalescedWriter";
 import { getEventDoc, saveEventDoc } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
+import { EMPTY_HISTORY, type History, recordEdit, redo, undo } from "../lib/history";
 
 type OpenStatus = "idle" | "loading" | "ready" | "missing" | "error";
 export type SaveStatus = "saved" | "saving" | "error";
@@ -14,6 +15,8 @@ interface DocumentState {
   doc: EventDoc | null;
   status: OpenStatus;
   saveStatus: SaveStatus;
+  /** Undo/redo snapshots for the open document (cleared when it changes). */
+  history: History;
 
   /** Loads an event from the local database (flushing any pending save first). */
   open: (id: string) => Promise<void>;
@@ -23,9 +26,15 @@ interface DocumentState {
   close: () => Promise<void>;
   /**
    * Applies a pure edit (from @seating/shared) to the open document and
-   * persists it. Edits that return the same object are no-ops.
+   * persists it. Edits that return the same object are no-ops. Every edit is
+   * an undo step; pass `coalesceKey` for edits that arrive per keystroke
+   * (typing a name) so a burst becomes one step.
    */
-  apply: (edit: (doc: EventDoc) => EventDoc) => void;
+  apply: (edit: (doc: EventDoc) => EventDoc, options?: { coalesceKey?: string }) => void;
+  /** Steps back one edit (saved like any other change). Returns false if there was none. */
+  undo: () => boolean;
+  /** Re-applies the last undone edit. Returns false if there was none. */
+  redo: () => boolean;
 }
 
 /** Persists every change immediately, coalescing bursts (see coalescedWriter). */
@@ -55,6 +64,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   doc: null,
   status: "idle",
   saveStatus: "saved",
+  history: EMPTY_HISTORY,
 
   async open(id) {
     const { doc, status } = get();
@@ -62,7 +72,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     if (doc?.id === id && (status === "ready" || status === "loading")) return;
 
     const request = ++openRequest;
-    set({ status: "loading", doc: null });
+    set({ status: "loading", doc: null, history: EMPTY_HISTORY });
     await writer.flush();
     try {
       const loaded = await getEventDoc(activeDb(), id);
@@ -80,22 +90,45 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     await writer.flush();
     const loaded = await getEventDoc(activeDb(), current.id);
     if (get().doc?.id !== current.id) return;
-    set({ doc: loaded, status: loaded ? "ready" : "missing" });
+    // The document changed underneath us (e.g. a sync pull): old snapshots no
+    // longer describe it, so start a fresh history.
+    set({ doc: loaded, status: loaded ? "ready" : "missing", history: EMPTY_HISTORY });
   },
 
   async close() {
     const request = ++openRequest;
     await writer.flush();
     if (request !== openRequest) return; // a newer open() has taken over
-    set({ doc: null, status: "idle" });
+    set({ doc: null, status: "idle", history: EMPTY_HISTORY });
   },
 
-  apply(edit) {
-    const { doc } = get();
+  apply(edit, options) {
+    const { doc, history } = get();
     if (!doc) return;
     const next = edit(doc);
     if (next === doc) return;
-    set({ doc: next });
+    set({
+      doc: next,
+      history: recordEdit(history, doc, { key: options?.coalesceKey, now: Date.now() }),
+    });
     writer.schedule(next);
+  },
+
+  undo() {
+    const { doc, history } = get();
+    const step = doc ? undo(history, doc) : null;
+    if (!step) return false;
+    set({ doc: step.doc, history: step.history });
+    writer.schedule(step.doc);
+    return true;
+  },
+
+  redo() {
+    const { doc, history } = get();
+    const step = doc ? redo(history, doc) : null;
+    if (!step) return false;
+    set({ doc: step.doc, history: step.history });
+    writer.schedule(step.doc);
+    return true;
   },
 }));

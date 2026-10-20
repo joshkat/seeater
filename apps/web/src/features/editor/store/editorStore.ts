@@ -77,8 +77,8 @@ function currentDoc(): EventDoc | null {
   return useDocumentStore.getState().doc;
 }
 
-function edit(change: (doc: EventDoc) => EventDoc): void {
-  useDocumentStore.getState().apply(change);
+function edit(change: (doc: EventDoc) => EventDoc, coalesceKey?: string): void {
+  useDocumentStore.getState().apply(change, { coalesceKey });
 }
 
 function dimensions() {
@@ -209,7 +209,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setTableLabel(id, label) {
-    edit((doc) => setTableLabel(doc, id, label));
+    // Typed one keystroke at a time: one undo step per burst of typing.
+    edit((doc) => setTableLabel(doc, id, label), `table-label:${id}`);
   },
 
   setSeatCount(id, seatCount) {
