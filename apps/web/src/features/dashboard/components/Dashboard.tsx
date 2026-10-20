@@ -1,14 +1,22 @@
+import { useCallback, useState } from "react";
+
 import { AuthControls } from "../../auth/components/AuthControls";
 import { ImportBackupButton } from "../../backup/components/ImportBackupButton";
 import { SyncNotice } from "../../sync/components/SyncNotice";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { useEventSummaries } from "../hooks/useEventSummaries";
+import { usePurgeExpiredTrash } from "../hooks/usePurgeExpiredTrash";
 import { EventCard } from "./EventCard";
 import { NewEventButton } from "./NewEventButton";
+import { TrashLink } from "./TrashLink";
+import { TrashUndoNotice } from "./TrashUndoNotice";
 
 /** The "My Events" landing page: every seating chart on this device as a tile. */
 export function Dashboard(): JSX.Element {
   const summaries = useEventSummaries();
+  usePurgeExpiredTrash();
+  const [lastTrashed, setLastTrashed] = useState<{ id: string; name: string } | null>(null);
+  const clearLastTrashed = useCallback(() => setLastTrashed(null), []);
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
@@ -16,6 +24,7 @@ export function Dashboard(): JSX.Element {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <h1 className="text-xl font-bold">My Events</h1>
           <div className="flex items-center gap-3">
+            <TrashLink />
             <ImportBackupButton />
             <NewEventButton />
             <SyncStatusBadge />
@@ -26,6 +35,7 @@ export function Dashboard(): JSX.Element {
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <SyncNotice />
+        {lastTrashed && <TrashUndoNotice event={lastTrashed} onDone={clearLastTrashed} />}
         {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
         {summaries?.length === 0 && (
           <div className="rounded-box border border-dashed border-base-300 p-12 text-center">
@@ -38,7 +48,7 @@ export function Dashboard(): JSX.Element {
         {summaries !== undefined && summaries.length > 0 && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {summaries.map((summary) => (
-              <EventCard key={summary.id} summary={summary} />
+              <EventCard key={summary.id} summary={summary} onTrashed={setLastTrashed} />
             ))}
           </div>
         )}

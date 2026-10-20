@@ -2,6 +2,7 @@ import { RouterProvider, createBrowserRouter } from "react-router";
 
 import { NotFoundPage } from "./components/NotFoundPage";
 import { Dashboard } from "./features/dashboard/components/Dashboard";
+import { TrashPage } from "./features/dashboard/components/TrashPage";
 import { EditorStatusScreen } from "./features/editor/components/EditorStatusScreen";
 
 /**
@@ -11,6 +12,7 @@ import { EditorStatusScreen } from "./features/editor/components/EditorStatusScr
  */
 const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
+  { path: "/trash", element: <TrashPage /> },
   {
     path: "/events/:eventId",
     // The editor (and the Konva canvas library) is code-split: the dashboard
