@@ -130,6 +130,12 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   them (one undoable edit). Anything that needs **all** layouts (export, stats across rooms) must use
   `layoutViews(doc)`, not `doc.tables`. Table/seat ids are unique across layouts. UI: tabs over the
   canvas (`editor/components/layouts/`, `editor/store/layoutActions.ts`).
+- **Export & print** (`features/export/`): print views are a portal (`#print-view`) over the
+  app; `body.printing` + `@media print` in `global.css` hide everything else, so the browser's
+  Print / Save as PDF outputs only the sheet (no PDF library, works offline). The chart image comes
+  from the canvas via `registerChartCapture` (2×, cropped to the tables, grid + handles hidden).
+  Lists are built from `seatingRows(doc, layoutView)` (pure). Guest CSV export uses headers the
+  importer reads back.
 - **Guest details (schema v4):** `meal`, `dietary`, `accessibility`, `notes`, `tags[]`, `isChild`.
   Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
   no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
@@ -275,6 +281,8 @@ Done:
 - **Find & stats:** guest search + filters (RSVP, seated, tag, meal, needs), "Show on map" (rings
   the chair), totals line, seated/chairs on each table, Stats dialog with per-table meal totals and
   "Copy for caterer"; colour chairs by guest / tag / meal / RSVP with a legend.
+- **Export & print:** seating chart (print or PNG), table rosters, find-your-seat board, fold-over
+  place cards, escort cards (Print / Save as PDF), guest list CSV with seats per layout.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
