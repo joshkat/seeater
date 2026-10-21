@@ -6,6 +6,7 @@ import { Layer, Rect, Stage } from "react-konva";
 
 import type { Point as ScreenPoint } from "../../../dnd/lib/dragTypes";
 import { registerDropZone } from "../../../dnd/lib/dropZones";
+import { registerChartCapture } from "../../../export/lib/chartCapture";
 import { useDragStore } from "../../../dnd/store/dragStore";
 import { bySeatId, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
@@ -145,6 +146,52 @@ export function EditorCanvas(): JSX.Element {
         return true;
       }),
     [dropTargetAt, requestSeating],
+  );
+
+  // Export: render the whole floor plan at 1:1 (×2 for sharpness), without
+  // the grid or selection handles, then put the view back.
+  useEffect(
+    () =>
+      registerChartCapture(() => {
+        const stage = stageRef.current;
+        if (!stage) return null;
+        const saved = { position: stage.position(), scale: stage.scale(), size: stage.size() };
+        const hidden = [...stage.find("Transformer"), ...stage.find(".grid-line")];
+        hidden.forEach((node) => node.visible(false));
+        stage.position({ x: 0, y: 0 });
+        stage.scale({ x: 1, y: 1 });
+        stage.size(dimensions);
+        try {
+          // Crop to the tables (plus a margin) so the chart fills the page;
+          // an empty floor plan exports whole.
+          const boxes = [...nodeRefs.current.values()].map((node) => node.getClientRect());
+          const margin = 40;
+          const crop =
+            boxes.length === 0
+              ? { x: 0, y: 0, width: dimensions.width, height: dimensions.height }
+              : (() => {
+                  const minX = Math.max(0, Math.min(...boxes.map((b) => b.x)) - margin);
+                  const minY = Math.max(0, Math.min(...boxes.map((b) => b.y)) - margin);
+                  const maxX = Math.min(
+                    dimensions.width,
+                    Math.max(...boxes.map((b) => b.x + b.width)) + margin,
+                  );
+                  const maxY = Math.min(
+                    dimensions.height,
+                    Math.max(...boxes.map((b) => b.y + b.height)) + margin,
+                  );
+                  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+                })();
+          return stage.toDataURL({ ...crop, pixelRatio: 2, mimeType: "image/png" });
+        } finally {
+          stage.position(saved.position);
+          stage.scale(saved.scale);
+          stage.size(saved.size);
+          hidden.forEach((node) => node.visible(true));
+          stage.batchDraw();
+        }
+      }),
+    [dimensions],
   );
 
   // While guests are dragged over the canvas, highlight the table they'd land
