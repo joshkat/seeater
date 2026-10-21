@@ -30,9 +30,100 @@ export const GRID_SIZE = 20;
 /** Default size for a brand-new floor plan. */
 export const DEFAULT_FLOOR_PLAN_SIZE: Size = { width: 1600, height: 1000 };
 
-/** Convenience: default size for a table of the given shape. */
-export function defaultSizeForShape(shape: TableShape): Size {
-  return shape === "round"
-    ? { width: DEFAULT_ROUND_DIAMETER, height: DEFAULT_ROUND_DIAMETER }
-    : { ...DEFAULT_RECT_SIZE };
+/** Chair-to-chair spacing in a row of chairs (plan units = cm). */
+export const ROW_CHAIR_SPACING = 55;
+/** Depth of a row of chairs (its hit area). */
+export const ROW_DEPTH = 50;
+
+/** The length a row needs for `count` chairs. */
+export function rowWidthFor(count: number): number {
+  return Math.max(1, count) * ROW_CHAIR_SPACING;
 }
+
+/** Convenience: default size for a table of the given shape. */
+export function defaultSizeForShape(shape: TableShape, seatCount = DEFAULT_SEAT_COUNT): Size {
+  if (shape === "round") return { width: DEFAULT_ROUND_DIAMETER, height: DEFAULT_ROUND_DIAMETER };
+  if (shape === "row") return { width: rowWidthFor(seatCount), height: ROW_DEPTH };
+  return { ...DEFAULT_RECT_SIZE };
+}
+
+/** Where a preset's chairs go. */
+export type ChairSides = "around" | "one-side" | "long-sides";
+
+/** A ready-made table: real sizes (cm) and a typical chair count. */
+export interface TablePreset {
+  id: string;
+  name: string;
+  shape: TableShape;
+  size: Size;
+  seatCount: number;
+  chairs: ChairSides;
+}
+
+/** Standard event furniture. Sizes in plan units (centimetres). */
+export const TABLE_PRESETS: TablePreset[] = [
+  {
+    id: "round-48",
+    name: "Round 48″ (4 ft) · 6",
+    shape: "round",
+    size: { width: 122, height: 122 },
+    seatCount: 6,
+    chairs: "around",
+  },
+  {
+    id: "round-60",
+    name: "Round 60″ (5 ft) · 8",
+    shape: "round",
+    size: { width: 152, height: 152 },
+    seatCount: 8,
+    chairs: "around",
+  },
+  {
+    id: "round-72",
+    name: "Round 72″ (6 ft) · 10",
+    shape: "round",
+    size: { width: 183, height: 183 },
+    seatCount: 10,
+    chairs: "around",
+  },
+  {
+    id: "banquet-6",
+    name: "Banquet 6 ft · 6",
+    shape: "rectangle",
+    size: { width: 183, height: 76 },
+    seatCount: 6,
+    chairs: "long-sides",
+  },
+  {
+    id: "banquet-8",
+    name: "Banquet 8 ft · 8",
+    shape: "rectangle",
+    size: { width: 244, height: 76 },
+    seatCount: 8,
+    chairs: "long-sides",
+  },
+  {
+    id: "head-8",
+    name: "Head table 8 ft · 4",
+    shape: "rectangle",
+    size: { width: 244, height: 76 },
+    seatCount: 4,
+    chairs: "one-side",
+  },
+  {
+    id: "head-16",
+    name: "Head table 16 ft · 8",
+    shape: "rectangle",
+    size: { width: 488, height: 76 },
+    seatCount: 8,
+    chairs: "one-side",
+  },
+  {
+    id: "row-10",
+    name: "Row of chairs · 10",
+    shape: "row",
+    size: { width: rowWidthFor(10), height: ROW_DEPTH },
+    seatCount: 10,
+    chairs: "around",
+  },
+];

@@ -1,14 +1,25 @@
 import type {
+  AlignEdge,
   ChairLayoutMode,
   EventDoc,
   ExactSeatPlacement,
   Point,
+  Size,
+  TableGridOptions,
+  TablePreset,
   TableShape,
+  UnitSystem,
 } from "@seating/shared";
 import {
   DEFAULT_FLOOR_PLAN_SIZE,
   addTable,
+  addTableFromPreset,
+  addTableGrid,
+  alignTables,
   deleteTables,
+  distributeTables,
+  setFloorSize,
+  setUnitSystem,
   duplicateTables,
   renameEventDoc,
   setChairMode,
@@ -68,6 +79,14 @@ interface EditorState {
   clearSelection: () => void;
 
   addTable: (shape: TableShape) => void;
+  /** Adds a table from a preset near the middle of the floor, selected. */
+  addPresetTable: (preset: TablePreset) => void;
+  /** Adds a grid of tables centred on the floor, all selected. */
+  addTableGrid: (options: Omit<TableGridOptions, "center">) => void;
+  alignSelected: (edge: AlignEdge) => void;
+  distributeSelected: (axis: "horizontal" | "vertical") => void;
+  setUnits: (units: UnitSystem) => void;
+  setFloorSize: (size: Size) => void;
   updateTableTransform: (id: string, transform: TableTransform) => void;
   setTableLabel: (id: string, label: string) => void;
   setSeatCount: (id: string, seatCount: number) => void;
@@ -220,6 +239,44 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     edit(() => result.doc);
     set({ selectedIds: [result.tableId] });
+  },
+
+  addPresetTable(preset) {
+    const doc = currentDoc();
+    if (!doc) return;
+    const jitter = (doc.tables.length % 5) * 24;
+    const result = addTableFromPreset(doc, preset, {
+      x: doc.dimensions.width / 2 + jitter,
+      y: doc.dimensions.height / 2 + jitter,
+    });
+    edit(() => result.doc);
+    set({ selectedIds: [result.tableId] });
+  },
+
+  addTableGrid(options) {
+    const doc = currentDoc();
+    if (!doc) return;
+    const center = { x: doc.dimensions.width / 2, y: doc.dimensions.height / 2 };
+    const result = addTableGrid(doc, { ...options, center });
+    edit(() => result.doc);
+    set({ selectedIds: result.tableIds });
+  },
+
+  alignSelected(edge) {
+    edit((doc) => alignTables(doc, get().selectedIds, edge));
+  },
+
+  distributeSelected(axis) {
+    edit((doc) => distributeTables(doc, get().selectedIds, axis));
+  },
+
+  setUnits(units) {
+    edit((doc) => setUnitSystem(doc, units));
+  },
+
+  setFloorSize(size) {
+    edit((doc) => setFloorSize(doc, size));
+    get().fitToView();
   },
 
   updateTableTransform(id, transform) {

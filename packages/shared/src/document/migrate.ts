@@ -62,6 +62,12 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
     layouts: [{ id: "main", name: "Main", stored: null }],
     activeLayoutId: "main",
   }),
+  // v6: a "row" table shape (no change needed) and a units setting.
+  5: (doc) => ({
+    ...doc,
+    schemaVersion: 6,
+    settings: { ...(doc.settings as object), units: "auto" },
+  }),
 };
 
 /**

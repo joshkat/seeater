@@ -72,15 +72,45 @@ function rectangleSeatOffsets(size: Size, count: number): Point[] {
   return offsets;
 }
 
+/** A row of chairs: evenly along the length, no table in between. */
+function rowSeatOffsets(size: Size, count: number): Point[] {
+  return evenAlong(size.width / 2, count).map((x) => ({ x, y: 0 }));
+}
+
+/**
+ * Chairs on one long side (a head table: everyone faces the room) or split
+ * across both long sides (a banquet table, no one at the ends). For custom
+ * layouts, relative to the table center before rotation.
+ */
+export function sideSeatOffsets(
+  size: Size,
+  count: number,
+  sides: "one-side" | "long-sides",
+): Point[] {
+  const halfW = size.width / 2;
+  const halfH = size.height / 2;
+  if (sides === "one-side") {
+    return evenAlong(halfW, count).map((x) => ({ x, y: -(halfH + CHAIR_OFFSET) }));
+  }
+  const top = Math.ceil(count / 2);
+  const bottom = count - top;
+  return [
+    ...evenAlong(halfW, top).map((x) => ({ x, y: -(halfH + CHAIR_OFFSET) })),
+    ...evenAlong(halfW, bottom)
+      .reverse()
+      .map((x) => ({ x, y: halfH + CHAIR_OFFSET })),
+  ];
+}
+
 /**
  * Computes evenly-spaced chair offsets (relative to table center, before
  * rotation) for an auto layout.
  */
 export function computeAutoSeatOffsets(shape: TableShape, size: Size, count: number): Point[] {
   if (count <= 0) return [];
-  return shape === "round"
-    ? roundSeatOffsets(size.width, count)
-    : rectangleSeatOffsets(size, count);
+  if (shape === "round") return roundSeatOffsets(size.width, count);
+  if (shape === "row") return rowSeatOffsets(size, count);
+  return rectangleSeatOffsets(size, count);
 }
 
 /**

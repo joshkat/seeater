@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 5;
+export const EVENT_DOC_SCHEMA_VERSION = 6;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -67,7 +67,8 @@ export const seatSchema = z.object({
   offset: pointSchema.nullable(),
 });
 
-export const tableShapeSchema = z.enum(["round", "rectangle"]);
+/** "row": a line of chairs with no table (ceremonies, talks). */
+export const tableShapeSchema = z.enum(["round", "rectangle", "row"]);
 export const chairLayoutModeSchema = z.enum(["auto", "custom"]);
 
 export const tableSchema = z.object({
@@ -127,8 +128,15 @@ export const householdSchema = z.object({
 export const exactSeatPlacementSchema = z.enum(["auto", "on", "off"]);
 
 /** Per-event preferences that travel with the document. */
+/**
+ * How lengths are shown. Plan units are centimetres either way; "auto"
+ * follows the viewer's locale (imperial for US English).
+ */
+export const unitSystemSchema = z.enum(["auto", "metric", "imperial"]);
+
 export const eventSettingsSchema = z.object({
   exactSeatPlacement: exactSeatPlacementSchema,
+  units: unitSystemSchema,
 });
 
 /**
@@ -181,6 +189,7 @@ export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type Guest = z.infer<typeof guestSchema>;
 export type Household = z.infer<typeof householdSchema>;
 export type ExactSeatPlacement = z.infer<typeof exactSeatPlacementSchema>;
+export type UnitSystem = z.infer<typeof unitSystemSchema>;
 export type EventSettings = z.infer<typeof eventSettingsSchema>;
 export type StoredLayout = z.infer<typeof storedLayoutSchema>;
 export type Layout = z.infer<typeof layoutSchema>;

@@ -66,7 +66,7 @@ erDiagram
   GUEST }o--o| HOUSEHOLD : "householdId"
 
   EVENT_DOC {
-    int schemaVersion "5 — bump + add an upgrade step on breaking changes"
+    int schemaVersion "6 — bump + add an upgrade step on breaking changes"
     array layouts "id, name, stored (null = active)"
     string activeLayoutId
     object settings "exactSeatPlacement: auto | on | off"
@@ -79,7 +79,7 @@ erDiagram
   TABLE {
     string id "client UUID"
     string label "max 80; blank = 'Table N'"
-    enum shape "round | rectangle"
+    enum shape "round | rectangle | row"
     point position "center"
     number rotation "degrees"
     size size "round: width == height"
@@ -215,7 +215,8 @@ layout.
 
 ### Schema versions
 
-`schemaVersion` is `5` (v2 households, v3 `settings`, v4 guest details, v5 layouts). When the shape changes in a way old documents don't
+`schemaVersion` is `6` (v2 households, v3 `settings`, v4 guest details, v5 layouts, v6 `units` +
+the `row` shape). Plan units are centimetres. When the shape changes in a way old documents don't
 satisfy:
 
 1. Bump `EVENT_DOC_SCHEMA_VERSION` in `schema.ts`.

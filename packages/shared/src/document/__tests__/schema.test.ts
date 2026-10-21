@@ -110,7 +110,7 @@ describe("parseEventDoc", () => {
         delete guest[key];
       }
     }
-    expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto" });
+    expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto", units: "auto" });
   });
 
   it("upgrades a v3 document: guests get empty details", () => {

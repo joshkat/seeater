@@ -29,6 +29,25 @@ export function TableShapeNode({
   const strokeWidth = dropHighlight ? 4 : selected ? 2.5 : 1.5;
   const fill = dropHighlight ? FILL_DROP : FILL;
 
+  // A row of chairs has no table: a faint strip under the chairs is the
+  // part you grab (and drop guests on).
+  if (shape === "row") {
+    return (
+      <Rect
+        tableId={tableId}
+        width={size.width}
+        height={size.height}
+        offsetX={size.width / 2}
+        offsetY={size.height / 2}
+        cornerRadius={size.height / 2}
+        fill={dropHighlight ? FILL_DROP : "rgba(148, 163, 184, 0.12)"}
+        stroke={stroke}
+        strokeWidth={selected || dropHighlight ? strokeWidth : 1}
+        dash={selected || dropHighlight ? undefined : [6, 4]}
+      />
+    );
+  }
+
   if (shape === "round") {
     return (
       <Circle
