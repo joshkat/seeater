@@ -10,9 +10,14 @@ import {
   unassignedOrder,
 } from "../lib/guestListModel";
 import type { SelectModifiers } from "../lib/selectModifiers";
+import { filterGuests, isFiltering } from "../lib/guestFilter";
 import { guestSubtitle } from "../lib/guestSubtitle";
+import { locateGuestSeat } from "../lib/locateGuest";
+import { useGuestFilterStore } from "../store/guestFilterStore";
 import { useGuestDetailsStore } from "../store/guestDetailsStore";
 import { useGuestStore } from "../store/guestStore";
+import { useEditorStore } from "../../editor/store/editorStore";
+import { GuestFilterBar } from "./filter/GuestFilterBar";
 import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
 import { HouseholdHeader } from "./HouseholdHeader";
@@ -39,6 +44,15 @@ interface GuestListProps {
 export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const guests = useGuests();
   const households = useHouseholds();
+  const filter = useGuestFilterStore((state) => state.filter);
+  const clearFilter = useGuestFilterStore((state) => state.clearFilter);
+  const selectTable = useEditorStore((state) => state.selectTable);
+  // Everything below lists only the guests matching the search and filters.
+  const visibleGuests = useMemo(
+    () => filterGuests(guests, households, filter),
+    [guests, households, filter],
+  );
+  const filtering = isFiltering(filter);
   const selectedGuestIds = useGuestStore((state) => state.selectedGuestIds);
   const selectGuest = useGuestStore((state) => state.selectGuest);
   const selectRange = useGuestStore((state) => state.selectRange);
@@ -50,8 +64,8 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const dissolveHousehold = useGuestStore((state) => state.dissolveHousehold);
 
   const unassignedEntries = useMemo(
-    () => buildUnassignedEntries(guests, households),
-    [guests, households],
+    () => buildUnassignedEntries(visibleGuests, households),
+    [visibleGuests, households],
   );
   const unassignedIds = useMemo(() => unassignedOrder(unassignedEntries), [unassignedEntries]);
 
@@ -62,14 +76,16 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
       {
         name: string;
         index: number;
+        tableId: string;
         items: { guestId: string; seatNumber: number }[];
       }
     >();
-    for (const guest of guests) {
+    for (const guest of visibleGuests) {
       if (!guest.seatId) continue;
       const info = seatInfoFor(guest.seatId);
       if (!info) continue;
       const group = groups.get(info.tableId) ?? {
+        tableId: info.tableId,
         name: info.tableName,
         index: info.tableIndex,
         items: [],
@@ -83,7 +99,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         ...group,
         items: group.items.sort((a, b) => a.seatNumber - b.seatNumber),
       }));
-  }, [guests, seatInfoFor]);
+  }, [visibleGuests, seatInfoFor]);
 
   // Everything in display order: what a Shift-click range runs over.
   const visibleOrder = useMemo(
@@ -93,7 +109,13 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   const guestById = useMemo(() => new Map(guests.map((g) => [g.id, g])), [guests]);
   const selected = useMemo(() => new Set(selectedGuestIds), [selectedGuestIds]);
-  const seatedCount = guests.length - unassignedIds.length;
+  const seatedCount = visibleGuests.length - unassignedIds.length;
+
+  // Enter in the search box: show the first matching seated guest on the map.
+  const locateFirstMatch = (): void => {
+    const first = visibleGuests.find((guest) => guest.seatId);
+    if (first?.seatId) locateGuestSeat(first.seatId);
+  };
 
   const handleSelect = (guestId: string, { additive, range }: SelectModifiers): void => {
     if (range) selectRange(guestId, visibleOrder, additive);
@@ -175,68 +197,91 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
-      <GuestColumnHeaders
-        allSelected={allSelected}
-        someSelected={selectedGuestIds.length > 0}
-        onToggleAll={() => setGuestSelection(allSelected ? [] : visibleOrder)}
-      />
-      <section>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <h3 className={headingClass}>{`Unassigned (${unassignedIds.length})`}</h3>
-          <SelectNextControl
-            disabled={unassignedIds.length === 0}
-            onSelectNext={(count) =>
-              setGuestSelection(nextUnassignedBatch(unassignedIds, guests, selectedGuestIds, count))
-            }
-          />
-        </div>
-        <ul className={listClass}>
-          {unassignedEntries.map((entry) =>
-            entry.kind === "guest" ? (
-              renderItem(entry.guest.id, null)
-            ) : (
-              <li key={entry.household.id}>
-                <HouseholdHeader
-                  household={entry.household}
-                  shownCount={entry.members.length}
-                  allMemberIds={entry.allMemberIds}
-                  selected={entry.allMemberIds.every((id) => selected.has(id))}
-                  partlySelected={entry.allMemberIds.some((id) => selected.has(id))}
-                  onSelect={(modifiers) => handleSelectHousehold(entry.allMemberIds, modifiers)}
-                  onPointerDown={(event) =>
-                    startHouseholdDrag(event, entry.allMemberIds, entry.household.name)
-                  }
-                  onRename={(name) => renameHousehold(entry.household.id, name)}
-                  onDissolve={() => dissolveHousehold(entry.household.id)}
-                />
-                <ul className={listClass}>
-                  {entry.members.map((member) => renderItem(member.id, null, true))}
-                </ul>
-              </li>
-            ),
-          )}
-          {unassignedIds.length === 0 && <EmptyHint>Everyone has a seat 🎉</EmptyHint>}
-        </ul>
-      </section>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <GuestFilterBar onLocateFirst={locateFirstMatch} />
+      {filtering && (
+        <p className="flex items-center justify-between px-1 text-xs text-base-content/60">
+          Showing {visibleGuests.length} of {guests.length}
+          <button type="button" className="btn btn-ghost btn-xs" onClick={clearFilter}>
+            Clear filters
+          </button>
+        </p>
+      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
+        <GuestColumnHeaders
+          allSelected={allSelected}
+          someSelected={selectedGuestIds.length > 0}
+          onToggleAll={() => setGuestSelection(allSelected ? [] : visibleOrder)}
+        />
+        <section>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h3 className={headingClass}>{`Unassigned (${unassignedIds.length})`}</h3>
+            <SelectNextControl
+              disabled={unassignedIds.length === 0}
+              onSelectNext={(count) =>
+                setGuestSelection(
+                  nextUnassignedBatch(unassignedIds, guests, selectedGuestIds, count),
+                )
+              }
+            />
+          </div>
+          <ul className={listClass}>
+            {unassignedEntries.map((entry) =>
+              entry.kind === "guest" ? (
+                renderItem(entry.guest.id, null)
+              ) : (
+                <li key={entry.household.id}>
+                  <HouseholdHeader
+                    household={entry.household}
+                    shownCount={entry.members.length}
+                    allMemberIds={entry.allMemberIds}
+                    selected={entry.allMemberIds.every((id) => selected.has(id))}
+                    partlySelected={entry.allMemberIds.some((id) => selected.has(id))}
+                    onSelect={(modifiers) => handleSelectHousehold(entry.allMemberIds, modifiers)}
+                    onPointerDown={(event) =>
+                      startHouseholdDrag(event, entry.allMemberIds, entry.household.name)
+                    }
+                    onRename={(name) => renameHousehold(entry.household.id, name)}
+                    onDissolve={() => dissolveHousehold(entry.household.id)}
+                  />
+                  <ul className={listClass}>
+                    {entry.members.map((member) => renderItem(member.id, null, true))}
+                  </ul>
+                </li>
+              ),
+            )}
+            {unassignedIds.length === 0 && <EmptyHint>Everyone has a seat 🎉</EmptyHint>}
+          </ul>
+        </section>
 
-      <section>
-        <h3 className={`${headingClass} mb-1`}>{`Seated (${seatedCount})`}</h3>
-        {seatedCount === 0 && <EmptyHint>Drag a guest onto a seat to begin.</EmptyHint>}
-        <div className="flex flex-col gap-2.5">
-          {tableGroups.map((group) => (
-            <div key={group.name}>
-              <h4 className="mb-0.5 ml-1.5 text-xs font-semibold text-secondary">
-                {group.name}
-                <span className="font-normal text-base-content/40"> • {group.items.length}</span>
-              </h4>
-              <ul className={listClass}>
-                {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section>
+          <h3 className={`${headingClass} mb-1`}>{`Seated (${seatedCount})`}</h3>
+          {seatedCount === 0 && <EmptyHint>Drag a guest onto a seat to begin.</EmptyHint>}
+          <div className="flex flex-col gap-2.5">
+            {tableGroups.map((group) => (
+              <div key={group.tableId}>
+                <h4 className="mb-0.5 ml-1.5 text-xs font-semibold text-secondary">
+                  <button
+                    type="button"
+                    className="cursor-pointer hover:underline"
+                    title="Show this table on the map"
+                    onClick={() => selectTable(group.tableId)}
+                  >
+                    {group.name}
+                  </button>
+                  <span className="font-normal text-base-content/40"> • {group.items.length}</span>
+                </h4>
+                <ul className={listClass}>
+                  {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+        {filtering && visibleGuests.length === 0 && (
+          <EmptyHint>No guests match. Try another search or clear the filters.</EmptyHint>
+        )}
+      </div>
     </div>
   );
 }
