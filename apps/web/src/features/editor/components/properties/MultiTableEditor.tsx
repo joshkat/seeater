@@ -12,14 +12,24 @@ const ALIGN: { edge: AlignEdge; label: string; title: string }[] = [
   { edge: "bottom", label: "⤓", title: "Align bottom edges" },
 ];
 
-/** Several tables selected: align and distribute them. */
-export function MultiTableEditor({ count }: { count: number }): JSX.Element {
+/** Several things selected: align and distribute the tables among them. */
+export function MultiTableEditor({
+  count,
+  others = 0,
+}: {
+  count: number;
+  others?: number;
+}): JSX.Element {
   const alignSelected = useEditorStore((state) => state.alignSelected);
   const distributeSelected = useEditorStore((state) => state.distributeSelected);
 
   return (
     <div className="flex flex-col gap-3.5 text-base-content">
-      <p className="text-sm text-base-content/60">{count} tables selected.</p>
+      <p className="text-sm text-base-content/60">
+        {count} table{count === 1 ? "" : "s"}
+        {others > 0 && ` and ${others} room object${others === 1 ? "" : "s"}`} selected.
+        {others > 0 && " Align and distribute move the tables."}
+      </p>
       <div>
         <span className={labelClass}>Align</span>
         <div className="grid grid-cols-3 gap-1">
@@ -27,6 +37,7 @@ export function MultiTableEditor({ count }: { count: number }): JSX.Element {
             <button
               key={option.edge}
               type="button"
+              disabled={count < 2}
               className="btn btn-sm"
               title={option.title}
               aria-label={option.title}

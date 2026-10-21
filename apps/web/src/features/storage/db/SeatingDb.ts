@@ -57,11 +57,26 @@ export interface EventVersionRecord {
 }
 
 /**
+ * A floor-plan picture (kept out of the event document so documents stay
+ * small). Stored as bytes so it survives every IndexedDB implementation.
+ */
+export interface StoredImageRecord {
+  id: string;
+  /** The event it was uploaded to (deleted with it). */
+  eventId: string;
+  data: ArrayBuffer;
+  mimeType: string;
+  width: number;
+  height: number;
+  createdAt: string;
+}
+
+/**
  * Bump when object stores or indexes change. The Dexie version combines it
  * with the document schema version, so either kind of change upgrades every
  * database once (see the constructor).
  */
-const STORE_LAYOUT_VERSION = 1;
+const STORE_LAYOUT_VERSION = 2;
 
 /** Dexie version: store layout × 100 + document schema version (e.g. 103). */
 export const DATABASE_VERSION = STORE_LAYOUT_VERSION * 100 + EVENT_DOC_SCHEMA_VERSION;
@@ -69,11 +84,13 @@ export const DATABASE_VERSION = STORE_LAYOUT_VERSION * 100 + EVENT_DOC_SCHEMA_VE
 /**
  * The app's IndexedDB database. There is one per storage scope (signed-out,
  * or one per signed-in account — see scope.ts), with an `events` store keyed
- * by document id and a `versions` store for version history.
+ * by document id, a `versions` store for version history and an `images`
+ * store for floor-plan pictures.
  */
 export class SeatingDb extends Dexie {
   events!: Table<LocalEventRecord, string>;
   versions!: Table<EventVersionRecord, string>;
+  images!: Table<StoredImageRecord, string>;
 
   constructor(name: string) {
     super(name);
@@ -88,6 +105,7 @@ export class SeatingDb extends Dexie {
       .stores({
         events: "id, updatedAt",
         versions: "id, eventId, [eventId+createdAt]",
+        images: "id, eventId",
       })
       .upgrade(upgradeStoredDocs);
   }

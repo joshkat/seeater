@@ -6,6 +6,8 @@ import { usePrintStore } from "../../export/store/printStore";
 import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
+import { pruneUnusedImages } from "../../storage/repository/imageCleanup";
+import { activeDb } from "../../storage/store/storageStore";
 import { useDocumentStore } from "../store/documentStore";
 import { useEditorStore } from "../store/editorStore";
 import { EditorPage } from "./EditorPage";
@@ -30,7 +32,11 @@ export function EditorRoute(): JSX.Element {
     useEditorStore.getState().resetForNewEvent();
     void useDocumentStore.getState().open(eventId);
     return () => {
-      void useDocumentStore.getState().close();
+      void useDocumentStore
+        .getState()
+        .close()
+        .then(() => pruneUnusedImages(activeDb(), eventId))
+        .catch((error) => console.error("Image clean-up failed", error));
     };
   }, [eventId]);
 

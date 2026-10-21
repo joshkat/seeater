@@ -166,16 +166,17 @@ export async function purgeExpiredTrash(db: SeatingDb, now = new Date()): Promis
 }
 
 /**
- * Deletes an event for good, with its version history. (The UI moves events
+ * Deletes an event for good, with its version history and images. (The UI moves events
  * to the trash first; this is "Delete forever" and the 30-day purge.)
  * Never-synced events are removed outright; synced ones become a tombstone
  * until the sync engine has deleted them on the server.
  */
 export async function deleteEvent(db: SeatingDb, id: string): Promise<void> {
-  await db.transaction("rw", db.events, db.versions, async () => {
+  await db.transaction("rw", [db.events, db.versions, db.images], async () => {
     const existing = await db.events.get(id);
     if (!existing) return;
     await db.versions.where("eventId").equals(id).delete();
+    await db.images.where("eventId").equals(id).delete();
     if (existing.sync.baseVersion === null) {
       await db.events.delete(id);
       return;

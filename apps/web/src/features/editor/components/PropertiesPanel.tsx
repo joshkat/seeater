@@ -1,9 +1,10 @@
-import { useTables } from "../hooks/useDocumentSelectors";
+import { useRoomObjects, useTables } from "../hooks/useDocumentSelectors";
 import { useDrawerState } from "../hooks/useDrawerState";
 import { useEditorStore } from "../store/editorStore";
 import { DrawerCloseButton } from "./DrawerCloseButton";
 import { EventSettings } from "./properties/EventSettings";
 import { MultiTableEditor } from "./properties/MultiTableEditor";
+import { RoomObjectEditor } from "./properties/RoomObjectEditor";
 import { SingleTableEditor } from "./properties/SingleTableEditor";
 
 /** Right-hand inspector for the current selection (a drawer on tablets). */
@@ -11,8 +12,11 @@ export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
   const { open, inert, passThrough, close } = useDrawerState("properties");
   const tables = useTables();
+  const roomObjects = useRoomObjects();
 
   const selected = tables.filter((table) => selectedIds.includes(table.id));
+  const selectedObjects = roomObjects.filter((object) => selectedIds.includes(object.id));
+  const total = selected.length + selectedObjects.length;
   const selectedIndex = selected.length === 1 ? tables.indexOf(selected[0]) : -1;
 
   return (
@@ -27,9 +31,14 @@ export function PropertiesPanel(): JSX.Element {
         <h2 className="text-[15px] font-semibold text-base-content">Properties</h2>
         <DrawerCloseButton label="Close properties" onClose={close} />
       </div>
-      {selected.length === 0 && <EventSettings />}
-      {selected.length === 1 && <SingleTableEditor table={selected[0]} index={selectedIndex} />}
-      {selected.length > 1 && <MultiTableEditor count={selected.length} />}
+      {total === 0 && <EventSettings />}
+      {total === 1 && selected.length === 1 && (
+        <SingleTableEditor table={selected[0]} index={selectedIndex} />
+      )}
+      {total === 1 && selectedObjects.length === 1 && (
+        <RoomObjectEditor object={selectedObjects[0]} />
+      )}
+      {total > 1 && <MultiTableEditor count={selected.length} others={selectedObjects.length} />}
     </aside>
   );
 }

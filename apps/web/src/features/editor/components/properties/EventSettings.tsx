@@ -4,6 +4,7 @@ import { NumberField } from "../../../../components/NumberField";
 import { useDimensions, useUnits } from "../../hooks/useDocumentSelectors";
 import { fromLargeUnit, largeUnitLabel, toLargeUnit } from "../../lib/units";
 import { useEditorStore } from "../../store/editorStore";
+import { FloorPlanImageSettings } from "./FloorPlanImageSettings";
 import { labelClass } from "./propertyStyles";
 
 /** Nothing selected: the event's units and floor size, plus a hint. */
@@ -69,6 +70,7 @@ export function EventSettings(): JSX.Element {
           />
         </div>
       </div>
+      <FloorPlanImageSettings />
     </div>
   );
 }

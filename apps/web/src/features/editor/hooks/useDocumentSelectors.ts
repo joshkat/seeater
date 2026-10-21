@@ -1,8 +1,10 @@
 import type {
+  Backdrop,
   ExactSeatPlacement,
   Guest,
   Household,
   Layout,
+  RoomObject,
   Size,
   Table,
   UnitSystem,
@@ -21,6 +23,7 @@ const NO_TABLES: Table[] = [];
 const NO_GUESTS: Guest[] = [];
 const NO_HOUSEHOLDS: Household[] = [];
 const NO_LAYOUTS: Layout[] = [];
+const NO_OBJECTS: RoomObject[] = [];
 
 export function useTables(): Table[] {
   return useDocumentStore((state) => state.doc?.tables ?? NO_TABLES);
@@ -66,6 +69,14 @@ export function useHistoryAvailability(): { canUndo: boolean; canRedo: boolean }
   const canUndo = useDocumentStore((state) => state.history.past.length > 0);
   const canRedo = useDocumentStore((state) => state.history.future.length > 0);
   return { canUndo, canRedo };
+}
+
+export function useRoomObjects(): RoomObject[] {
+  return useDocumentStore((state) => state.doc?.objects ?? NO_OBJECTS);
+}
+
+export function useBackdrop(): Backdrop | null {
+  return useDocumentStore((state) => state.doc?.backdrop ?? null);
 }
 
 export function useLayouts(): Layout[] {
