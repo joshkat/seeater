@@ -8,6 +8,7 @@ import { useEventSummaries } from "../hooks/useEventSummaries";
 import { usePurgeExpiredTrash } from "../hooks/usePurgeExpiredTrash";
 import { EventCard } from "./EventCard";
 import { NewEventButton } from "./NewEventButton";
+import { SampleEventButton } from "./SampleEventButton";
 import { TrashLink } from "./TrashLink";
 import { TrashUndoNotice } from "./TrashUndoNotice";
 
@@ -38,10 +39,18 @@ export function Dashboard(): JSX.Element {
         {lastTrashed && <TrashUndoNotice event={lastTrashed} onDone={clearLastTrashed} />}
         {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
         {summaries?.length === 0 && (
-          <div className="rounded-box border border-dashed border-base-300 p-12 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-box border border-dashed border-base-300 p-12 text-center">
             <p className="text-base font-medium">No events yet</p>
-            <p className="mt-1 text-sm text-base-content/60">
-              Create your first seating chart to get started.
+            <p className="max-w-md text-sm text-base-content/60">
+              Create your first seating chart — start blank or from a template (reception, ceremony,
+              gala…). Or open a sample wedding to see how everything works.
+            </p>
+            <div className="flex gap-2">
+              <NewEventButton />
+              <SampleEventButton />
+            </div>
+            <p className="text-xs text-base-content/50">
+              Everything stays on this device. No account needed.
             </p>
           </div>
         )}
