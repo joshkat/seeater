@@ -2,6 +2,7 @@ import { MAX_SEAT_COUNT } from "../geometry/constants.js";
 import { cleanHouseholdName, householdNameKey, pruneEmptyHouseholds } from "./householdOps.js";
 import { newId } from "./ids.js";
 import { dropGuestsFromStoredLayouts } from "./layoutOps.js";
+import { dropGuestsFromRules } from "./ruleOps.js";
 import { setSeatCount } from "./tableOps.js";
 import {
   type EventDoc,
@@ -212,8 +213,11 @@ export function updateGuest(doc: EventDoc, guestId: string, patch: GuestPatch): 
 export function removeGuest(doc: EventDoc, guestId: string): EventDoc {
   if (!doc.guests.some((guest) => guest.id === guestId)) return doc;
   return pruneEmptyHouseholds(
-    dropGuestsFromStoredLayouts(
-      { ...doc, guests: doc.guests.filter((guest) => guest.id !== guestId) },
+    dropGuestsFromRules(
+      dropGuestsFromStoredLayouts(
+        { ...doc, guests: doc.guests.filter((guest) => guest.id !== guestId) },
+        [guestId],
+      ),
       [guestId],
     ),
   );
@@ -435,4 +439,15 @@ export function addChairsAndAssign(
   const grown = setSeatCount(doc, tableId, count);
   const result = assignGuestsToTable(grown, requested, tableId);
   return { ...result, addedChairs: count - table.seats.length };
+}
+
+/** Swaps two guests' seats (either may be unseated). */
+export function swapSeats(doc: EventDoc, guestA: string, guestB: string): EventDoc {
+  const a = doc.guests.find((guest) => guest.id === guestA);
+  const b = doc.guests.find((guest) => guest.id === guestB);
+  if (!a || !b || a.id === b.id || a.seatId === b.seatId) return doc;
+  return applySeatPlan(doc, [
+    { guestId: a.id, seatId: b.seatId },
+    { guestId: b.id, seatId: a.seatId },
+  ]);
 }

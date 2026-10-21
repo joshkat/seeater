@@ -48,6 +48,7 @@ export function createEventDoc({ name, dimensions, now }: NewEventOptions): Even
     backdrop: null,
     guests: [],
     households: [],
+    rules: [],
     settings: { exactSeatPlacement: "auto", units: "auto" },
     layouts: [{ id: layoutId, name: "Main", stored: null }],
     activeLayoutId: layoutId,
@@ -138,6 +139,15 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     };
   });
 
+  // Rules follow the guests (or go, if guests aren't copied).
+  const rules = options.copyGuests
+    ? source.rules.map((rule) => ({
+        ...rule,
+        id: newId(),
+        guestIds: rule.guestIds.map((id) => guestIdMap.get(id) ?? id),
+      }))
+    : [];
+
   return {
     ...source,
     id: newId(),
@@ -146,6 +156,7 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     objects: cloneObjects(source.objects),
     guests,
     households,
+    rules,
     layouts,
     createdAt: timestamp,
     updatedAt: timestamp,

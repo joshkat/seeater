@@ -82,6 +82,8 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
         )
       : doc.layouts,
   }),
+  // v8: seating rules (keep together / keep apart). None yet.
+  7: (doc) => ({ ...doc, schemaVersion: 8, rules: [] }),
 };
 
 /**

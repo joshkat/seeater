@@ -11,6 +11,7 @@ import {
 } from "../lib/guestListModel";
 import type { SelectModifiers } from "../lib/selectModifiers";
 import { filterGuests, isFiltering } from "../lib/guestFilter";
+import { useRuleProblems } from "../../rules/hooks/useRuleProblems";
 import { guestSubtitle } from "../lib/guestSubtitle";
 import { locateGuestSeat } from "../lib/locateGuest";
 import { useGuestFilterStore } from "../store/guestFilterStore";
@@ -44,6 +45,7 @@ interface GuestListProps {
 export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const guests = useGuests();
   const households = useHouseholds();
+  const ruleGuestIds = useRuleProblems().guestIds;
   const filter = useGuestFilterStore((state) => state.filter);
   const clearFilter = useGuestFilterStore((state) => state.clearFilter);
   const selectTable = useEditorStore((state) => state.selectTable);
@@ -176,7 +178,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
       <GuestListItem
         key={guest.id}
         guest={guest}
-        subtitle={guestSubtitle(guest, seatNumber)}
+        subtitle={guestSubtitle(guest, seatNumber, ruleGuestIds.has(guest.id))}
         selected={selected.has(guest.id)}
         nested={nested}
         onSelect={(modifiers) => handleSelect(guest.id, modifiers)}

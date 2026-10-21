@@ -2,6 +2,7 @@ import { guestTotals } from "@seating/shared";
 import { useMemo, useState } from "react";
 
 import { useGuests } from "../../editor/hooks/useDocumentSelectors";
+import { RulesAndAutoSeat } from "../../rules/components/RulesAndAutoSeat";
 import { StatsDialog } from "./StatsDialog";
 
 /** "12 of 40 seated · 5 still need a seat · 3 declined" + a Stats button. */
@@ -28,9 +29,12 @@ export function GuestTotalsLine(): JSX.Element | null {
         )}
         {totals.declined > 0 && ` · ${totals.declined} declined`}
       </span>
-      <button type="button" className="btn btn-ghost btn-xs" onClick={() => setOpen(true)}>
-        Stats
-      </button>
+      <span className="flex shrink-0 items-center">
+        <RulesAndAutoSeat />
+        <button type="button" className="btn btn-ghost btn-xs" onClick={() => setOpen(true)}>
+          Stats
+        </button>
+      </span>
       {open && <StatsDialog onClose={() => setOpen(false)} />}
     </div>
   );
