@@ -146,6 +146,14 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   guests, a note in seating confirmations) and guide **auto-seat** (`autoSeat`: union-find groups of
   households + together rules, apart partners never share a table, optional group-by-tag; one
   `applySeatPlan`). UI in `features/rules/` and the action bar's More ▾ (also Swap seats).
+- **Templates & onboarding:** `EVENT_TEMPLATES` (shared `templates.ts`) are plain functions that
+  build tables/objects into a document. `createEventFromTemplate` makes a new event and
+  `applyTemplate` replaces the active layout's room (guests stay, unseated by the new chairs). The
+  ceremony + reception template makes two layouts. `createSampleEvent` is a 46-guest wedding with
+  households, details, a rule and most guests seated. The web side lives in `features/templates/`:
+  the New event dialog's "Start from" picker (SVG thumbnails rendered from the real template
+  output), `EmptyRoomHint` over an empty floor, and `ApplyTemplateDialog` (one undo step). The
+  empty dashboard has "Create your first event" and "Try a sample event".
 - **Export & print** (`features/export/`): print views are a portal (`#print-view`) over the
   app; `body.printing` + `@media print` in `global.css` hide everything else, so the browser's
   Print / Save as PDF outputs only the sheet (no PDF library, works offline). The chart image comes
@@ -302,6 +310,9 @@ Done:
   bar, buffet, DJ, doors, walls, labels, areas); a floor-plan image to trace over.
 - **Seating rules & auto-seat:** keep together / keep apart (warnings everywhere, rules dialog),
   auto-seat (households, rules, optional by tag), swap two guests.
+- **Templates & onboarding:** start from a blank room or one of six templates (wedding reception,
+  ceremony, ceremony + reception, gala, dinner party, talk); apply a template to an empty room; a
+  sample wedding to explore.
 - **Export & print:** seating chart (print or PNG), table rosters, find-your-seat board, fold-over
   place cards, escort cards (Print / Save as PDF), guest list CSV with seats per layout.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
