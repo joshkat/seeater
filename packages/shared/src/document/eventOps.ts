@@ -7,6 +7,7 @@ import {
   type ExactSeatPlacement,
   MAX_EVENT_NAME_LENGTH,
   type Table,
+  type UnitSystem,
 } from "./schema.js";
 
 /** A fresh id for `oldId`, recorded in `map`. */
@@ -44,7 +45,7 @@ export function createEventDoc({ name, dimensions, now }: NewEventOptions): Even
     tables: [],
     guests: [],
     households: [],
-    settings: { exactSeatPlacement: "auto" },
+    settings: { exactSeatPlacement: "auto", units: "auto" },
     layouts: [{ id: layoutId, name: "Main", stored: null }],
     activeLayoutId: layoutId,
     createdAt: timestamp,
@@ -170,3 +171,20 @@ export function isExactSeatPlacement(doc: EventDoc): boolean {
 export function restoreEventDoc(current: EventDoc, version: EventDoc): EventDoc {
   return { ...version, id: current.id, createdAt: current.createdAt, updatedAt: current.updatedAt };
 }
+
+/** Sets how lengths are shown (plan units are centimetres either way). */
+export function setUnitSystem(doc: EventDoc, units: UnitSystem): EventDoc {
+  if (doc.settings.units === units) return doc;
+  return { ...doc, settings: { ...doc.settings, units } };
+}
+
+/** Resizes the floor plan (plan units, i.e. cm). Tables keep their positions. */
+export function setFloorSize(doc: EventDoc, size: Size): EventDoc {
+  const width = Math.max(MIN_FLOOR_SIZE, Math.round(size.width));
+  const height = Math.max(MIN_FLOOR_SIZE, Math.round(size.height));
+  if (width === doc.dimensions.width && height === doc.dimensions.height) return doc;
+  return { ...doc, dimensions: { width, height } };
+}
+
+/** Smallest floor side (plan units). */
+export const MIN_FLOOR_SIZE = 200;
