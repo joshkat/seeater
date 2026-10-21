@@ -29,10 +29,22 @@ export function GridLayer({ dimensions }: GridLayerProps): JSX.Element {
         strokeWidth={1}
       />
       {verticals.map((x) => (
-        <Line key={`v-${x}`} points={[x, 0, x, height]} stroke="#eef2f7" strokeWidth={1} />
+        <Line
+          name="grid-line"
+          key={`v-${x}`}
+          points={[x, 0, x, height]}
+          stroke="#eef2f7"
+          strokeWidth={1}
+        />
       ))}
       {horizontals.map((y) => (
-        <Line key={`h-${y}`} points={[0, y, width, y]} stroke="#eef2f7" strokeWidth={1} />
+        <Line
+          name="grid-line"
+          key={`h-${y}`}
+          points={[0, y, width, y]}
+          stroke="#eef2f7"
+          strokeWidth={1}
+        />
       ))}
     </Layer>
   );

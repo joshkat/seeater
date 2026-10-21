@@ -8,6 +8,8 @@ import { GuestDetailsDialog } from "../../guests/components/details/GuestDetails
 import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
 import { DragGhost } from "../../dnd/components/DragGhost";
 import { PlacementDialog } from "../../placement/components/PlacementDialog";
+import { ExportMenu } from "../../export/components/ExportMenu";
+import { PrintView } from "../../export/components/PrintView";
 import { VersionHistoryButton } from "../../versions/components/VersionHistoryButton";
 import { VersionHistoryDialog } from "../../versions/components/VersionHistoryDialog";
 import { useAutoVersions } from "../../versions/hooks/useAutoVersions";
@@ -82,6 +84,7 @@ export function EditorPage(): JSX.Element {
           <EventTitle />
         </div>
         <div className="flex items-center gap-3">
+          <ExportMenu />
           <VersionHistoryButton />
           <SaveStatusBadge />
           <SyncStatusBadge />
@@ -106,6 +109,7 @@ export function EditorPage(): JSX.Element {
       <PlacementDialog />
       <VersionHistoryDialog />
       <GuestDetailsDialog />
+      <PrintView />
       <DragGhost />
     </div>
   );

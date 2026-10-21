@@ -119,3 +119,16 @@ body {
     min-height: 2.75rem;
   }
 }
+
+/* Printing (features/export/PrintView): while a print view is open, only it
+   is printed — the app underneath and the view's own toolbar are hidden. */
+@media print {
+  body.printing #root,
+  .no-print {
+    display: none !important;
+  }
+  #print-view {
+    position: static !important;
+    overflow: visible !important;
+  }
+}

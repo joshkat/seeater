@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { isTextEntry } from "../../../lib/isTextEntry";
 import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
+import { usePrintStore } from "../../export/store/printStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
@@ -31,6 +32,12 @@ export function useKeyboardShortcuts(): void {
       const details = useGuestDetailsStore.getState();
       if (details.guestId) {
         if (event.key === "Escape") details.close();
+        return;
+      }
+      // The print view covers the editor: Escape closes it.
+      const print = usePrintStore.getState();
+      if (print.kind) {
+        if (event.key === "Escape") print.close();
         return;
       }
       // Any other open modal (e.g. New layout) handles its own keys.
