@@ -6,6 +6,7 @@ import { useDrawerState } from "../../editor/hooks/useDrawerState";
 import { tableDisplayName } from "../../editor/lib/tableLabel";
 import { usePanelWidth } from "../hooks/usePanelWidth";
 import { useGuestStore } from "../store/guestStore";
+import { GuestTotalsLine } from "../../stats/components/GuestTotalsLine";
 import { AddGuestForm } from "./AddGuestForm";
 import { AssignBar } from "./AssignBar";
 import { GuestList, type SeatInfo } from "./GuestList";
@@ -61,6 +62,7 @@ export function GuestPanel(): JSX.Element {
         <DrawerCloseButton label="Close guests" onClose={close} />
       </div>
 
+      <GuestTotalsLine />
       <AddGuestForm />
       <ImportButton />
 

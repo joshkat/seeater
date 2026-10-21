@@ -4,6 +4,7 @@ import { type FormEvent, useId, useMemo, useState } from "react";
 
 import { shortcutLabel } from "../../../../lib/platform";
 import { useDocumentStore } from "../../../editor/store/documentStore";
+import { locateGuestSeat } from "../../lib/locateGuest";
 import { useGuestStore } from "../../store/guestStore";
 import { useSeatingFlowStore } from "../../store/seatingFlowStore";
 import { RsvpControl } from "../RsvpControl";
@@ -212,6 +213,18 @@ export function GuestDetailsForm({ guest, onClose }: GuestDetailsFormProps): JSX
         >
           Delete guest
         </button>
+        {guest.seatId && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              onClose();
+              locateGuestSeat(guest.seatId!);
+            }}
+          >
+            Show on map
+          </button>
+        )}
         <button type="button" className="btn btn-sm" onClick={onClose}>
           Cancel
         </button>

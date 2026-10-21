@@ -46,6 +46,10 @@ interface EditorState {
   preFocusViewport: Viewport | null;
   /** The table currently zoomed in on, if any. */
   focusedTableId: string | null;
+  /** A chair briefly ringed by "Show on map" (cleared after a moment). */
+  highlightedSeatId: string | null;
+  /** Zooms to the table holding this seat and rings the chair. */
+  locateSeat: (seatId: string) => void;
 
   /** Clears per-event view state; called when a different event is opened. */
   resetForNewEvent: () => void;
@@ -81,6 +85,10 @@ function edit(change: (doc: EventDoc) => EventDoc, coalesceKey?: string): void {
   useDocumentStore.getState().apply(change, { coalesceKey });
 }
 
+/** How long "Show on map" rings the chair. */
+const HIGHLIGHT_MS = 2500;
+let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+
 function dimensions() {
   return currentDoc()?.dimensions ?? DEFAULT_FLOOR_PLAN_SIZE;
 }
@@ -92,6 +100,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   homeViewport: null,
   preFocusViewport: null,
   focusedTableId: null,
+  highlightedSeatId: null,
+
+  locateSeat(seatId) {
+    const table = currentDoc()?.tables.find((t) => t.seats.some((seat) => seat.id === seatId));
+    if (!table) return;
+    // Selecting a single table zooms to it (EditorCanvas).
+    set({ selectedIds: [table.id], highlightedSeatId: seatId });
+    clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => set({ highlightedSeatId: null }), HIGHLIGHT_MS);
+  },
 
   resetForNewEvent() {
     set({ selectedIds: [], focusedTableId: null, preFocusViewport: null, homeViewport: null });

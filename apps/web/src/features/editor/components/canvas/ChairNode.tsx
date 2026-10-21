@@ -18,6 +18,8 @@ interface ChairNodeProps {
   /** When true (custom mode + selected table), the chair can be dragged. */
   editable: boolean;
   occupant: SeatOccupant | null;
+  /** Ringed by "Show on map". */
+  highlighted?: boolean;
   tableRotation: number;
   onMove: (offset: Point) => void;
   onSeatClick: (seatId: string) => void;
@@ -33,6 +35,7 @@ export function ChairNode({
   offset,
   editable,
   occupant,
+  highlighted = false,
   tableRotation,
   onMove,
   onSeatClick,
@@ -70,6 +73,9 @@ export function ChairNode({
       onClick={handleClick}
       onTap={handleClick}
     >
+      {highlighted && (
+        <Circle radius={CHAIR_RADIUS + 6} stroke="#f59e0b" strokeWidth={4} listening={false} />
+      )}
       <Circle
         seatId={seatId}
         radius={CHAIR_RADIUS}
