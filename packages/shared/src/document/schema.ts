@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 7;
+export const EVENT_DOC_SCHEMA_VERSION = 8;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -35,6 +35,8 @@ export const MAX_TAGS_PER_GUEST = 20;
 export const MAX_LAYOUTS = 20;
 export const MAX_ROOM_OBJECTS = 300;
 export const MAX_ROOM_OBJECT_LABEL_LENGTH = 80;
+export const MAX_RULES = 500;
+export const MAX_GUESTS_PER_RULE = 30;
 export const MAX_LAYOUT_NAME_LENGTH = 60;
 
 const idSchema = z.string().min(1).max(64);
@@ -201,6 +203,17 @@ export const layoutSchema = z.object({
   stored: storedLayoutSchema.nullable(),
 });
 
+/**
+ * A seating rule between guests, in every layout: "together" means they
+ * should share a table, "apart" that no two of them should. Rules only
+ * produce warnings (and guide auto-seat); they never block a move.
+ */
+export const seatingRuleSchema = z.object({
+  id: idSchema,
+  kind: z.enum(["together", "apart"]),
+  guestIds: z.array(idSchema).min(2).max(MAX_GUESTS_PER_RULE),
+});
+
 /** Shape-only schema (no cross-reference checks). Used before normalizing. */
 export const eventDocShapeSchema = z.object({
   schemaVersion: z.literal(EVENT_DOC_SCHEMA_VERSION),
@@ -215,6 +228,7 @@ export const eventDocShapeSchema = z.object({
   backdrop: backdropSchema.nullable(),
   guests: z.array(guestSchema).max(MAX_GUESTS),
   households: z.array(householdSchema).max(MAX_GUESTS),
+  rules: z.array(seatingRuleSchema).max(MAX_RULES),
   settings: eventSettingsSchema,
   layouts: z.array(layoutSchema).min(1).max(MAX_LAYOUTS),
   activeLayoutId: idSchema,
@@ -239,5 +253,6 @@ export type StoredLayout = z.infer<typeof storedLayoutSchema>;
 export type RoomObjectKind = z.infer<typeof roomObjectKindSchema>;
 export type RoomObject = z.infer<typeof roomObjectSchema>;
 export type Backdrop = z.infer<typeof backdropSchema>;
+export type SeatingRule = z.infer<typeof seatingRuleSchema>;
 export type Layout = z.infer<typeof layoutSchema>;
 export type EventDoc = z.infer<typeof eventDocShapeSchema>;

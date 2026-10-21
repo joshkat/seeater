@@ -12,6 +12,7 @@ interface DocLike {
   objects: { id: string }[];
   guests: { id: string; seatId: string | null; householdId: string | null }[];
   households: { id: string }[];
+  rules: { id: string; guestIds: string[] }[];
   layouts: {
     id: string;
     stored: {
@@ -76,6 +77,15 @@ export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void
   });
 
   checkLayouts(doc, guestIds, tableIds, seatIds, issue);
+
+  const ruleIds = new Set<string>();
+  doc.rules.forEach((rule, index) => {
+    if (ruleIds.has(rule.id)) issue(`Duplicate rule id ${rule.id}`, ["rules", index]);
+    ruleIds.add(rule.id);
+    for (const guestId of rule.guestIds) {
+      if (!guestIds.has(guestId)) issue(`Rule for unknown guest ${guestId}`, ["rules", index]);
+    }
+  });
 
   // Room object ids are unique across every layout.
   const objectIds = new Set<string>();
