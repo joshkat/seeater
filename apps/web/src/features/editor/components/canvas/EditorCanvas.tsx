@@ -7,7 +7,7 @@ import { Layer, Rect, Stage } from "react-konva";
 import type { Point as ScreenPoint } from "../../../dnd/lib/dragTypes";
 import { registerDropZone } from "../../../dnd/lib/dropZones";
 import { useDragStore } from "../../../dnd/store/dragStore";
-import { bySeatId, guestColor, guestInitials } from "../../../guests/lib/guestDisplay";
+import { bySeatId, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
 import { type SeatTarget, useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
 import { type PinchFrame, WHEEL_ZOOM, clampScale, pinchViewport } from "../../geometry/viewport";
@@ -17,9 +17,12 @@ import {
   useGuests,
   useTables,
 } from "../../hooks/useDocumentSelectors";
+import { categoryColors, chairColor } from "../../lib/chairColors";
 import { useEditorStore } from "../../store/editorStore";
+import { useViewPrefsStore } from "../../store/viewPrefsStore";
 import type { AlignmentGuide } from "../../types";
 import { AlignmentGuides } from "./AlignmentGuides";
+import { ChairColorLegend } from "./ChairColorLegend";
 import type { SeatOccupant } from "./ChairNode";
 import { GridLayer } from "./GridLayer";
 import { SelectionTransformer } from "./SelectionTransformer";
@@ -53,6 +56,7 @@ export function EditorCanvas(): JSX.Element {
   const documentId = useDocumentId();
   const tables = useTables();
   const selectedIds = useEditorStore((state) => state.selectedIds);
+  const highlightedSeatId = useEditorStore((state) => state.highlightedSeatId);
   const viewport = useEditorStore((state) => state.viewport);
   const stageSize = useEditorStore((state) => state.stageSize);
   const selectTable = useEditorStore((state) => state.selectTable);
@@ -70,19 +74,22 @@ export function EditorCanvas(): JSX.Element {
   const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
   const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
 
-  // seatId -> visual occupant (initials + color) for chair rendering.
+  // seatId -> visual occupant (initials + color) for chair rendering. The
+  // colour follows the "Colour chairs by" choice (guest, tag, meal, RSVP).
+  const colorMode = useViewPrefsStore((state) => state.chairColorMode);
   const occupants = useMemo(() => {
     const seated = bySeatId(guests);
+    const colors = categoryColors([...seated.values()], colorMode);
     const map = new Map<string, SeatOccupant>();
     seated.forEach((guest, seatId) => {
       map.set(seatId, {
         initials: guestInitials(guest.name),
-        color: guestColor(guest.id),
+        color: chairColor(guest, colorMode, colors),
         declined: guest.rsvpStatus === "declined",
       });
     });
     return map;
-  }, [guests]);
+  }, [guests, colorMode]);
 
   const registerNode = useCallback((id: string, node: Konva.Group | null): void => {
     if (node) nodeRefs.current.set(id, node);
@@ -337,6 +344,7 @@ export function EditorCanvas(): JSX.Element {
       className="relative h-full w-full touch-none bg-base-200"
     >
       <ZoomControls />
+      <ChairColorLegend />
       <Stage
         ref={stageRef}
         width={stageSize.width}
@@ -364,6 +372,7 @@ export function EditorCanvas(): JSX.Element {
               table={table}
               selected={selectedIds.includes(table.id)}
               dropHighlight={dropHighlightTableId === table.id}
+              highlightedSeatId={highlightedSeatId}
               tableNumber={index + 1}
               dimensions={dimensions}
               threshold={SNAP_PX / viewport.scale}

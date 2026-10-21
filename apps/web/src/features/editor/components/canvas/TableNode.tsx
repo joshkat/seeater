@@ -19,6 +19,8 @@ interface TableNodeProps {
   selected: boolean;
   /** Guests being dragged would land on this table. */
   dropHighlight: boolean;
+  /** A chair to ring ("Show on map"), if it's at this table. */
+  highlightedSeatId: string | null;
   /** 1-based position used for the auto "Table N" name when unlabeled. */
   tableNumber: number;
   /** Floor-plan canvas size, used to clamp the table inside bounds. */
@@ -42,6 +44,7 @@ export function TableNode({
   table,
   selected,
   dropHighlight,
+  highlightedSeatId,
   tableNumber,
   dimensions,
   threshold,
@@ -58,6 +61,7 @@ export function TableNode({
   const seats = [...table.seats].sort((a, b) => a.index - b.index);
   const seatPositions = resolveSeatPositions(table);
   const chairsEditable = selected && table.chairLayoutMode === "custom";
+  const seatedCount = seats.filter((seat) => occupants.has(seat.id)).length;
 
   // Shared by onClick (mouse) and onTap (touch).
   const handleSelect = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
@@ -130,6 +134,7 @@ export function TableNode({
           offset={seatPositions[index] ?? { x: 0, y: 0 }}
           editable={chairsEditable}
           occupant={occupants.get(seat.id) ?? null}
+          highlighted={seat.id === highlightedSeatId}
           onMove={(offset) => onSeatMove(table.id, seat.index, offset)}
           onSeatClick={onSeatClick}
           tableRotation={table.rotation}
@@ -143,7 +148,19 @@ export function TableNode({
         fill="#0f172a"
         width={140}
         offsetX={70}
-        offsetY={7}
+        offsetY={13}
+        align="center"
+        listening={false}
+        rotation={table.rotation != 0 ? -table.rotation : 0}
+      />
+      {/* Live fill: seated / chairs. */}
+      <Text
+        text={`${seatedCount}/${seats.length}`}
+        fontSize={11}
+        fill={seats.length > 0 && seatedCount >= seats.length ? "#15803d" : "#64748b"}
+        width={140}
+        offsetX={70}
+        offsetY={-4}
         align="center"
         listening={false}
         rotation={table.rotation != 0 ? -table.rotation : 0}
