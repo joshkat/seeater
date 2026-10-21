@@ -16,6 +16,7 @@ export * from "./document/tableOps.js";
 export * from "./document/guestOps.js";
 export * from "./document/householdOps.js";
 export * from "./document/layoutOps.js";
+export * from "./document/roomObjectOps.js";
 export * from "./document/summary.js";
 export * from "./document/stats.js";
 

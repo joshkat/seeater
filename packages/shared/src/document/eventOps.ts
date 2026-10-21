@@ -6,6 +6,7 @@ import {
   type EventDoc,
   type ExactSeatPlacement,
   MAX_EVENT_NAME_LENGTH,
+  type RoomObject,
   type Table,
   type UnitSystem,
 } from "./schema.js";
@@ -43,6 +44,8 @@ export function createEventDoc({ name, dimensions, now }: NewEventOptions): Even
     name: cleanEventName(name) || "Untitled event",
     dimensions: dimensions ?? { ...DEFAULT_FLOOR_PLAN_SIZE },
     tables: [],
+    objects: [],
+    backdrop: null,
     guests: [],
     households: [],
     settings: { exactSeatPlacement: "auto", units: "auto" },
@@ -87,6 +90,8 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     }));
 
   const tables = cloneTables(source.tables);
+  const cloneObjects = (objects: RoomObject[]): RoomObject[] =>
+    objects.map((object) => ({ ...object, id: newId() }));
 
   const householdIdMap = new Map<string, string>();
   const households = options.copyGuests
@@ -122,7 +127,15 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
         if (newGuest && newSeat) seating[newGuest] = newSeat;
       }
     }
-    return { ...layout, stored: { ...layout.stored, tables: storedTables, seating } };
+    return {
+      ...layout,
+      stored: {
+        ...layout.stored,
+        tables: storedTables,
+        seating,
+        objects: cloneObjects(layout.stored.objects),
+      },
+    };
   });
 
   return {
@@ -130,6 +143,7 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
     id: newId(),
     name: `${source.name} (copy)`.slice(0, MAX_EVENT_NAME_LENGTH),
     tables,
+    objects: cloneObjects(source.objects),
     guests,
     households,
     layouts,
