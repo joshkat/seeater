@@ -68,8 +68,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   async open(id) {
     const { doc, status } = get();
-    // Idempotent: React StrictMode mounts effects twice in development.
-    if (doc?.id === id && (status === "ready" || status === "loading")) return;
+    // Idempotent: React StrictMode mounts effects twice in development, and
+    // the editor and check-in routes hand the same event over to each other.
+    // Taking a request number cancels a close() still in flight from the
+    // route being left. (While loading, doc is null, so this is "ready" only.)
+    if (doc?.id === id && (status === "ready" || status === "loading")) {
+      ++openRequest;
+      return;
+    }
 
     const request = ++openRequest;
     set({ status: "loading", doc: null, history: EMPTY_HISTORY });

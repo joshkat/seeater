@@ -10,6 +10,7 @@ import { DragGhost } from "../../dnd/components/DragGhost";
 import { PlacementDialog } from "../../placement/components/PlacementDialog";
 import { ExportMenu } from "../../export/components/ExportMenu";
 import { PrintView } from "../../export/components/PrintView";
+import { CheckInLink } from "../../checkin/components/CheckInLink";
 import { VersionHistoryButton } from "../../versions/components/VersionHistoryButton";
 import { VersionHistoryDialog } from "../../versions/components/VersionHistoryDialog";
 import { useAutoVersions } from "../../versions/hooks/useAutoVersions";
@@ -85,6 +86,7 @@ export function EditorPage(): JSX.Element {
           <EventTitle />
         </div>
         <div className="flex items-center gap-3">
+          <CheckInLink />
           <ExportMenu />
           <VersionHistoryButton />
           <SaveStatusBadge />

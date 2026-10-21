@@ -1,46 +1,12 @@
-import { useEffect } from "react";
 import { useParams } from "react-router";
 
-import { useGuestStore } from "../../guests/store/guestStore";
-import { usePrintStore } from "../../export/store/printStore";
-import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
-import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
-import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
-import { pruneUnusedImages } from "../../storage/repository/imageCleanup";
-import { activeDb } from "../../storage/store/storageStore";
-import { useDocumentStore } from "../store/documentStore";
-import { useEditorStore } from "../store/editorStore";
+import { useOpenEvent } from "../hooks/useOpenEvent";
 import { EditorPage } from "./EditorPage";
 import { EditorStatusScreen } from "./EditorStatusScreen";
 
-/**
- * `/events/:eventId` — opens that event from local storage for the editor's
- * lifetime and saves + closes it on the way out.
- */
+/** `/events/:eventId` — the editor for that event (opened while this route is mounted). */
 export function EditorRoute(): JSX.Element {
   const { eventId } = useParams();
-  const status = useDocumentStore((state) => state.status);
-  const openId = useDocumentStore((state) => state.doc?.id);
-
-  useEffect(() => {
-    if (!eventId) return;
-    useGuestStore.getState().reset();
-    useSeatingFlowStore.getState().reset();
-    useVersionDialogStore.getState().setOpen(false);
-    useGuestDetailsStore.getState().close();
-    usePrintStore.getState().close();
-    useEditorStore.getState().resetForNewEvent();
-    void useDocumentStore.getState().open(eventId);
-    return () => {
-      void useDocumentStore
-        .getState()
-        .close()
-        .then(() => pruneUnusedImages(activeDb(), eventId))
-        .catch((error) => console.error("Image clean-up failed", error));
-    };
-  }, [eventId]);
-
-  // Guard on the id too, so a previous event never flashes while this one loads.
-  if (status === "ready" && openId === eventId) return <EditorPage />;
-  return <EditorStatusScreen status={status === "ready" ? "loading" : status} />;
+  const { ready, status } = useOpenEvent(eventId);
+  return ready ? <EditorPage /> : <EditorStatusScreen status={status} />;
 }
