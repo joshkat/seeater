@@ -141,6 +141,11 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   tables (`selectedIds` holds both; delete/duplicate handle both; align moves tables only). The
   image bytes live in the `images` IndexedDB store, not the document; pruned on editor close
   unless the doc or a saved version references them (`imageCleanup.ts`).
+- **Seating rules (schema v8):** `doc.rules` (`together` / `apart`, guest ids) apply to every
+  layout; they only **warn** (`ruleProblems`, `newRuleProblems` → ⚠ on tables, "⚠ rule" under
+  guests, a note in seating confirmations) and guide **auto-seat** (`autoSeat`: union-find groups of
+  households + together rules, apart partners never share a table, optional group-by-tag; one
+  `applySeatPlan`). UI in `features/rules/` and the action bar's More ▾ (also Swap seats).
 - **Export & print** (`features/export/`): print views are a portal (`#print-view`) over the
   app; `body.printing` + `@media print` in `global.css` hide everything else, so the browser's
   Print / Save as PDF outputs only the sheet (no PDF library, works offline). The chart image comes
@@ -295,6 +300,8 @@ Done:
 - **Room setup:** real-size presets (rounds, banquet, head tables, chair rows), grid of tables,
   align/distribute, units (auto/metric/imperial) and room size; room objects (dance floor, stage,
   bar, buffet, DJ, doors, walls, labels, areas); a floor-plan image to trace over.
+- **Seating rules & auto-seat:** keep together / keep apart (warnings everywhere, rules dialog),
+  auto-seat (households, rules, optional by tag), swap two guests.
 - **Export & print:** seating chart (print or PNG), table rosters, find-your-seat board, fold-over
   place cards, escort cards (Print / Save as PDF), guest list CSV with seats per layout.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
@@ -317,7 +324,7 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
-floor-plan image). Next: **F** 11 seating rules + 20 auto-seat/swap → **G** 14 onboarding, 22 smart import, 25 templates →
+floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). Next: **G** 14 onboarding, 22 smart import, 25 templates →
 **H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
 polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.

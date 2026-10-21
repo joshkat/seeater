@@ -216,7 +216,7 @@ layout.
 ### Schema versions
 
 `schemaVersion` is `7` (v2 households, v3 `settings`, v4 guest details, v5 layouts, v6 `units` +
-the `row` shape, v7 room objects + floor-plan image). Plan units are centimetres. Room objects
+the `row` shape, v7 room objects + floor-plan image, v8 seating rules). Plan units are centimetres. Room objects
 (`objects`) and the floor-plan image reference (`backdrop`) belong to each layout; the image bytes
 live in the `images` IndexedDB store, not in the document (or backups). When the shape changes in a way old documents don't
 satisfy:
