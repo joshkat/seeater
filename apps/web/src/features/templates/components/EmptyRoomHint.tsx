@@ -31,7 +31,7 @@ export function EmptyRoomHint(): JSX.Element | null {
               className="btn btn-primary btn-sm"
               onClick={() => addTable("round")}
             >
-              + Round table
+              Add a round table
             </button>
             <button type="button" className="btn btn-sm" onClick={() => setChoosing(true)}>
               Use a template…

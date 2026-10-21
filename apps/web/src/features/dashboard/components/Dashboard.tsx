@@ -46,7 +46,7 @@ export function Dashboard(): JSX.Element {
               gala…). Or open a sample wedding to see how everything works.
             </p>
             <div className="flex gap-2">
-              <NewEventButton />
+              <NewEventButton label="Create your first event" />
               <SampleEventButton />
             </div>
             <p className="text-xs text-base-content/50">
