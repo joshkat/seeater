@@ -17,6 +17,7 @@ export * from "./document/guestOps.js";
 export * from "./document/householdOps.js";
 export * from "./document/layoutOps.js";
 export * from "./document/summary.js";
+export * from "./document/stats.js";
 
 export * from "./geometry/constants.js";
 export * from "./geometry/seatLayout.js";
