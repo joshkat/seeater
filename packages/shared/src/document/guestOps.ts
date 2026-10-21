@@ -159,6 +159,7 @@ export function addGuests(
       notes: cleanOptional(input.notes, MAX_GUEST_NOTE_LENGTH),
       tags: cleanTags(input.tags, tags).map((tag) => remember(tag, tags)),
       isChild: input.isChild ?? false,
+      checkedInAt: null,
     }));
   if (created.length === 0) return { doc, guestIds: [] };
   return {

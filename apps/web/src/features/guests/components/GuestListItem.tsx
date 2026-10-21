@@ -44,7 +44,7 @@ export function GuestListItem({
       onPointerDown={onPointerDown}
       onClick={(event) => onSelect(selectModifiers(event))}
       title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table (press and hold on touch) or pick a seat"
-      className={`flex cursor-grab touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1.5 pr-2 ${
+      className={`flex cursor-grab touch-manipulation select-none flex-wrap items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1.5 pr-2 ${
         nested ? "pl-6" : "pl-2"
       } ${selected ? "border-primary bg-primary/5" : "border-transparent"}`}
     >
@@ -55,7 +55,8 @@ export function GuestListItem({
         className="-my-1.5"
       />
 
-      <span className="min-w-0 flex-1">
+      {/* Phones: the name takes the first line; RSVP and actions wrap below. */}
+      <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-3.5rem)]">
         <span
           className={`block truncate text-[13px] ${
             declined ? "text-base-content/40 line-through" : "text-base-content"
@@ -68,11 +69,13 @@ export function GuestListItem({
         )}
       </span>
 
-      <div className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center`}>
+      <div
+        className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center max-sm:ml-[3.25rem] max-sm:justify-start`}
+      >
         <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} />
       </div>
 
-      <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end`}>
+      <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end max-sm:ml-auto`}>
         {guest.seatId && (
           <button
             type="button"

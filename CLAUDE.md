@@ -124,6 +124,18 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   slide-over drawers (`editor/store/layoutStore`, `useDrawerState`; closed = `inert`). Canvas:
   pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
   `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
+- **Phone layout** (below `sm`, 640px; `PHONE_QUERY` in `lib/useMediaQuery`): the header wraps,
+  the toolbar's two groups flow together (`max-sm:contents`), and Exact seat placement moves into
+  Properties. When a control **moves** between places, render it in one place via `useMediaQuery`
+  rather than hiding a CSS copy: e2e `getByText` sees hidden copies, which breaks strict mode.
+  The Guests drawer scrolls as a whole, and guest rows wrap (name, then RSVP + actions).
+- **Check-in (schema v9):** `guest.checkedInAt` (ISO or null). `setCheckedIn` also marks the RSVP as
+  going, and duplicating an event clears check-ins. The `/events/:id/check-in` route
+  (`features/checkin/`, lazy, no Konva) is a door list: search, table + seat per guest, "Check in
+  all N" for a household, walk-ins (add + check in = one edit), seats from any layout. The editor
+  and check-in share the open event through `editor/hooks/useOpenEvent`. When one route hands the
+  event to the other, `open()` of the already-open event cancels the outgoing route's in-flight
+  `close()` (tested in `editor/store/__tests__/documentStore.test.ts`).
 - **Layouts (schema v5):** the **active** layout lives in the top-level `dimensions`/`tables`/
   `guest.seatId`, so every op and screen edits it unchanged; other layouts are in
   `doc.layouts[i].stored` (`{dimensions, tables, seating: guestId→seatId}`). `switchLayout` swaps
@@ -245,6 +257,9 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   only jitter by 24 units, so they overlap and the topmost wins the hit test.
 - **Touch emulation in the preview browser** (and so `pointer: coarse`) only kicks in below 768px
   wide; check iPad layouts at 820×1180 / 1180×820 for drawers and at 767px for touch sizing.
+- **`pointer-coarse:` beats `max-sm:`** in Tailwind's generated order. A phone override of a touch
+  width needs `!` (`max-sm:w-auto!`; see `guests/lib/guestColumns.ts`). e2e: the `iphone` project
+  runs only `phone.spec.ts`, and the other projects ignore it.
 - **DaisyUI `dropdown-content` must not carry a display utility** (`flex`, `grid`…): DaisyUI hides
   a closed dropdown with `display: none`, and the utility overrides it, leaving an invisible
   (opacity 0) panel that swallows clicks. Put layout classes on an inner wrapper.
@@ -299,7 +314,10 @@ Done:
   placement dialog with live table preview, tap or drag, swap/replace asks first, Confirm = one
   change; "Edit seating" / double-click a table.
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
-  1280px, 44px targets on touch screens. Phone layout not yet (roadmap 15).
+  1280px, 44px targets on touch screens. **Phones:** compact header/toolbar, scrolling guest
+  drawer with wrapping rows.
+- **Day-of check-in:** a door list per event (search, table + seat, household check-in, walk-ins,
+  arrivals count, undo), phone-first.
 - **Undo/redo:** ⌘/Ctrl+Z, Shift+⌘/Ctrl+Z or Ctrl+Y, toolbar ↶ ↷. Typing a name is one step; the
   placement dialog's Confirm is one step. Session-only (not kept across reloads).
 - **Version history:** "History" in the editor: automatic (on open, every 10 min) + named versions;
@@ -343,8 +361,8 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
-floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates). Next:
-**H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
+floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates) → **H ✅** (15 phone
+layout, 24 check-in; 23 QR / 26 Wallet need hosting — parked with sync). Next: **I**
 polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 

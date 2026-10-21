@@ -105,6 +105,7 @@ erDiagram
     string notes "nullable"
     array tags "strings"
     bool isChild
+    string checkedInAt "nullable ISO time (day-of check-in)"
   }
   HOUSEHOLD {
     string id "client UUID"
@@ -215,8 +216,8 @@ layout.
 
 ### Schema versions
 
-`schemaVersion` is `7` (v2 households, v3 `settings`, v4 guest details, v5 layouts, v6 `units` +
-the `row` shape, v7 room objects + floor-plan image, v8 seating rules). Plan units are centimetres. Room objects
+`schemaVersion` is `9` (v2 households, v3 `settings`, v4 guest details, v5 layouts, v6 `units` +
+the `row` shape, v7 room objects + floor-plan image, v8 seating rules, v9 `guest.checkedInAt`). Plan units are centimetres. Room objects
 (`objects`) and the floor-plan image reference (`backdrop`) belong to each layout; the image bytes
 live in the `images` IndexedDB store, not in the document (or backups). When the shape changes in a way old documents don't
 satisfy:
@@ -241,9 +242,10 @@ is logged and left as it was, rather than stopping the database from opening.
 ## The local record (IndexedDB)
 
 [`apps/web/src/features/storage/db/SeatingDb.ts`](../apps/web/src/features/storage/db/SeatingDb.ts):
-a Dexie database with two object stores: `events` (keyed by `id`, indexed on `updatedAt`) and
-`versions` (version history, indexed on `eventId` and `[eventId+createdAt]`). Its version is
-`DATABASE_VERSION` = store layout × 100 + document schema version (currently 103), so changing
+a Dexie database with three object stores: `events` (keyed by `id`, indexed on `updatedAt`),
+`versions` (version history, indexed on `eventId` and `[eventId+createdAt]`) and `images`
+(floor-plan image bytes). Its version is `DATABASE_VERSION` = store layout × 100 + document schema
+version (currently 209), so changing
 either upgrades every database once.
 
 ```ts

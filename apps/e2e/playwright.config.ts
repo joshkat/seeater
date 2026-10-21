@@ -6,9 +6,9 @@ const PORT = 4280;
 
 /**
  * End-to-end tests against the production build (`vite build` + `vite
- * preview`). Three projects: desktop Chrome, and an 11" iPad Pro in WebKit
- * (Safari's engine, with touch) in both orientations — tablet layouts use
- * drawers below 1280px wide.
+ * preview`). Desktop Chrome, an 11" iPad Pro in WebKit (Safari's engine, with
+ * touch) in both orientations — tablet layouts use drawers below 1280px wide —
+ * and an iPhone for phone.spec.ts only.
  */
 export default defineConfig({
   testDir: "./tests",
@@ -27,9 +27,16 @@ export default defineConfig({
     {
       name: "desktop-chromium",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      testIgnore: /phone\.spec/,
     },
-    { name: "ipad-portrait", use: { ...devices["iPad Pro 11"] } },
-    { name: "ipad-landscape", use: { ...devices["iPad Pro 11 landscape"] } },
+    { name: "ipad-portrait", use: { ...devices["iPad Pro 11"] }, testIgnore: /phone\.spec/ },
+    {
+      name: "ipad-landscape",
+      use: { ...devices["iPad Pro 11 landscape"] },
+      testIgnore: /phone\.spec/,
+    },
+    // Phones get their own spec (the editor's compact layout, check-in).
+    { name: "iphone", use: { ...devices["iPhone 13"] }, testMatch: /phone\.spec/ },
   ],
   webServer: {
     command: `npm run build --workspace @seating/web && npm run preview --workspace @seating/web -- --port ${PORT} --strictPort`,

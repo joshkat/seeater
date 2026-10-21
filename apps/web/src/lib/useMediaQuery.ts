@@ -15,3 +15,6 @@ export function useMediaQuery(query: string): boolean {
 
 /** Tailwind's `xl` breakpoint: side panels are fixed above it, drawers below. */
 export const DESKTOP_QUERY = "(min-width: 1280px)";
+
+/** Below Tailwind's `sm` breakpoint: phone layout (compact header and toolbar). */
+export const PHONE_QUERY = "(max-width: 639px)";

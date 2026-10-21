@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { THEMES, type ThemeValue, applyTheme, getSavedTheme } from "../../../lib/theme";
+import { PHONE_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
 import { useEditorStore } from "../store/editorStore";
 import { useLayoutStore } from "../store/layoutStore";
 import { ExactPlacementToggle } from "./ExactPlacementToggle";
@@ -19,6 +20,9 @@ export function Toolbar(): JSX.Element {
   const setGuestsOpen = useLayoutStore((state) => state.setGuestsOpen);
   const setPropertiesOpen = useLayoutStore((state) => state.setPropertiesOpen);
 
+  // Phones: the toolbar keeps the essentials (exact placement moves to the
+  // Properties panel; Duplicate / Delete appear once something is selected).
+  const phone = useMediaQuery(PHONE_QUERY);
   const [currentTheme, setCurrentTheme] = useState<ThemeValue>(getSavedTheme);
 
   function handleThemeChange(theme: ThemeValue): void {
@@ -27,8 +31,9 @@ export function Toolbar(): JSX.Element {
   }
 
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 max-sm:justify-start">
+      {/* Phones: both groups flow together (display: contents). */}
+      <div className="flex flex-wrap items-center gap-2 max-sm:contents">
         {/* Tablet widths: the side panels are drawers, opened from here. */}
         <button
           type="button"
@@ -39,41 +44,52 @@ export function Toolbar(): JSX.Element {
           Guests
         </button>
         <UndoRedoButtons />
-        <span className="mx-1 h-6 w-px bg-base-300" />
+        <span className="mx-1 h-6 w-px bg-base-300 max-sm:hidden" />
         <button type="button" className="btn btn-primary btn-sm" onClick={() => addTable("round")}>
           + Round<span className="max-xl:hidden"> table</span>
         </button>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => addTable("rectangle")}
-        >
-          + Rectangle<span className="max-xl:hidden"> table</span>
-        </button>
+        {/* Phones: rectangles are in + More (banquet tables). */}
+        {!phone && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => addTable("rectangle")}
+          >
+            + Rectangle<span className="max-xl:hidden"> table</span>
+          </button>
+        )}
         <AddTableMenu />
         <AddRoomObjectMenu />
-        <span className="mx-1 h-6 w-px bg-base-300" />
-        <button
-          type="button"
-          className="btn btn-sm"
-          disabled={!hasSelection}
-          onClick={duplicateSelected}
-        >
-          Duplicate
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-error"
-          disabled={!hasSelection}
-          onClick={deleteSelected}
-        >
-          Delete
-        </button>
-        <span className="mx-1 h-6 w-px bg-base-300" />
-        <ExactPlacementToggle />
+        <span className="mx-1 h-6 w-px bg-base-300 max-sm:hidden" />
+        {(!phone || hasSelection) && (
+          <>
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={!hasSelection}
+              onClick={duplicateSelected}
+            >
+              Duplicate
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-error"
+              disabled={!hasSelection}
+              onClick={deleteSelected}
+            >
+              Delete
+            </button>
+          </>
+        )}
+        {!phone && (
+          <>
+            <span className="mx-1 h-6 w-px bg-base-300" />
+            <ExactPlacementToggle />
+          </>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 max-sm:contents">
         <button
           type="button"
           aria-pressed={propertiesOpen}
@@ -86,8 +102,16 @@ export function Toolbar(): JSX.Element {
           Properties
         </button>
         <div className="dropdown dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-sm btn-secondary whitespace-nowrap">
-            Theme ▾
+          <div
+            tabIndex={0}
+            role="button"
+            aria-label="Theme"
+            className="btn btn-sm btn-secondary whitespace-nowrap"
+          >
+            <span className="max-sm:hidden">Theme ▾</span>
+            <span aria-hidden className="sm:hidden">
+              ◐
+            </span>
           </div>
           <ul className="dropdown-content menu z-20 mt-1 w-40 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg">
             {THEMES.map((theme) => (

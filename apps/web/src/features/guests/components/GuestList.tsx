@@ -199,7 +199,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 max-sm:flex-none">
       <GuestFilterBar onLocateFirst={locateFirstMatch} />
       {filtering && (
         <p className="flex items-center justify-between px-1 text-xs text-base-content/60">
@@ -209,7 +209,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
           </button>
         </p>
       )}
-      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto max-sm:flex-none max-sm:overflow-visible">
         <GuestColumnHeaders
           allSelected={allSelected}
           someSelected={selectedGuestIds.length > 0}

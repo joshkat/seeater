@@ -17,6 +17,7 @@ export * from "./document/guestOps.js";
 export * from "./document/householdOps.js";
 export * from "./document/layoutOps.js";
 export * from "./document/roomObjectOps.js";
+export * from "./document/checkInOps.js";
 export * from "./document/ruleOps.js";
 export * from "./document/autoSeat.js";
 export * from "./document/templates.js";

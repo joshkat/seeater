@@ -111,6 +111,8 @@ export function duplicateEventDoc(source: EventDoc, options: DuplicateOptions = 
         seatId:
           options.copyAssignments && guest.seatId ? (seatIdMap.get(guest.seatId) ?? null) : null,
         householdId: guest.householdId ? (householdIdMap.get(guest.householdId) ?? null) : null,
+        // A copy is a new event: nobody has arrived at it yet.
+        checkedInAt: null,
       }))
     : [];
 

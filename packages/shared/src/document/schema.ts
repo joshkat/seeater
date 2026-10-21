@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 8;
+export const EVENT_DOC_SCHEMA_VERSION = 9;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -112,6 +112,8 @@ export const guestSchema = z.object({
   /** Groups such as "Bride's side", "Family", "Work". */
   tags: z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_GUEST),
   isChild: z.boolean(),
+  /** When the guest was checked in on the day (null = not arrived yet). */
+  checkedInAt: isoDateSchema.nullable(),
 });
 
 /**

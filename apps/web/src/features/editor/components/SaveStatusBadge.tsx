@@ -23,9 +23,13 @@ export function SaveStatusBadge(): JSX.Element {
   const saveStatus = useDocumentStore((state) => state.saveStatus);
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-sm ${TONE[saveStatus]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-sm ${TONE[saveStatus]}`}
+      title={TEXT[saveStatus]}
+    >
       <span aria-hidden className={`h-2 w-2 rounded-full ${DOT[saveStatus]}`} />
-      {TEXT[saveStatus]}
+      {/* Phones: just the dot, unless saving failed. */}
+      <span className={saveStatus === "error" ? "" : "max-sm:sr-only"}>{TEXT[saveStatus]}</span>
     </span>
   );
 }

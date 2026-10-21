@@ -23,6 +23,15 @@ const router = createBrowserRouter([
     },
     hydrateFallbackElement: <EditorStatusScreen status="loading" />,
   },
+  {
+    // The door list for the day: no canvas, so it doesn't load Konva.
+    path: "/events/:eventId/check-in",
+    lazy: async () => {
+      const { CheckInRoute } = await import("./features/checkin/components/CheckInRoute");
+      return { Component: CheckInRoute };
+    },
+    hydrateFallbackElement: <EditorStatusScreen status="loading" />,
+  },
   { path: "*", element: <NotFoundPage /> },
 ]);
 

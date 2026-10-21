@@ -84,6 +84,16 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
   }),
   // v8: seating rules (keep together / keep apart). None yet.
   7: (doc) => ({ ...doc, schemaVersion: 8, rules: [] }),
+  // v9: day-of check-in. Nobody has arrived yet.
+  8: (doc) => ({
+    ...doc,
+    schemaVersion: 9,
+    guests: Array.isArray(doc.guests)
+      ? doc.guests.map((guest: unknown) =>
+          typeof guest === "object" && guest !== null ? { ...guest, checkedInAt: null } : guest,
+        )
+      : doc.guests,
+  }),
 };
 
 /**
