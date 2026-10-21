@@ -34,15 +34,27 @@ export async function addRoundTable(page: Page): Promise<void> {
   await page.keyboard.press("Escape");
 }
 
-/** Imports guests from CSV text through the real file input. */
-export async function importGuests(page: Page, csv: string): Promise<void> {
+/** Picks a CSV in the guest panel's file input; the "Import guests" dialog opens. */
+export async function openImportDialog(page: Page, csv: string): Promise<Locator> {
   const panel = await guestPanel(page);
   await panel.locator('input[type="file"]').setInputFiles({
     name: "guests.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(csv),
   });
-  await expect(panel.getByText(/^Imported \d+ guests?\./)).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Import guests" });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** Imports guests from CSV text through the real file input and the import
+ * dialog (with its suggested column mapping). */
+export async function importGuests(page: Page, csv: string): Promise<void> {
+  const dialog = await openImportDialog(page, csv);
+  await dialog.getByRole("button", { name: /^Import \d+ guests?$/ }).click();
+  await expect(dialog).toBeHidden();
+  const panel = await guestPanel(page);
+  await expect(panel.getByText(/^Imported \d+ guests?/)).toBeVisible();
 }
 
 /** Ticks the select-all box in the guest list. */

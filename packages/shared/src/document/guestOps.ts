@@ -38,6 +38,8 @@ export interface GuestInput {
   notes?: string | null;
   tags?: string[];
   isChild?: boolean;
+  /** RSVP on import (e.g. from a wedding-site export). Defaults to "pending". */
+  rsvpStatus?: RsvpStatus;
 }
 
 export interface GuestPatch {
@@ -115,7 +117,7 @@ function cleanName(value: string): string {
 }
 
 /**
- * Adds guests (pending RSVP, unseated). Blank names are skipped. A `household`
+ * Adds guests (unseated; RSVP from the input, else pending). Blank names are skipped. A `household`
  * name joins the existing household with that name, or creates one.
  */
 export function addGuests(
@@ -148,7 +150,7 @@ export function addGuests(
       name: input.name,
       email: cleanOptional(input.email, MAX_GUEST_EMAIL_LENGTH),
       phone: cleanOptional(input.phone, MAX_GUEST_PHONE_LENGTH),
-      rsvpStatus: "pending",
+      rsvpStatus: input.rsvpStatus ?? "pending",
       seatId: null,
       householdId: householdIdFor(input.household),
       meal: remember(cleanMeal(input.meal, meals), meals),

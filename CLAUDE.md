@@ -164,6 +164,13 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
   no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
   there too). Import reads them from headed columns.
+- **Smart import** (`guests/components/import/`): picking a file opens the "Import guests" dialog
+  (portalled to `body`, so the drawer can't clip it): a field per column, pre-filled from
+  `lib/importFields.ts` (header aliases incl. common wedding-site names — not verified against
+  real Zola/Knot/Joy files), First + Last name joined, RSVP column → `GuestInput.rsvpStatus`,
+  likely duplicates (name match, case/space-insensitive) skipped by default. All logic is pure in
+  `lib/importMapping.ts`; `rowsToGuests`/`parseGuestFile` use the same suggested mapping. Import =
+  one `importGuests` call (one undo step).
 - **Households (schema v2; v3 added `settings`):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
   households. The guest list groups unassigned members under a header (`guests/lib/guestListModel`,
   which also defines display order for Shift-click ranges and "Select next N").
@@ -278,7 +285,8 @@ Done:
   multi-select, duplicate/delete, **bounds clamping**, autosave.
 - **Zoom-to-table** on select; zoom controls (+/−/reset), recenter on table resize, reset =
   re-fit to current viewport.
-- Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded), drag-to-seat, **multi-select
+- Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded; column-mapping dialog with
+  preview, first/last name, RSVP, duplicate skipping), drag-to-seat, **multi-select
   (checkboxes + select-all, ctrl/cmd-click, Shift-click ranges, "Select next N") +
   assign-to-table**, labelled list columns, click-to-assign,
   occupancy initials on chairs.
@@ -335,7 +343,7 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
-floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). Next: **G** 14 onboarding, 22 smart import, 25 templates →
+floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates). Next:
 **H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
 polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
