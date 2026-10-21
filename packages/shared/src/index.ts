@@ -19,6 +19,7 @@ export * from "./document/layoutOps.js";
 export * from "./document/roomObjectOps.js";
 export * from "./document/ruleOps.js";
 export * from "./document/autoSeat.js";
+export * from "./document/templates.js";
 export * from "./document/summary.js";
 export * from "./document/stats.js";
 
