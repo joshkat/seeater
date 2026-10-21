@@ -130,6 +130,11 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   them (one undoable edit). Anything that needs **all** layouts (export, stats across rooms) must use
   `layoutViews(doc)`, not `doc.tables`. Table/seat ids are unique across layouts. UI: tabs over the
   canvas (`editor/components/layouts/`, `editor/store/layoutActions.ts`).
+- **Units & sizes (schema v6):** plan units are **centimetres**. `settings.units` is auto / metric
+  / imperial (auto = locale, `editor/lib/units.ts`); inputs show whole cm or inches (tables) and
+  m or ft (room). `TABLE_PRESETS` (shared `geometry/constants.ts`) are real furniture sizes;
+  banquet/head tables use custom chair offsets (`sideSeatOffsets`). Shape `"row"` = chairs in a
+  line with no table (ceremonies); `setSeatCount` resizes it.
 - **Export & print** (`features/export/`): print views are a portal (`#print-view`) over the
   app; `body.printing` + `@media print` in `global.css` hide everything else, so the browser's
   Print / Save as PDF outputs only the sheet (no PDF library, works offline). The chart image comes
@@ -281,6 +286,8 @@ Done:
 - **Find & stats:** guest search + filters (RSVP, seated, tag, meal, needs), "Show on map" (rings
   the chair), totals line, seated/chairs on each table, Stats dialog with per-table meal totals and
   "Copy for caterer"; colour chairs by guest / tag / meal / RSVP with a legend.
+- **Room setup:** real-size presets (rounds, banquet, head tables, chair rows), grid of tables,
+  align/distribute, units (auto/metric/imperial) and room size.
 - **Export & print:** seating chart (print or PNG), table rosters, find-your-seat board, fold-over
   place cards, escort cards (Print / Save as PDF), guest list CSV with seats per layout.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
@@ -302,7 +309,8 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e) → **Phase B ✅**
 (13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
-Next: **E** the room (18 units + presets, 9 room objects, 10 floor-plan image, 17 align/distribute)
+**E1 ✅** (17 align/distribute + grid, 18 units + presets, chair rows). Next: **E2** (9 room objects,
+10 floor-plan image)
 → **F** 11 seating rules + 20 auto-seat/swap → **G** 14 onboarding, 22 smart import, 25 templates →
 **H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
 polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
