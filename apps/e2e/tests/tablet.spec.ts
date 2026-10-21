@@ -40,6 +40,7 @@ test("press, hold and drag a guest onto a table by touch", async ({ page }) => {
 
   const panel = await guestPanel(page);
   const row = panel.locator("li.cursor-grab", { hasText: "Ada" });
+  await row.scrollIntoViewIfNeeded();
   const from = await row.boundingBox();
   const canvas = await page.locator('[data-drop-zone="canvas"]').boundingBox();
   if (!from || !canvas) throw new Error("layout not ready");

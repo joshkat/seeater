@@ -30,7 +30,10 @@ export function ChairColorLegend(): JSX.Element {
         </select>
       </label>
       {legend.length > 0 && (
-        <ul className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
+        <ul
+          aria-label="Chair colour legend"
+          className="flex max-h-32 flex-col gap-0.5 overflow-y-auto"
+        >
           {legend.map((entry) => (
             <li key={entry.label} className="flex items-center gap-1.5">
               <span

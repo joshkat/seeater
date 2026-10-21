@@ -22,76 +22,81 @@ export function GuestFilterMenu(): JSX.Element {
       <button type="button" tabIndex={0} className={`btn btn-sm ${count > 0 ? "btn-primary" : ""}`}>
         Filters{count > 0 && <span className="badge badge-sm">{count}</span>}
       </button>
+      {/* No display utility on dropdown-content itself: DaisyUI hides it with
+          display: none while closed, and e.g. "flex" would override that and
+          leave an invisible panel catching clicks. */}
       <div
         tabIndex={0}
-        className="dropdown-content z-20 mt-1 flex w-64 flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
+        className="dropdown-content z-20 mt-1 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
       >
-        <label>
-          <span className={labelClass}>RSVP</span>
-          <select
-            className={selectClass}
-            value={filter.rsvp}
-            onChange={(event) => setFilter({ rsvp: event.target.value as typeof filter.rsvp })}
-          >
-            <option value="any">Any</option>
-            <option value="accepted">Going</option>
-            <option value="pending">Pending</option>
-            <option value="declined">Declined</option>
-          </select>
-        </label>
-        <label>
-          <span className={labelClass}>Seating</span>
-          <select
-            className={selectClass}
-            value={filter.seating}
-            onChange={(event) =>
-              setFilter({ seating: event.target.value as typeof filter.seating })
-            }
-          >
-            <option value="any">Any</option>
-            <option value="seated">Seated</option>
-            <option value="unseated">Not seated yet</option>
-          </select>
-        </label>
-        <label>
-          <span className={labelClass}>Tag</span>
-          <select
-            className={selectClass}
-            value={filter.tag ?? ""}
-            onChange={(event) => setFilter({ tag: event.target.value || null })}
-          >
-            <option value="">Any</option>
-            {tags.map((tag) => (
-              <option key={tag}>{tag}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className={labelClass}>Meal</span>
-          <select
-            className={selectClass}
-            value={filter.meal ?? ""}
-            onChange={(event) => setFilter({ meal: event.target.value || null })}
-          >
-            <option value="">Any</option>
-            {meals.map((meal) => (
-              <option key={meal}>{meal}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className={labelClass}>Needs</span>
-          <select
-            className={selectClass}
-            value={filter.need}
-            onChange={(event) => setFilter({ need: event.target.value as typeof filter.need })}
-          >
-            <option value="any">Any</option>
-            <option value="dietary">Dietary needs / allergies</option>
-            <option value="accessibility">Accessibility needs</option>
-            <option value="child">Children</option>
-          </select>
-        </label>
+        <div className="flex flex-col gap-2">
+          <label>
+            <span className={labelClass}>RSVP</span>
+            <select
+              className={selectClass}
+              value={filter.rsvp}
+              onChange={(event) => setFilter({ rsvp: event.target.value as typeof filter.rsvp })}
+            >
+              <option value="any">Any</option>
+              <option value="accepted">Going</option>
+              <option value="pending">Pending</option>
+              <option value="declined">Declined</option>
+            </select>
+          </label>
+          <label>
+            <span className={labelClass}>Seating</span>
+            <select
+              className={selectClass}
+              value={filter.seating}
+              onChange={(event) =>
+                setFilter({ seating: event.target.value as typeof filter.seating })
+              }
+            >
+              <option value="any">Any</option>
+              <option value="seated">Seated</option>
+              <option value="unseated">Not seated yet</option>
+            </select>
+          </label>
+          <label>
+            <span className={labelClass}>Tag</span>
+            <select
+              className={selectClass}
+              value={filter.tag ?? ""}
+              onChange={(event) => setFilter({ tag: event.target.value || null })}
+            >
+              <option value="">Any</option>
+              {tags.map((tag) => (
+                <option key={tag}>{tag}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className={labelClass}>Meal</span>
+            <select
+              className={selectClass}
+              value={filter.meal ?? ""}
+              onChange={(event) => setFilter({ meal: event.target.value || null })}
+            >
+              <option value="">Any</option>
+              {meals.map((meal) => (
+                <option key={meal}>{meal}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className={labelClass}>Needs</span>
+            <select
+              className={selectClass}
+              value={filter.need}
+              onChange={(event) => setFilter({ need: event.target.value as typeof filter.need })}
+            >
+              <option value="any">Any</option>
+              <option value="dietary">Dietary needs / allergies</option>
+              <option value="accessibility">Accessibility needs</option>
+              <option value="child">Children</option>
+            </select>
+          </label>
+        </div>
       </div>
     </div>
   );
