@@ -21,6 +21,8 @@ interface TableNodeProps {
   dropHighlight: boolean;
   /** A chair to ring ("Show on map"), if it's at this table. */
   highlightedSeatId: string | null;
+  /** A seating rule is broken at this table. */
+  ruleWarning?: boolean;
   /** 1-based position used for the auto "Table N" name when unlabeled. */
   tableNumber: number;
   /** Floor-plan canvas size, used to clamp the table inside bounds. */
@@ -45,6 +47,7 @@ export function TableNode({
   selected,
   dropHighlight,
   highlightedSeatId,
+  ruleWarning = false,
   tableNumber,
   dimensions,
   threshold,
@@ -155,6 +158,20 @@ export function TableNode({
         listening={false}
         rotation={table.rotation != 0 ? -table.rotation : 0}
       />
+      {ruleWarning && (
+        <Text
+          text="⚠ rule"
+          fontSize={12}
+          fontStyle="700"
+          fill="#dc2626"
+          width={140}
+          offsetX={70}
+          offsetY={30 + labelLift}
+          align="center"
+          listening={false}
+          rotation={table.rotation != 0 ? -table.rotation : 0}
+        />
+      )}
       {/* Live fill: seated / chairs. */}
       <Text
         text={`${seatedCount}/${seats.length}`}

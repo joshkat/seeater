@@ -7,6 +7,7 @@ import {
   expandToHouseholds,
   householdSplits,
   isExactSeatPlacement,
+  newRuleProblems,
   openSeatCount,
   setSeatCount,
 } from "@seating/shared";
@@ -116,13 +117,28 @@ function applySeating(seat: (doc: EventDoc) => TableAssignResult): TableAssignRe
   return result;
 }
 
+/** A warning to add when a seating change created new rule problems. */
+function ruleWarning(before: EventDoc | null): string {
+  const after = currentDoc();
+  if (!before || !after) return "";
+  const problems = newRuleProblems(before, after);
+  if (problems.length === 0) return "";
+  const kind = problems[0].kind === "apart" ? "should be kept apart" : "should sit together";
+  return ` ⚠ Some guests here ${kind} — see Rules.`;
+}
+
 function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
   /** Shows the outcome of a table seating and sets up the next round, if any. */
-  const settle = (result: TableAssignResult | null, tableId: string, extra = ""): void => {
+  const settle = (
+    result: TableAssignResult | null,
+    tableId: string,
+    extra = "",
+    before: EventDoc | null = null,
+  ): void => {
     if (!result) return;
     const doc = currentDoc();
     const name = doc ? tableNameById(doc.tables, tableId) : "the table";
@@ -133,7 +149,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
         overflow: null,
         notice: {
           id: ++noticeId,
-          text: `Seated ${plural(result.assigned, "guest")} at ${name}${extra}.`,
+          text: `Seated ${plural(result.assigned, "guest")} at ${name}${extra}.${ruleWarning(before)}`,
         },
       });
       return;
@@ -149,9 +165,15 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
   };
 
   const seat = (guestIds: string[], target: SeatTarget): void => {
+    const before = currentDoc();
     if (target.kind === "seat" && guestIds.length === 1) {
       useGuestStore.getState().assignSeat(guestIds[0], target.seatId);
-      set({ question: null, overflow: null });
+      const warning = ruleWarning(before);
+      set({
+        question: null,
+        overflow: null,
+        notice: warning ? { id: ++noticeId, text: warning.trim() } : null,
+      });
       return;
     }
     const doc = currentDoc();
@@ -162,6 +184,8 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     settle(
       applySeating((doc) => assignGuestsToTable(doc, guestIds, target.tableId)),
       target.tableId,
+      "",
+      before,
     );
   };
 
@@ -183,6 +207,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
       const { placement } = get();
       if (!placement) return;
       const plan = placementPlan(placement);
+      const before = currentDoc();
       if (plan.length > 0) useDocumentStore.getState().apply((doc) => applySeatPlan(doc, plan));
       const left = unplacedIncoming(placement);
       if (left.length > 0) {
@@ -196,7 +221,10 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
       const name = doc ? tableNameById(doc.tables, placement.tableId) : "the table";
       set({
         placement: null,
-        notice: plan.length > 0 ? { id: ++noticeId, text: `Seating saved at ${name}.` } : null,
+        notice:
+          plan.length > 0
+            ? { id: ++noticeId, text: `Seating saved at ${name}.${ruleWarning(before)}` }
+            : null,
       });
     },
 
@@ -237,11 +265,14 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     splitOverflow() {
       const { overflow } = get();
       if (!overflow) return;
+      const before = currentDoc();
       settle(
         applySeating((doc) =>
           assignGuestsToTable(doc, overflow.guestIds, overflow.tableId, { splitHouseholds: true }),
         ),
         overflow.tableId,
+        "",
+        before,
       );
     },
 

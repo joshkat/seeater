@@ -5,6 +5,7 @@ import { tableDisplayName } from "../../editor/lib/tableLabel";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { useGuestStore } from "../store/guestStore";
 import { useSeatingFlowStore } from "../store/seatingFlowStore";
+import { SelectionMoreMenu } from "./SelectionMoreMenu";
 
 /** Action bar for the selected guests: seat the whole selection at a table
  * (with household checks and the overflow prompt), group or ungroup them as a
@@ -104,6 +105,7 @@ export function AssignBar(): JSX.Element {
         >
           Remove from household
         </button>
+        <SelectionMoreMenu />
       </div>
     </div>
   );

@@ -24,4 +24,10 @@ describe("guestSubtitle", () => {
   it("is null when there's nothing to say", () => {
     expect(guestSubtitle(guest({ name: "Plain" }), null)).toBeNull();
   });
+
+  it("flags a broken seating rule first", () => {
+    expect(guestSubtitle(guest({ name: "Ada", meal: "Fish" }), 2, true)).toBe(
+      "⚠ rule · Seat 2 · Fish",
+    );
+  });
 });

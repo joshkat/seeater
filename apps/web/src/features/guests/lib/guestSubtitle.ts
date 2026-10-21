@@ -5,8 +5,13 @@ import type { Guest } from "@seating/shared";
  * needs at a glance (meal, dietary needs, accessibility, child), then
  * contact details. Empty parts are skipped.
  */
-export function guestSubtitle(guest: Guest, seatNumber: number | null): string | null {
+export function guestSubtitle(
+  guest: Guest,
+  seatNumber: number | null,
+  breaksRule = false,
+): string | null {
   const parts = [
+    breaksRule ? "⚠ rule" : null,
     seatNumber !== null ? `Seat ${seatNumber}` : null,
     guest.meal,
     guest.dietary ? `⚠ ${guest.dietary}` : null,

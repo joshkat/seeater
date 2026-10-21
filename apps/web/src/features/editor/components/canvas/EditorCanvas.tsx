@@ -7,6 +7,7 @@ import { Layer, Rect, Stage } from "react-konva";
 import type { Point as ScreenPoint } from "../../../dnd/lib/dragTypes";
 import { registerDropZone } from "../../../dnd/lib/dropZones";
 import { registerChartCapture } from "../../../export/lib/chartCapture";
+import { useRuleProblems } from "../../../rules/hooks/useRuleProblems";
 import { useDragStore } from "../../../dnd/store/dragStore";
 import { bySeatId, guestInitials } from "../../../guests/lib/guestDisplay";
 import { useGuestStore } from "../../../guests/store/guestStore";
@@ -61,6 +62,7 @@ export function EditorCanvas(): JSX.Element {
   const documentId = useDocumentId();
   const tables = useTables();
   const roomObjects = useRoomObjects();
+  const ruleTableIds = useRuleProblems().tableIds;
   const backdrop = useBackdrop();
   const updateRoomObject = useEditorStore((state) => state.updateRoomObject);
   const selectedIds = useEditorStore((state) => state.selectedIds);
@@ -440,6 +442,7 @@ export function EditorCanvas(): JSX.Element {
               selected={selectedIds.includes(table.id)}
               dropHighlight={dropHighlightTableId === table.id}
               highlightedSeatId={highlightedSeatId}
+              ruleWarning={ruleTableIds.has(table.id)}
               tableNumber={index + 1}
               dimensions={dimensions}
               threshold={SNAP_PX / viewport.scale}
