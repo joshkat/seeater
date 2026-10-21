@@ -299,12 +299,13 @@ Done:
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
 Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ → 3 tablet/touch ✅
-(1–3 shipped together in PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e). **Phase B ✅** (13
-multiple layouts — decided: shared guests, separate tables + seating; 6 guest details). **Phase C
-✅** (7 search/filter + show on map, 8 live stats, 21 colour-coding). Next:
-phase D, 5 **export/print** (chart PNG/PDF, rosters, place
-cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
-passes**. Deferred on purpose: **error reporting**
+(PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e) → **Phase B ✅**
+(13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
+(7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
+Next: **E** the room (18 units + presets, 9 room objects, 10 floor-plan image, 17 align/distribute)
+→ **F** 11 seating rules + 20 auto-seat/swap → **G** 14 onboarding, 22 smart import, 25 templates →
+**H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
+polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 
 ## Git
