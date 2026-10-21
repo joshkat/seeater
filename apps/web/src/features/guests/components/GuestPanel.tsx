@@ -48,11 +48,12 @@ export function GuestPanel(): JSX.Element {
     <aside
       aria-label="Guests"
       inert={inert}
-      className={`relative flex min-h-0 shrink-0 flex-col gap-2.5 border-r border-base-300 bg-base-100 p-3 xl:w-(--panel-width) max-xl:absolute max-xl:inset-y-0 max-xl:left-0 max-xl:z-30 max-xl:w-[min(460px,92vw)] max-xl:shadow-xl max-xl:transition-transform ${
+      className={`relative flex min-h-0 shrink-0 flex-col gap-2.5 max-sm:overflow-y-auto border-r border-base-300 bg-base-100 p-3 xl:w-(--panel-width) max-xl:absolute max-xl:inset-y-0 max-xl:left-0 max-xl:z-30 max-xl:w-[min(460px,92vw)] max-xl:shadow-xl max-xl:transition-transform ${
         open ? "" : "max-xl:-translate-x-full"
       } ${passThrough ? "pointer-events-none" : ""}`}
       style={{ "--panel-width": `${width}px` } as CSSProperties}
     >
+      {/* Phones: the whole drawer scrolls (the list alone would get no height). */}
       <ResizeHandle onMouseDown={startResize} active={resizing} />
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[15px] font-semibold text-base-content">Guests</h2>

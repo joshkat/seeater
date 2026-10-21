@@ -37,7 +37,7 @@ function EventTitle(): JSX.Element {
     return (
       <input
         autoFocus
-        className="input input-bordered input-sm w-64"
+        className="input input-bordered input-sm w-64 max-w-full"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
@@ -58,7 +58,7 @@ function EventTitle(): JSX.Element {
   return (
     <button
       type="button"
-      className="rounded px-1 text-lg font-semibold text-base-content hover:bg-base-200"
+      className="min-w-0 truncate rounded px-1 text-lg font-semibold text-base-content hover:bg-base-200"
       title="Click to rename"
       onClick={() => {
         setDraft(name);
@@ -78,14 +78,14 @@ export function EditorPage(): JSX.Element {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-base-300 bg-base-100 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="btn btn-secondary btn-sm">
-            ← Events
+      <header className="relative z-50 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-base-300 bg-base-100 px-4 py-3 max-sm:px-3 max-sm:py-2">
+        <div className="flex min-w-0 items-center gap-3 max-sm:w-full">
+          <Link to="/" className="btn btn-secondary btn-sm" title="All events">
+            ←<span className="max-sm:hidden"> Events</span>
           </Link>
           <EventTitle />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-sm:gap-2">
           <CheckInLink />
           <ExportMenu />
           <VersionHistoryButton />
@@ -95,7 +95,7 @@ export function EditorPage(): JSX.Element {
         </div>
       </header>
 
-      <div className="border-b border-base-300 bg-base-100 px-4 py-2.5">
+      <div className="relative z-40 border-b border-base-300 bg-base-100 px-4 py-2.5 max-sm:px-3 max-sm:py-2">
         <Toolbar />
       </div>
 

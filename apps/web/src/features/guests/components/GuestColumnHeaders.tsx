@@ -23,7 +23,7 @@ export function GuestColumnHeaders({
         className="-my-1"
       />
       <span className="min-w-0 flex-1">Guest</span>
-      <span className={`${GUEST_COLUMNS.rsvp} shrink-0 text-center`}>RSVP</span>
+      <span className={`${GUEST_COLUMNS.rsvp} shrink-0 text-center max-sm:hidden`}>RSVP</span>
       <span className={`${GUEST_COLUMNS.actions} shrink-0`}>
         <span className="sr-only">Actions</span>
       </span>
