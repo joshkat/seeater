@@ -81,7 +81,9 @@ describe("align and distribute", () => {
   });
 
   it("aligns using rotated footprints", () => {
-    let { doc, ids } = three();
+    const start = three();
+    const ids = start.ids;
+    let doc = start.doc;
     doc = addTable(doc, {
       shape: "rectangle",
       position: { x: 700, y: 500 },
