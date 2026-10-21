@@ -3,8 +3,8 @@ import type { Box } from "konva/lib/shapes/Transformer";
 import { useEffect, useRef } from "react";
 import { Transformer } from "react-konva";
 
-/** Smallest transform box, matching TableNode's MIN_SIZE. */
-const MIN_BOX = 40;
+/** Smallest transform box (screen px) — small enough for thin walls. */
+const MIN_BOX = 8;
 
 interface SelectionTransformerProps {
   selectedIds: string[];
@@ -12,7 +12,7 @@ interface SelectionTransformerProps {
 }
 
 /**
- * Konva Transformer that attaches to the currently-selected table nodes,
+ * Konva Transformer that attaches to the currently-selected table and room-object nodes,
  * providing rotate + resize handles. Reads node instances from the shared ref
  * map that TableNode populates.
  */

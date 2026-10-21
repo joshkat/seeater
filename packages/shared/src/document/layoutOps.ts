@@ -1,7 +1,9 @@
 import type { Size } from "../types/geometry.js";
 import { newId } from "./ids.js";
 import {
+  type Backdrop,
   type EventDoc,
+  type RoomObject,
   MAX_LAYOUT_NAME_LENGTH,
   MAX_LAYOUTS,
   type StoredLayout,
@@ -26,17 +28,25 @@ function cleanLayoutName(name: string): string {
 function packActive(doc: EventDoc): StoredLayout {
   const seating: Record<string, string> = {};
   for (const guest of doc.guests) if (guest.seatId) seating[guest.id] = guest.seatId;
-  return { dimensions: doc.dimensions, tables: doc.tables, seating };
+  return {
+    dimensions: doc.dimensions,
+    tables: doc.tables,
+    seating,
+    objects: doc.objects,
+    backdrop: doc.backdrop,
+  };
 }
 
 /** Makes `stored` the active content (top-level fields) of a document. */
 function unpack(
   doc: EventDoc,
   stored: StoredLayout,
-): Pick<EventDoc, "dimensions" | "tables" | "guests"> {
+): Pick<EventDoc, "dimensions" | "tables" | "guests" | "objects" | "backdrop"> {
   return {
     dimensions: stored.dimensions,
     tables: stored.tables,
+    objects: stored.objects,
+    backdrop: stored.backdrop,
     guests: doc.guests.map((guest) => {
       const seatId = stored.seating[guest.id] ?? null;
       return guest.seatId === seatId ? guest : { ...guest, seatId };
@@ -91,7 +101,13 @@ export function addLayout(
   const layoutId = newId();
   const layoutName = cleanLayoutName(name) || `Layout ${doc.layouts.length + 1}`;
 
-  let next: StoredLayout = { dimensions: doc.dimensions, tables: [], seating: {} };
+  let next: StoredLayout = {
+    dimensions: doc.dimensions,
+    tables: [],
+    seating: {},
+    objects: [],
+    backdrop: null,
+  };
   if (content !== "blank") {
     const { tables, seatIdMap } = cloneTables(doc.tables);
     const seating: Record<string, string> = {};
@@ -101,7 +117,14 @@ export function addLayout(
         if (seatId) seating[guest.id] = seatId;
       }
     }
-    next = { dimensions: doc.dimensions, tables, seating };
+    // "Copy tables" copies the room too: objects (fresh ids) and the floor plan.
+    next = {
+      dimensions: doc.dimensions,
+      tables,
+      seating,
+      objects: doc.objects.map((object) => ({ ...object, id: newId() })),
+      backdrop: doc.backdrop,
+    };
   }
 
   const packed = packActive(doc);
@@ -173,6 +196,8 @@ export interface LayoutView {
   active: boolean;
   dimensions: Size;
   tables: Table[];
+  objects: RoomObject[];
+  backdrop: Backdrop | null;
   /** guest id → seat id in this layout. */
   seating: Map<string, string>;
 }
@@ -187,6 +212,8 @@ export function layoutViews(doc: EventDoc): LayoutView[] {
       active: layout.id === doc.activeLayoutId,
       dimensions: stored.dimensions,
       tables: stored.tables,
+      objects: stored.objects,
+      backdrop: stored.backdrop,
       seating: new Map(Object.entries(stored.seating)),
     };
   });

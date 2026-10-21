@@ -16,7 +16,7 @@ import { checkEventDocIntegrity } from "./integrity.js";
  * Bump EVENT_DOC_SCHEMA_VERSION and add an upgrade step in `migrate.ts` whenever
  * the shape changes in a way old documents don't already satisfy.
  */
-export const EVENT_DOC_SCHEMA_VERSION = 6;
+export const EVENT_DOC_SCHEMA_VERSION = 7;
 
 /** Upper bounds that keep a single document comfortably small (well under 5 MB). */
 export const MAX_TABLES = 500;
@@ -33,6 +33,8 @@ export const MAX_GUEST_NEED_LENGTH = 200;
 export const MAX_TAG_LENGTH = 40;
 export const MAX_TAGS_PER_GUEST = 20;
 export const MAX_LAYOUTS = 20;
+export const MAX_ROOM_OBJECTS = 300;
+export const MAX_ROOM_OBJECT_LABEL_LENGTH = 80;
 export const MAX_LAYOUT_NAME_LENGTH = 60;
 
 const idSchema = z.string().min(1).max(64);
@@ -143,10 +145,48 @@ export const eventSettingsSchema = z.object({
  * An inactive layout's content: its own floor plan, tables and seating
  * (guest id → seat id). The guest list is shared by every layout.
  */
+/** Things in the room that aren't tables. */
+export const roomObjectKindSchema = z.enum([
+  "dance-floor",
+  "stage",
+  "bar",
+  "buffet",
+  "dj",
+  "door",
+  "wall",
+  "label",
+  "area",
+]);
+
+/** A dance floor, stage, wall, text label… Positioned like a table (centre, size, rotation). */
+export const roomObjectSchema = z.object({
+  id: idSchema,
+  kind: roomObjectKindSchema,
+  /** Shown on the object (a "label" object is just this text). */
+  label: z.string().max(MAX_ROOM_OBJECT_LABEL_LENGTH),
+  position: pointSchema,
+  size: sizeSchema,
+  rotation: z.number().finite(),
+});
+
+/**
+ * A floor-plan picture to trace over. The image itself lives outside the
+ * document (the app's image store); this only references it. It's drawn
+ * under everything, fitted to the room's width (so set the room's real
+ * width to get the scale right).
+ */
+export const backdropSchema = z.object({
+  imageId: idSchema,
+  /** 0..1 */
+  opacity: z.number().min(0).max(1),
+});
+
 export const storedLayoutSchema = z.object({
   dimensions: sizeSchema,
   tables: z.array(tableSchema).max(MAX_TABLES),
   seating: z.record(idSchema, idSchema),
+  objects: z.array(roomObjectSchema).max(MAX_ROOM_OBJECTS),
+  backdrop: backdropSchema.nullable(),
 });
 
 /**
@@ -169,6 +209,10 @@ export const eventDocShapeSchema = z.object({
   /** Size of the editable floor-plan area, in floor-plan units. */
   dimensions: sizeSchema,
   tables: z.array(tableSchema).max(MAX_TABLES),
+  /** The active layout's room objects (other layouts keep theirs in `stored`). */
+  objects: z.array(roomObjectSchema).max(MAX_ROOM_OBJECTS),
+  /** The active layout's floor-plan image, if any. */
+  backdrop: backdropSchema.nullable(),
   guests: z.array(guestSchema).max(MAX_GUESTS),
   households: z.array(householdSchema).max(MAX_GUESTS),
   settings: eventSettingsSchema,
@@ -192,5 +236,8 @@ export type ExactSeatPlacement = z.infer<typeof exactSeatPlacementSchema>;
 export type UnitSystem = z.infer<typeof unitSystemSchema>;
 export type EventSettings = z.infer<typeof eventSettingsSchema>;
 export type StoredLayout = z.infer<typeof storedLayoutSchema>;
+export type RoomObjectKind = z.infer<typeof roomObjectKindSchema>;
+export type RoomObject = z.infer<typeof roomObjectSchema>;
+export type Backdrop = z.infer<typeof backdropSchema>;
 export type Layout = z.infer<typeof layoutSchema>;
 export type EventDoc = z.infer<typeof eventDocShapeSchema>;

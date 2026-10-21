@@ -29,3 +29,40 @@ test("event units and room size", async ({ page }) => {
   await properties.getByLabel("Units").selectOption("imperial");
   await expect(properties.getByLabel("Room width (ft)")).toHaveValue("52");
 });
+
+// A valid 1×1 PNG, enough to exercise the upload path.
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+test("room objects are added, edited and deleted (undoably)", async ({ page }) => {
+  await createEvent(page, "Objects");
+  await page.getByRole("button", { name: "Room ▾" }).click();
+  await page.getByRole("button", { name: "Dance floor" }).click();
+
+  if (isTabletLayout(page))
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
+  const properties = page.getByRole("complementary", { name: "Properties" });
+  await properties.getByLabel("Label").fill("Dance!");
+  await properties.getByRole("button", { name: "Delete dance floor" }).click();
+  await expect(properties.getByLabel("Units")).toBeVisible();
+  if (isTabletLayout(page)) await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
+});
+
+test("a floor-plan image can be uploaded and removed", async ({ page }) => {
+  await createEvent(page, "Plan");
+  if (isTabletLayout(page))
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
+  const properties = page.getByRole("complementary", { name: "Properties" });
+  await properties.getByLabel("Floor plan image file").setInputFiles({
+    name: "plan.png",
+    mimeType: "image/png",
+    buffer: TINY_PNG,
+  });
+  await expect(properties.getByLabel("Floor plan image opacity")).toHaveValue("50");
+  await properties.getByRole("button", { name: "Remove" }).click();
+  await expect(properties.getByRole("button", { name: "Upload image" })).toBeVisible();
+});

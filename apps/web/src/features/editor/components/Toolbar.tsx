@@ -4,6 +4,7 @@ import { THEMES, type ThemeValue, applyTheme, getSavedTheme } from "../../../lib
 import { useEditorStore } from "../store/editorStore";
 import { useLayoutStore } from "../store/layoutStore";
 import { ExactPlacementToggle } from "./ExactPlacementToggle";
+import { AddRoomObjectMenu } from "./room/AddRoomObjectMenu";
 import { AddTableMenu } from "./room/AddTableMenu";
 import { UndoRedoButtons } from "./UndoRedoButtons";
 
@@ -50,6 +51,7 @@ export function Toolbar(): JSX.Element {
           + Rectangle<span className="max-xl:hidden"> table</span>
         </button>
         <AddTableMenu />
+        <AddRoomObjectMenu />
         <span className="mx-1 h-6 w-px bg-base-300" />
         <button
           type="button"

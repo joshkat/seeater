@@ -68,6 +68,20 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
     schemaVersion: 6,
     settings: { ...(doc.settings as object), units: "auto" },
   }),
+  // v7: room objects and a floor-plan image, per layout. None yet.
+  6: (doc) => ({
+    ...doc,
+    schemaVersion: 7,
+    objects: [],
+    backdrop: null,
+    layouts: Array.isArray(doc.layouts)
+      ? doc.layouts.map((layout: { stored?: object | null }) =>
+          layout?.stored
+            ? { ...layout, stored: { ...layout.stored, objects: [], backdrop: null } }
+            : layout,
+        )
+      : doc.layouts,
+  }),
 };
 
 /**

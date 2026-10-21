@@ -13,8 +13,10 @@ import { useGuestStore } from "../../../guests/store/guestStore";
 import { type SeatTarget, useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
 import { type PinchFrame, WHEEL_ZOOM, clampScale, pinchViewport } from "../../geometry/viewport";
 import {
+  useBackdrop,
   useDimensions,
   useDocumentId,
+  useRoomObjects,
   useGuests,
   useTables,
 } from "../../hooks/useDocumentSelectors";
@@ -23,6 +25,8 @@ import { useEditorStore } from "../../store/editorStore";
 import { useViewPrefsStore } from "../../store/viewPrefsStore";
 import type { AlignmentGuide } from "../../types";
 import { AlignmentGuides } from "./AlignmentGuides";
+import { BackdropLayer } from "./BackdropLayer";
+import { RoomObjectNode } from "./RoomObjectNode";
 import { ChairColorLegend } from "./ChairColorLegend";
 import type { SeatOccupant } from "./ChairNode";
 import { GridLayer } from "./GridLayer";
@@ -56,6 +60,9 @@ export function EditorCanvas(): JSX.Element {
   const dimensions = useDimensions();
   const documentId = useDocumentId();
   const tables = useTables();
+  const roomObjects = useRoomObjects();
+  const backdrop = useBackdrop();
+  const updateRoomObject = useEditorStore((state) => state.updateRoomObject);
   const selectedIds = useEditorStore((state) => state.selectedIds);
   const highlightedSeatId = useEditorStore((state) => state.highlightedSeatId);
   const viewport = useEditorStore((state) => state.viewport);
@@ -412,7 +419,20 @@ export function EditorCanvas(): JSX.Element {
         onTouchEnd={handleTouchEnd}
       >
         <GridLayer dimensions={dimensions} />
+        <BackdropLayer backdrop={backdrop} dimensions={dimensions} />
         <Layer>
+          {/* Room objects sit under the tables. */}
+          {roomObjects.map((object) => (
+            <RoomObjectNode
+              key={object.id}
+              object={object}
+              selected={selectedIds.includes(object.id)}
+              dimensions={dimensions}
+              onSelect={selectTable}
+              onChange={updateRoomObject}
+              registerNode={registerNode}
+            />
+          ))}
           {tables.map((table, index) => (
             <TableNode
               key={table.id}

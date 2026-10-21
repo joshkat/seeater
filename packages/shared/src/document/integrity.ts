@@ -9,11 +9,16 @@ interface TableLike {
 
 interface DocLike {
   tables: TableLike[];
+  objects: { id: string }[];
   guests: { id: string; seatId: string | null; householdId: string | null }[];
   households: { id: string }[];
   layouts: {
     id: string;
-    stored: { tables: TableLike[]; seating: Record<string, string> } | null;
+    stored: {
+      tables: TableLike[];
+      seating: Record<string, string>;
+      objects: { id: string }[];
+    } | null;
   }[];
   activeLayoutId: string;
 }
@@ -71,6 +76,22 @@ export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void
   });
 
   checkLayouts(doc, guestIds, tableIds, seatIds, issue);
+
+  // Room object ids are unique across every layout.
+  const objectIds = new Set<string>();
+  const objectLists: [{ id: string }[], (string | number)[]][] = [
+    [doc.objects, ["objects"]],
+    ...doc.layouts.flatMap((layout, index): [{ id: string }[], (string | number)[]][] =>
+      layout.stored ? [[layout.stored.objects, ["layouts", index, "stored", "objects"]]] : [],
+    ),
+  ];
+  for (const [objects, path] of objectLists) {
+    objects.forEach((object, index) => {
+      if (objectIds.has(object.id))
+        issue(`Duplicate room object id ${object.id}`, [...path, index]);
+      objectIds.add(object.id);
+    });
+  }
 }
 
 function checkLayouts(

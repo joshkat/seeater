@@ -13,8 +13,14 @@ import type {
 import {
   DEFAULT_FLOOR_PLAN_SIZE,
   addTable,
+  type RoomObjectKind,
+  type RoomObjectPatch,
+  addRoomObject,
   addTableFromPreset,
   addTableGrid,
+  deleteRoomObjects,
+  duplicateRoomObjects,
+  updateRoomObject,
   alignTables,
   deleteTables,
   distributeTables,
@@ -86,6 +92,9 @@ interface EditorState {
   alignSelected: (edge: AlignEdge) => void;
   distributeSelected: (axis: "horizontal" | "vertical") => void;
   setUnits: (units: UnitSystem) => void;
+  /** Adds a room object (dance floor, wall…) near the middle, selected. */
+  addRoomObject: (kind: RoomObjectKind) => void;
+  updateRoomObject: (id: string, patch: RoomObjectPatch) => void;
   setFloorSize: (size: Size) => void;
   updateTableTransform: (id: string, transform: TableTransform) => void;
   setTableLabel: (id: string, label: string) => void;
@@ -300,19 +309,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     edit((doc) => setSeatOffset(doc, id, seatIndex, offset));
   },
 
+  // Selection holds table and room-object ids; each op ignores the other kind.
   duplicateSelected() {
     const doc = currentDoc();
     const { selectedIds } = get();
     if (!doc || selectedIds.length === 0) return;
-    const result = duplicateTables(doc, selectedIds);
-    edit(() => result.doc);
-    set({ selectedIds: result.tableIds });
+    const tables = duplicateTables(doc, selectedIds);
+    const objects = duplicateRoomObjects(tables.doc, selectedIds);
+    edit(() => objects.doc);
+    set({ selectedIds: [...tables.tableIds, ...objects.objectIds] });
   },
 
   deleteSelected() {
     const { selectedIds } = get();
     if (selectedIds.length === 0) return;
-    edit((doc) => deleteTables(doc, selectedIds));
+    edit((doc) => deleteRoomObjects(deleteTables(doc, selectedIds), selectedIds));
     set({ selectedIds: [] });
+  },
+
+  addRoomObject(kind) {
+    const doc = currentDoc();
+    if (!doc) return;
+    const jitter = (doc.objects.length % 5) * 24;
+    const result = addRoomObject(doc, kind, {
+      x: doc.dimensions.width / 2 + jitter,
+      y: doc.dimensions.height / 2 + jitter,
+    });
+    if (!result.objectId) return;
+    edit(() => result.doc);
+    set({ selectedIds: [result.objectId] });
+  },
+
+  updateRoomObject(id, patch) {
+    // Label typing arrives per keystroke: one undo step per burst.
+    edit(
+      (doc) => updateRoomObject(doc, id, patch),
+      patch.label !== undefined ? `object-label:${id}` : undefined,
+    );
   },
 }));
