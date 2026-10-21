@@ -25,14 +25,17 @@ async function readSpreadsheetRows(file: File): Promise<string[][]> {
   return rows.map((row) => row.map((cell) => (cell == null ? "" : String(cell))));
 }
 
+/** Reads a guest import file — CSV or Excel (.xlsx/.xls) — into rows of string cells. */
+export async function readGuestFileRows(file: File): Promise<string[][]> {
+  if (isSpreadsheet(file)) return readSpreadsheetRows(file);
+  return parseCsvRows(await file.text());
+}
+
 /**
- * Parses a guest import file — CSV or Excel (.xlsx/.xls) — into guest inputs.
- * Both formats funnel through the same header-aware row mapping.
+ * Parses a guest import file into guest inputs with the suggested column
+ * mapping (no dialog). Both formats funnel through the same header-aware
+ * row mapping.
  */
 export async function parseGuestFile(file: File): Promise<GuestImportResult> {
-  if (isSpreadsheet(file)) {
-    return rowsToGuests(await readSpreadsheetRows(file));
-  }
-  const text = await file.text();
-  return rowsToGuests(parseCsvRows(text));
+  return rowsToGuests(await readGuestFileRows(file));
 }

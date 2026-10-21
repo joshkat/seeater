@@ -48,12 +48,19 @@ export function FormatHelp(): JSX.Element {
             </tbody>
           </table>
           <p>
-            A header row is optional — only <strong>Name</strong> is required. Without a header,
-            columns are read in order: name, email, phone.
+            After you pick a file, the <strong>Import guests</strong> dialog shows each column so
+            you can choose what it holds (or ignore it) and preview the guests before importing.
           </p>
           <p className="mt-2">
-            Add a <strong>Household</strong> (or <strong>Party</strong>) column with a header to
-            group families: guests with the same value are kept together when seating.
+            Only a name is required: a <strong>Name</strong> column, or <strong>First name</strong>{" "}
+            and <strong>Last name</strong>. Headed columns are matched automatically, including
+            common wedding-site column names (RSVP, Party, Meal Selection, Dietary Restrictions…).
+            Without a header, columns start as name, email, phone.
+          </p>
+          <p className="mt-2">
+            A <strong>Household</strong> (or <strong>Party</strong>) column groups families: guests
+            with the same value are kept together when seating. Names that match guests you already
+            have can be skipped.
           </p>
         </div>
       )}

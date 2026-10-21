@@ -1,5 +1,7 @@
 import type { GuestInput } from "@seating/shared";
 
+import { cleanRows, looksLikeHeader, mapRows, suggestMapping } from "./importMapping";
+
 /**
  * Minimal CSV parsing for guest imports. Supports quoted fields (with embedded
  * commas, quotes, and newlines) and both CRLF/LF line endings.
@@ -55,80 +57,6 @@ export function parseCsvRows(text: string): string[][] {
   return rows;
 }
 
-const HEADER_ALIASES: Record<string, keyof GuestInput> = {
-  name: "name",
-  names: "name",
-  "full name": "name",
-  "guest name": "name",
-  "first name": "name",
-  guest: "name",
-  attendee: "name",
-  email: "email",
-  emails: "email",
-  "e-mail": "email",
-  "email address": "email",
-  phone: "phone",
-  phones: "phone",
-  "phone number": "phone",
-  mobile: "phone",
-  cell: "phone",
-  household: "household",
-  "household name": "household",
-  party: "household",
-  "party name": "household",
-  family: "household",
-  meal: "meal",
-  "meal choice": "meal",
-  entree: "meal",
-  entrée: "meal",
-  menu: "meal",
-  dietary: "dietary",
-  diet: "dietary",
-  "dietary needs": "dietary",
-  "dietary requirements": "dietary",
-  allergies: "dietary",
-  allergy: "dietary",
-  accessibility: "accessibility",
-  "accessibility needs": "accessibility",
-  mobility: "accessibility",
-  notes: "notes",
-  note: "notes",
-  comments: "notes",
-  tags: "tags",
-  tag: "tags",
-  group: "tags",
-  groups: "tags",
-  side: "tags",
-  child: "isChild",
-  kid: "isChild",
-  "is child": "isChild",
-  "age group": "isChild",
-  type: "isChild",
-};
-
-/** "yes", "x", "Child", "infant"… in a Child / Age group column. */
-function looksLikeChild(value: string): boolean {
-  return /^(y|yes|x|true|1)$/i.test(value) || /child|kid|infant|baby|toddler/i.test(value);
-}
-
-/** Tags written in one cell: "Bride's side; Family" or "Work, Team". */
-function splitTags(value: string): string[] {
-  return value
-    .split(/[;,|]/)
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
-/** Maps a header row to column indices, or null if no header is recognized. */
-function detectHeader(cells: string[]): Partial<Record<keyof GuestInput, number>> | null {
-  const map: Partial<Record<keyof GuestInput, number>> = {};
-  cells.forEach((cell, index) => {
-    const key = HEADER_ALIASES[cell.trim().toLowerCase()];
-    if (key && map[key] === undefined) map[key] = index;
-  });
-  return map.name !== undefined ? map : null;
-}
-
 export interface GuestImportResult {
   guests: GuestInput[];
   /** Number of rows skipped because they had no name. */
@@ -139,69 +67,19 @@ export interface GuestImportResult {
 export type CsvImportResult = GuestImportResult;
 
 /**
- * Maps rows of cells to guest inputs. If the first row looks like a header
- * (contains a recognizable "name" column) it's used to map columns; otherwise
- * columns are read positionally as name, email, phone. Header-only columns:
- * Household / Party (groups guests), Meal, Dietary / Allergies,
- * Accessibility, Notes, Tags / Group / Side (split on , ; |), and Child or
- * Age group (yes / child / infant …).
+ * Maps rows of cells to guest inputs with the mapping the import dialog would
+ * suggest. If the first row looks like a header (names a Name / First name /
+ * Last name column) it maps the columns (`importFields.ts` lists the
+ * recognised headers); otherwise columns are read positionally as name,
+ * email, phone. Detail columns (household, RSVP, meal, tags…) need a header.
  * Shared by the CSV and spreadsheet (xlsx) importers.
  */
 export function rowsToGuests(rawRows: string[][]): GuestImportResult {
-  const rows = rawRows.filter((row) => row.some((cell) => (cell ?? "").trim() !== ""));
+  const rows = cleanRows(rawRows);
   if (rows.length === 0) return { guests: [], skipped: 0 };
-
-  const header = detectHeader(rows[0]);
-  const dataRows = header ? rows.slice(1) : rows;
-  // With a header, only the columns it names are read (a "Party" column must
-  // not be taken for email just because it's second). Without one, columns
-  // are positional; households are header-only, so a stray 4th column (notes,
-  // meal) can't invent households.
-  const col = header
-    ? {
-        name: header.name ?? 0,
-        email: header.email,
-        phone: header.phone,
-        household: header.household,
-        meal: header.meal,
-        dietary: header.dietary,
-        accessibility: header.accessibility,
-        notes: header.notes,
-        tags: header.tags,
-        isChild: header.isChild,
-      }
-    : { name: 0, email: 1, phone: 2 };
-  const cell = (row: string[], index: number | undefined): string =>
-    index === undefined ? "" : (row[index] ?? "").trim();
-
-  const guests: GuestInput[] = [];
-  let skipped = 0;
-
-  for (const row of dataRows) {
-    const name = cell(row, col.name);
-    if (!name) {
-      skipped += 1;
-      continue;
-    }
-    const email = cell(row, col.email);
-    const phone = cell(row, col.phone);
-    const guest: GuestInput = { name, email: email || null, phone: phone || null };
-    // Detail columns only exist with a header (see above).
-    if ("household" in col) {
-      const household = cell(row, col.household);
-      if (household) guest.household = household;
-      for (const key of ["meal", "dietary", "accessibility", "notes"] as const) {
-        const value = cell(row, col[key]);
-        if (value) guest[key] = value;
-      }
-      const tags = splitTags(cell(row, col.tags));
-      if (tags.length > 0) guest.tags = tags;
-      if (looksLikeChild(cell(row, col.isChild))) guest.isChild = true;
-    }
-    guests.push(guest);
-  }
-
-  return { guests, skipped };
+  const hasHeader = looksLikeHeader(rows[0]);
+  const { guests, skipped } = mapRows(rows, hasHeader, suggestMapping(rows, hasHeader));
+  return { guests: guests.map((guest) => guest.input), skipped };
 }
 
 /** Parses CSV text into guest inputs (header-aware). */
