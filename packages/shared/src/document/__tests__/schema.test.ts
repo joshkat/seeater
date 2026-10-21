@@ -43,6 +43,17 @@ describe("eventDocSchema integrity", () => {
   });
 });
 
+/** What the v4 → v5 upgrade makes of a pre-layout document. */
+function withUpgradedLayout<T extends object>(doc: T) {
+  return { ...doc, layouts: [{ id: "main", name: "Main", stored: null }], activeLayoutId: "main" };
+}
+
+/** Strips the layout fields a pre-v5 document didn't have. */
+function withoutLayouts(raw: Record<string, unknown>): void {
+  delete raw.layouts;
+  delete raw.activeLayoutId;
+}
+
 describe("parseEventDoc", () => {
   it("round-trips a valid document through JSON", () => {
     const { doc, tableId, guestIds } = fixture();
@@ -71,8 +82,21 @@ describe("parseEventDoc", () => {
     v1.schemaVersion = 1;
     delete v1.households;
     delete v1.settings;
-    for (const guest of v1.guests) delete guest.householdId;
-    expect(parseEventDoc(v1)).toEqual(seated);
+    withoutLayouts(v1);
+    for (const guest of v1.guests) {
+      for (const key of [
+        "householdId",
+        "meal",
+        "dietary",
+        "accessibility",
+        "notes",
+        "tags",
+        "isChild",
+      ]) {
+        delete guest[key];
+      }
+    }
+    expect(parseEventDoc(v1)).toEqual(withUpgradedLayout(seated));
   });
 
   it("upgrades a v2 document (no settings) to exact placement 'auto'", () => {
@@ -80,7 +104,26 @@ describe("parseEventDoc", () => {
     const v2 = JSON.parse(JSON.stringify(doc));
     v2.schemaVersion = 2;
     delete v2.settings;
+    withoutLayouts(v2);
+    for (const guest of v2.guests) {
+      for (const key of ["meal", "dietary", "accessibility", "notes", "tags", "isChild"]) {
+        delete guest[key];
+      }
+    }
     expect(parseEventDoc(v2).settings).toEqual({ exactSeatPlacement: "auto" });
+  });
+
+  it("upgrades a v3 document: guests get empty details", () => {
+    const { doc } = fixture();
+    const v3 = JSON.parse(JSON.stringify(doc));
+    v3.schemaVersion = 3;
+    withoutLayouts(v3);
+    for (const guest of v3.guests) {
+      for (const key of ["meal", "dietary", "accessibility", "notes", "tags", "isChild"]) {
+        delete guest[key];
+      }
+    }
+    expect(parseEventDoc(v3)).toEqual(withUpgradedLayout(doc));
   });
 
   it("returns current documents from upgradeEventDoc untouched", () => {

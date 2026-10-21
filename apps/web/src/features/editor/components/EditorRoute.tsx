@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useParams } from "react-router";
 
 import { useGuestStore } from "../../guests/store/guestStore";
+import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useDocumentStore } from "../store/documentStore";
@@ -23,6 +24,7 @@ export function EditorRoute(): JSX.Element {
     useGuestStore.getState().reset();
     useSeatingFlowStore.getState().reset();
     useVersionDialogStore.getState().setOpen(false);
+    useGuestDetailsStore.getState().close();
     useEditorStore.getState().resetForNewEvent();
     void useDocumentStore.getState().open(eventId);
     return () => {

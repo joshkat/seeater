@@ -1,4 +1,4 @@
-import type { ExactSeatPlacement, Guest, Household, Size, Table } from "@seating/shared";
+import type { ExactSeatPlacement, Guest, Household, Layout, Size, Table } from "@seating/shared";
 import { DEFAULT_FLOOR_PLAN_SIZE, EXACT_SEAT_PLACEMENT_MAX_TABLES } from "@seating/shared";
 
 import { useDocumentStore } from "../store/documentStore";
@@ -11,6 +11,7 @@ import { useDocumentStore } from "../store/documentStore";
 const NO_TABLES: Table[] = [];
 const NO_GUESTS: Guest[] = [];
 const NO_HOUSEHOLDS: Household[] = [];
+const NO_LAYOUTS: Layout[] = [];
 
 export function useTables(): Table[] {
   return useDocumentStore((state) => state.doc?.tables ?? NO_TABLES);
@@ -50,4 +51,12 @@ export function useHistoryAvailability(): { canUndo: boolean; canRedo: boolean }
   const canUndo = useDocumentStore((state) => state.history.past.length > 0);
   const canRedo = useDocumentStore((state) => state.history.future.length > 0);
   return { canUndo, canRedo };
+}
+
+export function useLayouts(): Layout[] {
+  return useDocumentStore((state) => state.doc?.layouts ?? NO_LAYOUTS);
+}
+
+export function useActiveLayoutId(): string | null {
+  return useDocumentStore((state) => state.doc?.activeLayoutId ?? null);
 }

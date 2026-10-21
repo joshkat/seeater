@@ -1,6 +1,7 @@
 import {
   EVENT_DOC_SCHEMA_VERSION,
   type EventDoc,
+  type Table,
   eventDocSchema,
   eventDocShapeSchema,
 } from "./schema.js";
@@ -33,6 +34,34 @@ const UPGRADES: Record<number, (doc: RawDoc) => RawDoc> = {
   }),
   // v3: per-event settings. Exact seat placement starts on "auto".
   2: (doc) => ({ ...doc, schemaVersion: 3, settings: { exactSeatPlacement: "auto" } }),
+  // v4: more detail per guest, all empty to start.
+  3: (doc) => ({
+    ...doc,
+    schemaVersion: 4,
+    guests: Array.isArray(doc.guests)
+      ? doc.guests.map((guest: unknown) =>
+          typeof guest === "object" && guest !== null
+            ? {
+                ...guest,
+                meal: null,
+                dietary: null,
+                accessibility: null,
+                notes: null,
+                tags: [],
+                isChild: false,
+              }
+            : guest,
+        )
+      : doc.guests,
+  }),
+  // v5: layouts. Everything so far becomes the one (active) layout. A fixed
+  // id, so two devices upgrading the same event agree on it.
+  4: (doc) => ({
+    ...doc,
+    schemaVersion: 5,
+    layouts: [{ id: "main", name: "Main", stored: null }],
+    activeLayoutId: "main",
+  }),
 };
 
 /**
@@ -61,16 +90,25 @@ export function upgradeEventDoc(raw: unknown): unknown {
   return doc;
 }
 
-/** Re-sorts each table's seats by index and renumbers them 0..n-1. */
+function normalizeTables(tables: Table[]): Table[] {
+  return tables.map((table) => ({
+    ...table,
+    seats: [...table.seats]
+      .sort((a, b) => a.index - b.index)
+      .map((seat, index) => ({ ...seat, index })),
+  }));
+}
+
+/** Re-sorts each table's seats by index and renumbers them 0..n-1 (in every layout). */
 export function normalizeEventDoc(doc: EventDoc): EventDoc {
   return {
     ...doc,
-    tables: doc.tables.map((table) => ({
-      ...table,
-      seats: [...table.seats]
-        .sort((a, b) => a.index - b.index)
-        .map((seat, index) => ({ ...seat, index })),
-    })),
+    tables: normalizeTables(doc.tables),
+    layouts: doc.layouts.map((layout) =>
+      layout.stored
+        ? { ...layout, stored: { ...layout.stored, tables: normalizeTables(layout.stored.tables) } }
+        : layout,
+    ),
   };
 }
 

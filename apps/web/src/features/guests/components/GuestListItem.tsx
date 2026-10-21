@@ -20,7 +20,8 @@ interface GuestListItemProps {
   onPointerDown: (event: PointerEvent<HTMLLIElement>) => void;
   onSetRsvp: (status: RsvpStatus) => void;
   onUnseat: () => void;
-  onRemove: () => void;
+  /** Opens the guest details dialog. */
+  onEdit: () => void;
 }
 
 /** A single guest row: a selection checkbox, draggable onto a seat, clickable
@@ -34,7 +35,7 @@ export function GuestListItem({
   onPointerDown,
   onSetRsvp,
   onUnseat,
-  onRemove,
+  onEdit,
 }: GuestListItemProps): JSX.Element {
   const declined = guest.rsvpStatus === "declined";
 
@@ -89,12 +90,13 @@ export function GuestListItem({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onRemove();
+            onEdit();
           }}
-          title="Delete guest"
+          title="Details: meal, dietary needs, tags, notes…"
+          aria-label={`Details for ${guest.name}`}
           className={iconButtonClass}
         >
-          ×
+          ✎
         </button>
       </div>
     </li>

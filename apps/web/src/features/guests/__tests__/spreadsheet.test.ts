@@ -47,7 +47,7 @@ describe("parseGuestFile", () => {
     const result = await parseGuestFile(csv);
     expect(result.guests).toEqual([
       { name: "Ada", email: null, phone: null, household: "Lovelace" },
-      { name: "Byron", email: null, phone: null, household: "lovelace" },
+      { name: "Byron", email: null, phone: null, household: "lovelace", notes: "veg" },
       { name: "Grace", email: null, phone: null },
     ]);
   });
@@ -56,5 +56,37 @@ describe("parseGuestFile", () => {
     const csv = new File(["Ada,ada@x.com,555,vegetarian\n"], "guests.csv");
     const result = await parseGuestFile(csv);
     expect(result.guests).toEqual([{ name: "Ada", email: "ada@x.com", phone: "555" }]);
+  });
+
+  it("reads guest detail columns from a header", async () => {
+    const csv = new File(
+      [
+        "Name,Meal,Allergies,Accessibility,Notes,Group,Age group\n" +
+          "Ada,Chicken,Nuts,,Speech at 8pm,Bride's side; Family,Adult\n" +
+          "Tom,Kids menu,,Wheelchair,,Family,Child\n",
+      ],
+      "guests.csv",
+    );
+    const result = await parseGuestFile(csv);
+    expect(result.guests).toEqual([
+      {
+        name: "Ada",
+        email: null,
+        phone: null,
+        meal: "Chicken",
+        dietary: "Nuts",
+        notes: "Speech at 8pm",
+        tags: ["Bride's side", "Family"],
+      },
+      {
+        name: "Tom",
+        email: null,
+        phone: null,
+        meal: "Kids menu",
+        accessibility: "Wheelchair",
+        tags: ["Family"],
+        isChild: true,
+      },
+    ]);
   });
 });

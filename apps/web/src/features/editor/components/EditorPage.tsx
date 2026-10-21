@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
+import { GuestDetailsDialog } from "../../guests/components/details/GuestDetailsDialog";
 import { SeatingPrompts } from "../../guests/components/seating/SeatingPrompts";
 import { DragGhost } from "../../dnd/components/DragGhost";
 import { PlacementDialog } from "../../placement/components/PlacementDialog";
@@ -16,6 +17,7 @@ import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
 import { DrawerBackdrop } from "./DrawerBackdrop";
+import { LayoutTabs } from "./layouts/LayoutTabs";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { SaveStatusBadge } from "./SaveStatusBadge";
 import { Toolbar } from "./Toolbar";
@@ -95,6 +97,7 @@ export function EditorPage(): JSX.Element {
         <GuestPanel />
         <div className="relative min-w-0 flex-1">
           <EditorCanvas />
+          <LayoutTabs />
           <SeatingPrompts />
         </div>
         <PropertiesPanel />
@@ -102,6 +105,7 @@ export function EditorPage(): JSX.Element {
       </div>
       <PlacementDialog />
       <VersionHistoryDialog />
+      <GuestDetailsDialog />
       <DragGhost />
     </div>
   );

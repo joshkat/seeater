@@ -124,6 +124,16 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   slide-over drawers (`editor/store/layoutStore`, `useDrawerState`; closed = `inert`). Canvas:
   pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
   `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
+- **Layouts (schema v5):** the **active** layout lives in the top-level `dimensions`/`tables`/
+  `guest.seatId`, so every op and screen edits it unchanged; other layouts are in
+  `doc.layouts[i].stored` (`{dimensions, tables, seating: guestId→seatId}`). `switchLayout` swaps
+  them (one undoable edit). Anything that needs **all** layouts (export, stats across rooms) must use
+  `layoutViews(doc)`, not `doc.tables`. Table/seat ids are unique across layouts. UI: tabs over the
+  canvas (`editor/components/layouts/`, `editor/store/layoutActions.ts`).
+- **Guest details (schema v4):** `meal`, `dietary`, `accessibility`, `notes`, `tags[]`, `isChild`.
+  Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
+  no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
+  there too). Import reads them from headed columns.
 - **Households (schema v2; v3 added `settings`):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
   households. The guest list groups unassigned members under a header (`guests/lib/guestListModel`,
   which also defines display order for Shift-click ranges and "Select next N").
@@ -255,6 +265,10 @@ Done:
   restore (undoable), copy as new event, delete.
 - **Trash:** "Move to trash" with Undo; `/trash` restore / delete forever / empty; 30-day purge.
 - **End-to-end tests:** Playwright, desktop Chrome + iPad Pro 11 WebKit (portrait/landscape), in CI.
+- **Guest details:** meal, dietary/allergies, accessibility, notes, tags, child — dialog (✎),
+  shown under each guest, imported from CSV/XLSX columns.
+- **Multiple layouts:** tabs over the canvas (ceremony, reception…); blank / copy tables / copy
+  tables + seating; shared guest list, separate seating.
 - **RSVP** marking (pending/going/declined): segmented control; declined guests struck through +
   red-ringed/dimmed chair.
 - **Multi-event dashboard:** create / open / rename (inline) / **duplicate (layout ± guests ±
@@ -271,8 +285,9 @@ Done:
 Dropped: sending invites from the platform (RSVP is manual marking only).
 
 Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ → 3 tablet/touch ✅
-(1–3 shipped together in PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e). Next: **phase B** —
-13 multiple layouts + 6 guest details (schema; needs the multiple-layouts decision) → C find/stats
+(1–3 shipped together in PR #7) → **Phase A ✅** (4 undo/redo, 12 version history + trash, Playwright e2e). **Phase B ✅** (13
+multiple layouts — decided: shared guests, separate tables + seating; 6 guest details). Next: C
+find/stats
 → D 5 **export/print** (chart PNG/PDF, rosters, place
 cards, CSV). Later: **venue templates** (a template is just a document), **Apple/Google Wallet
 passes**. Deferred on purpose: **error reporting**

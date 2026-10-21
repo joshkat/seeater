@@ -10,6 +10,8 @@ import {
   unassignedOrder,
 } from "../lib/guestListModel";
 import type { SelectModifiers } from "../lib/selectModifiers";
+import { guestSubtitle } from "../lib/guestSubtitle";
+import { useGuestDetailsStore } from "../store/guestDetailsStore";
 import { useGuestStore } from "../store/guestStore";
 import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
@@ -42,7 +44,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const selectRange = useGuestStore((state) => state.selectRange);
   const setGuestSelection = useGuestStore((state) => state.setGuestSelection);
   const assignSeat = useGuestStore((state) => state.assignSeat);
-  const removeGuest = useGuestStore((state) => state.removeGuest);
+  const openDetails = useGuestDetailsStore((state) => state.open);
   const editGuest = useGuestStore((state) => state.editGuest);
   const renameHousehold = useGuestStore((state) => state.renameHousehold);
   const dissolveHousehold = useGuestStore((state) => state.dissolveHousehold);
@@ -60,7 +62,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
       {
         name: string;
         index: number;
-        items: { guestId: string; seatNumber: number; guestContact: string | null }[];
+        items: { guestId: string; seatNumber: number }[];
       }
     >();
     for (const guest of guests) {
@@ -72,11 +74,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         index: info.tableIndex,
         items: [],
       };
-      group.items.push({
-        guestId: guest.id,
-        seatNumber: info.seatNumber,
-        guestContact: guest.email ?? guest.phone ?? null,
-      });
+      group.items.push({ guestId: guest.id, seatNumber: info.seatNumber });
       groups.set(info.tableId, group);
     }
     return [...groups.values()]
@@ -147,7 +145,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   const renderItem = (
     guestId: string,
-    subtitle: string | null,
+    seatNumber: number | null,
     nested = false,
   ): JSX.Element | null => {
     const guest = guestById.get(guestId);
@@ -156,14 +154,14 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
       <GuestListItem
         key={guest.id}
         guest={guest}
-        subtitle={subtitle}
+        subtitle={guestSubtitle(guest, seatNumber)}
         selected={selected.has(guest.id)}
         nested={nested}
         onSelect={(modifiers) => handleSelect(guest.id, modifiers)}
         onPointerDown={(event) => startGuestDrag(event, guest.id)}
         onSetRsvp={(status) => editGuest(guest.id, { rsvpStatus: status })}
         onUnseat={() => assignSeat(guest.id, null)}
-        onRemove={() => removeGuest(guest.id)}
+        onEdit={() => openDetails(guest.id)}
       />
     );
   };
@@ -196,7 +194,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         <ul className={listClass}>
           {unassignedEntries.map((entry) =>
             entry.kind === "guest" ? (
-              renderItem(entry.guest.id, entry.guest.email ?? entry.guest.phone ?? null)
+              renderItem(entry.guest.id, null)
             ) : (
               <li key={entry.household.id}>
                 <HouseholdHeader
@@ -213,9 +211,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                   onDissolve={() => dissolveHousehold(entry.household.id)}
                 />
                 <ul className={listClass}>
-                  {entry.members.map((member) =>
-                    renderItem(member.id, member.email ?? member.phone ?? null, true),
-                  )}
+                  {entry.members.map((member) => renderItem(member.id, null, true))}
                 </ul>
               </li>
             ),
@@ -235,12 +231,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                 <span className="font-normal text-base-content/40"> • {group.items.length}</span>
               </h4>
               <ul className={listClass}>
-                {group.items.map((item) =>
-                  renderItem(
-                    item.guestId,
-                    `Seat ${item.seatNumber} ${item.guestContact != null ? "• " : ""}${item.guestContact ?? ""}`,
-                  ),
-                )}
+                {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
               </ul>
             </div>
           ))}

@@ -73,3 +73,10 @@ export async function seatedCount(page: Page): Promise<number> {
 export function csvOf(names: string[]): string {
   return ["Name", ...names].join("\n") + "\n";
 }
+
+/** Closes an open side drawer (tablets) so the canvas and tabs are reachable. */
+export async function closeDrawers(page: Page): Promise<void> {
+  if (!isTabletLayout(page)) return;
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Close panel" })).toBeHidden();
+}

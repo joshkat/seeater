@@ -6,8 +6,10 @@ import {
   applySeatPlan,
   assignGuestsToTable,
   assignSeat,
+  mealOptions,
   openSeatCount,
   removeGuest,
+  tagOptions,
   updateGuest,
 } from "../guestOps.js";
 import { createHousehold } from "../householdOps.js";
@@ -266,5 +268,65 @@ describe("applySeatPlan", () => {
         { guestId: guestIds[1], seatId: null },
       ]),
     ).toBe(doc);
+  });
+});
+
+describe("guest details", () => {
+  it("cleans details on add and matches meals and tags case-insensitively", () => {
+    const { doc } = fixture();
+    const result = addGuests(doc, [
+      {
+        name: "Ada",
+        meal: "  Chicken ",
+        dietary: " nut allergy ",
+        tags: ["Bride's side", " family ", "Family", ""],
+        isChild: false,
+      },
+      { name: "Byron", meal: "chicken", tags: ["bride's SIDE"], isChild: true, notes: "  " },
+    ]);
+    const [ada, byron] = result.guestIds.map((id) => result.doc.guests.find((g) => g.id === id)!);
+    expect(ada).toMatchObject({
+      meal: "Chicken",
+      dietary: "nut allergy",
+      tags: ["Bride's side", "family"],
+      isChild: false,
+    });
+    expect(byron).toMatchObject({
+      meal: "Chicken",
+      tags: ["Bride's side"],
+      isChild: true,
+      notes: null,
+    });
+    expect(mealOptions(result.doc)).toEqual(["Chicken"]);
+    expect(tagOptions(result.doc)).toEqual(["Bride's side", "family"]);
+    expect(eventDocSchema.safeParse(result.doc).success).toBe(true);
+  });
+
+  it("updates details, clearing with blanks and leaving untouched fields alone", () => {
+    const { doc, guestIds } = fixture();
+    const withFish = updateGuest(doc, guestIds[1], { meal: "Fish" });
+    const next = updateGuest(withFish, guestIds[0], {
+      meal: "FISH",
+      accessibility: "Wheelchair",
+      tags: ["Work", "work", "Team"],
+      isChild: true,
+    });
+    expect(next.guests[0]).toMatchObject({
+      meal: "Fish",
+      accessibility: "Wheelchair",
+      tags: ["Work", "Team"],
+      isChild: true,
+      dietary: null,
+    });
+    const cleared = updateGuest(next, guestIds[0], { meal: " ", tags: [] });
+    expect(cleared.guests[0]).toMatchObject({ meal: null, tags: [], accessibility: "Wheelchair" });
+    expect(eventDocSchema.safeParse(cleared).success).toBe(true);
+  });
+
+  it("caps tags per guest", () => {
+    const { doc } = fixture();
+    const many = Array.from({ length: 30 }, (_, i) => `Tag ${i}`);
+    const result = addGuests(doc, [{ name: "Tagged", tags: many }]);
+    expect(result.doc.guests.at(-1)?.tags).toHaveLength(20);
   });
 });

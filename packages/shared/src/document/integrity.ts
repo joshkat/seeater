@@ -2,10 +2,20 @@ import { z } from "zod";
 
 /** Structural view of a document, enough to check cross-references. Declared
  * locally (not imported from schema.ts) to avoid a circular import. */
+interface TableLike {
+  id: string;
+  seats: { id: string; index: number }[];
+}
+
 interface DocLike {
-  tables: { id: string; seats: { id: string; index: number }[] }[];
+  tables: TableLike[];
   guests: { id: string; seatId: string | null; householdId: string | null }[];
   households: { id: string }[];
+  layouts: {
+    id: string;
+    stored: { tables: TableLike[]; seating: Record<string, string> } | null;
+  }[];
+  activeLayoutId: string;
 }
 
 /**
@@ -14,7 +24,10 @@ interface DocLike {
  * - each table's seats are ordered with `index` equal to array position;
  * - a guest's `seatId` points at a seat that exists;
  * - no two guests share a seat (one guest per seat);
- * - household ids are unique and a guest's `householdId` points at one.
+ * - household ids are unique and a guest's `householdId` points at one;
+ * - layouts: ids unique, the active one exists and is the only one without
+ *   `stored`; table and seat ids are unique across all layouts; a stored
+ *   layout's seating maps existing guests to its own seats, one per seat.
  */
 export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void {
   const issue = (message: string, path: (string | number)[]): void => {
@@ -56,4 +69,51 @@ export function checkEventDocIntegrity(doc: DocLike, ctx: z.RefinementCtx): void
     if (occupied.has(guest.seatId)) issue(`Seat ${guest.seatId} has more than one guest`, path);
     occupied.add(guest.seatId);
   });
+
+  checkLayouts(doc, guestIds, tableIds, seatIds, issue);
+}
+
+function checkLayouts(
+  doc: DocLike,
+  guestIds: Set<string>,
+  tableIds: Set<string>,
+  seatIds: Set<string>,
+  issue: (message: string, path: (string | number)[]) => void,
+): void {
+  const layoutIds = new Set<string>();
+  let active = 0;
+  doc.layouts.forEach((layout, layoutIndex) => {
+    const path = ["layouts", layoutIndex];
+    if (layoutIds.has(layout.id)) issue(`Duplicate layout id ${layout.id}`, path);
+    layoutIds.add(layout.id);
+    const isActive = layout.id === doc.activeLayoutId;
+    if (isActive) active += 1;
+    if (isActive !== (layout.stored === null)) {
+      issue("Only the active layout has no stored content", path);
+    }
+    if (!layout.stored) return;
+
+    const ownSeats = new Set<string>();
+    layout.stored.tables.forEach((table, tableIndex) => {
+      const tablePath = [...path, "stored", "tables", tableIndex];
+      if (tableIds.has(table.id)) issue(`Duplicate table id ${table.id}`, tablePath);
+      tableIds.add(table.id);
+      table.seats.forEach((seat, seatIndex) => {
+        const seatPath = [...tablePath, "seats", seatIndex];
+        if (seatIds.has(seat.id)) issue(`Duplicate seat id ${seat.id}`, seatPath);
+        seatIds.add(seat.id);
+        ownSeats.add(seat.id);
+        if (seat.index !== seatIndex) issue("Seat index must equal its array position", seatPath);
+      });
+    });
+    const taken = new Set<string>();
+    for (const [guestId, seatId] of Object.entries(layout.stored.seating)) {
+      const seatingPath = [...path, "stored", "seating", guestId];
+      if (!guestIds.has(guestId)) issue(`Seating for unknown guest ${guestId}`, seatingPath);
+      if (!ownSeats.has(seatId)) issue(`Seat ${seatId} isn't in this layout`, seatingPath);
+      if (taken.has(seatId)) issue(`Seat ${seatId} has more than one guest`, seatingPath);
+      taken.add(seatId);
+    }
+  });
+  if (active !== 1) issue("The active layout must exist exactly once", ["activeLayoutId"]);
 }

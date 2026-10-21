@@ -1,12 +1,18 @@
 import { MAX_SEAT_COUNT } from "../geometry/constants.js";
 import { cleanHouseholdName, householdNameKey, pruneEmptyHouseholds } from "./householdOps.js";
 import { newId } from "./ids.js";
+import { dropGuestsFromStoredLayouts } from "./layoutOps.js";
 import { setSeatCount } from "./tableOps.js";
 import {
   type EventDoc,
   type Guest,
   type Household,
   MAX_GUEST_EMAIL_LENGTH,
+  MAX_GUEST_NEED_LENGTH,
+  MAX_GUEST_NOTE_LENGTH,
+  MAX_MEAL_LENGTH,
+  MAX_TAG_LENGTH,
+  MAX_TAGS_PER_GUEST,
   MAX_GUEST_NAME_LENGTH,
   MAX_GUEST_PHONE_LENGTH,
   type RsvpStatus,
@@ -25,6 +31,12 @@ export interface GuestInput {
   /** Household / party name. Guests with the same name (case-insensitive)
    * share a household, including an existing household of that name. */
   household?: string | null;
+  meal?: string | null;
+  dietary?: string | null;
+  accessibility?: string | null;
+  notes?: string | null;
+  tags?: string[];
+  isChild?: boolean;
 }
 
 export interface GuestPatch {
@@ -32,6 +44,63 @@ export interface GuestPatch {
   email?: string | null;
   phone?: string | null;
   rsvpStatus?: RsvpStatus;
+  meal?: string | null;
+  dietary?: string | null;
+  accessibility?: string | null;
+  notes?: string | null;
+  tags?: string[];
+  isChild?: boolean;
+}
+
+/** Collapses whitespace in a short label (meal, tag). */
+function cleanLabel(value: string, max: number): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+/**
+ * Reuses an existing value's spelling when one matches case-insensitively,
+ * so "chicken" and "Chicken" count as the same meal or tag.
+ */
+function canonical(value: string, existing: Iterable<string>): string {
+  const key = value.toLowerCase();
+  for (const candidate of existing) if (candidate.toLowerCase() === key) return candidate;
+  return value;
+}
+
+function cleanMeal(value: string | null | undefined, existing: Iterable<string>): string | null {
+  const cleaned = cleanLabel(value ?? "", MAX_MEAL_LENGTH);
+  return cleaned ? canonical(cleaned, existing) : null;
+}
+
+/** Trims, dedupes (case-insensitively) and caps a guest's tags. */
+function cleanTags(values: string[] | undefined, existing: Iterable<string>): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of values ?? []) {
+    const cleaned = cleanLabel(raw, MAX_TAG_LENGTH);
+    if (!cleaned || seen.has(cleaned.toLowerCase())) continue;
+    seen.add(cleaned.toLowerCase());
+    result.push(canonical(cleaned, existing));
+    if (result.length === MAX_TAGS_PER_GUEST) break;
+  }
+  return result;
+}
+
+/** Adds a value to a set of known spellings and returns it. */
+function remember<T extends string | null>(value: T, known: Set<string>): T {
+  if (value) known.add(value);
+  return value;
+}
+
+/** Every meal in use, sorted (for pickers and per-table totals). */
+export function mealOptions(doc: EventDoc): string[] {
+  const meals = new Set(doc.guests.map((guest) => guest.meal).filter((m): m is string => !!m));
+  return [...meals].sort((a, b) => a.localeCompare(b));
+}
+
+/** Every tag in use, sorted. */
+export function tagOptions(doc: EventDoc): string[] {
+  return [...new Set(doc.guests.flatMap((guest) => guest.tags))].sort((a, b) => a.localeCompare(b));
 }
 
 /** Trims and length-limits optional text; blank becomes null. */
@@ -66,6 +135,10 @@ export function addGuests(
     return household.id;
   };
 
+  // Meals and tags already in the event (and earlier rows of this batch)
+  // set the spelling for case-insensitive matches.
+  const meals = new Set(mealOptions(doc));
+  const tags = new Set(tagOptions(doc));
   const created: Guest[] = inputs
     .map((input) => ({ ...input, name: cleanName(input.name) }))
     .filter((input) => input.name.length > 0)
@@ -77,6 +150,12 @@ export function addGuests(
       rsvpStatus: "pending",
       seatId: null,
       householdId: householdIdFor(input.household),
+      meal: remember(cleanMeal(input.meal, meals), meals),
+      dietary: cleanOptional(input.dietary, MAX_GUEST_NEED_LENGTH),
+      accessibility: cleanOptional(input.accessibility, MAX_GUEST_NEED_LENGTH),
+      notes: cleanOptional(input.notes, MAX_GUEST_NOTE_LENGTH),
+      tags: cleanTags(input.tags, tags).map((tag) => remember(tag, tags)),
+      isChild: input.isChild ?? false,
     }));
   if (created.length === 0) return { doc, guestIds: [] };
   return {
@@ -108,18 +187,36 @@ export function updateGuest(doc: EventDoc, guestId: string, patch: GuestPatch): 
             ? guest.phone
             : cleanOptional(patch.phone, MAX_GUEST_PHONE_LENGTH),
         rsvpStatus: patch.rsvpStatus ?? guest.rsvpStatus,
+        meal: patch.meal === undefined ? guest.meal : cleanMeal(patch.meal, mealOptions(doc)),
+        dietary:
+          patch.dietary === undefined
+            ? guest.dietary
+            : cleanOptional(patch.dietary, MAX_GUEST_NEED_LENGTH),
+        accessibility:
+          patch.accessibility === undefined
+            ? guest.accessibility
+            : cleanOptional(patch.accessibility, MAX_GUEST_NEED_LENGTH),
+        notes:
+          patch.notes === undefined
+            ? guest.notes
+            : cleanOptional(patch.notes, MAX_GUEST_NOTE_LENGTH),
+        tags: patch.tags === undefined ? guest.tags : cleanTags(patch.tags, tagOptions(doc)),
+        isChild: patch.isChild ?? guest.isChild,
       };
     }),
   };
 }
 
-/** Deletes a guest (and their household, if they were its last member). */
+/** Deletes a guest (and their household, if they were its last member), from
+ * every layout. */
 export function removeGuest(doc: EventDoc, guestId: string): EventDoc {
   if (!doc.guests.some((guest) => guest.id === guestId)) return doc;
-  return pruneEmptyHouseholds({
-    ...doc,
-    guests: doc.guests.filter((guest) => guest.id !== guestId),
-  });
+  return pruneEmptyHouseholds(
+    dropGuestsFromStoredLayouts(
+      { ...doc, guests: doc.guests.filter((guest) => guest.id !== guestId) },
+      [guestId],
+    ),
+  );
 }
 
 function seatExists(doc: EventDoc, seatId: string): boolean {

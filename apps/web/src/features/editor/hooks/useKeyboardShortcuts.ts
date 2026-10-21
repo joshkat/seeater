@@ -1,14 +1,16 @@
 import { useEffect } from "react";
 
 import { isTextEntry } from "../../../lib/isTextEntry";
+import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
+import { useLayoutStore } from "../store/layoutStore";
 import { redoEdit, undoEdit } from "../store/historyActions";
 
 /** Editor keyboard shortcuts: undo (Cmd/Ctrl+Z), redo (Shift+Cmd/Ctrl+Z or
  * Ctrl+Y), delete, duplicate (Cmd/Ctrl+D), and Escape
- * (backs out of the placement dialog or a seating prompt if one is open,
+ * (backs out of the placement dialog, a seating prompt or an open drawer,
  * otherwise clears the selection). */
 export function useKeyboardShortcuts(): void {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
@@ -19,12 +21,20 @@ export function useKeyboardShortcuts(): void {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (isTextEntry(event.target)) return;
 
-      // Version history is modal too: Escape closes it, nothing else applies.
+      // Version history and guest details are modal too: Escape closes them,
+      // nothing else applies.
       const versions = useVersionDialogStore.getState();
       if (versions.open) {
         if (event.key === "Escape") versions.setOpen(false);
         return;
       }
+      const details = useGuestDetailsStore.getState();
+      if (details.guestId) {
+        if (event.key === "Escape") details.close();
+        return;
+      }
+      // Any other open modal (e.g. New layout) handles its own keys.
+      if (document.querySelector(".modal.modal-open")) return;
 
       // The placement dialog is modal: only Escape (back out) applies.
       const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();
@@ -59,7 +69,9 @@ export function useKeyboardShortcuts(): void {
         duplicateSelected();
       } else if (event.key === "Escape") {
         const seating = useSeatingFlowStore.getState();
+        const layout = useLayoutStore.getState();
         if (seating.question || seating.overflow) seating.dismiss();
+        else if (layout.guestsOpen || layout.propertiesOpen) layout.closeDrawers();
         else clearSelection();
       }
     };
