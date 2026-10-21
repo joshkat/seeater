@@ -29,6 +29,20 @@ describe("addGuests", () => {
     expect(alan).toMatchObject({ name: "Alan", email: null, phone: "555", rsvpStatus: "pending" });
   });
 
+  it("takes an RSVP from the input, defaulting to pending", () => {
+    const { doc } = fixture();
+    const result = addGuests(doc, [
+      { name: "Going", rsvpStatus: "accepted" },
+      { name: "Regrets", rsvpStatus: "declined" },
+      { name: "Unknown" },
+    ]);
+    const statuses = result.guestIds.map(
+      (id) => result.doc.guests.find((g) => g.id === id)!.rsvpStatus,
+    );
+    expect(statuses).toEqual(["accepted", "declined", "pending"]);
+    expect(eventDocSchema.safeParse(result.doc).success).toBe(true);
+  });
+
   it("groups guests by household name, reusing an existing household", () => {
     const { doc, guestIds } = fixture();
     const existing = createHousehold(doc, [guestIds[0]], "Lovelace");
