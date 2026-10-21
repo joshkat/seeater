@@ -82,11 +82,21 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   **coalescedWriter** (serialized, latest-wins). Local saves are immediate; there's no debounce
   and no Save button.
 - **Undo/redo:** every `apply` is an undo step (`editor/lib/history.ts`, whole-doc snapshots, cap
-  200, session-only — reset on open/close/reload). Edits that fire per keystroke pass
+  200, session-only — reset when another event opens or on reload; kept across the editor ↔
+  check-in handover). Edits that fire per keystroke pass
   `apply(edit, { coalesceKey })` so a burst is one step (table names do). User-facing
   `undoEdit`/`redoEdit` (`editor/store/historyActions.ts`) also prune stale selections and close
   seating prompts; they're off while the placement dialog is open. **A user action must be one
   `apply`**, or it takes several ⌘Z to undo.
+- **Keyboard shortcuts** (`editor/hooks/useKeyboardShortcuts.ts`; the cheat sheet is
+  `ShortcutsDialog` — keep the two in step):
+  - Arrows nudge via `moveItems`, coalesced as `nudge:<ids>`.
+  - ⌘/Ctrl+A/C/V select all, copy and paste. The clipboard is an in-memory `clipboardStore` (not the
+    system clipboard), so paste works across layouts and events. C and V only `preventDefault` when
+    there's something to copy or paste.
+  - Arrows are ignored while a `<select>` or `<input>` has focus.
+- **Minimap** (`canvas/Minimap.tsx`, `geometry/minimap.ts`): SVG overlay, hidden while the whole
+  floor fits. It draws with `RoomShapes` (shared with the template thumbnails).
 - **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
   only. Both expose actions that wrap shared ops. Components read via
   `editor/hooks/useDocumentSelectors.ts` (`useTables`, `useGuests`, …).
@@ -320,6 +330,11 @@ Done:
   arrivals count, undo), phone-first.
 - **Undo/redo:** ⌘/Ctrl+Z, Shift+⌘/Ctrl+Z or Ctrl+Y, toolbar ↶ ↷. Typing a name is one step; the
   placement dialog's Confirm is one step. Session-only (not kept across reloads).
+- **Keyboard & navigation:**
+  - arrow-key nudge (Shift = further);
+  - select all, copy / paste (across layouts and events), duplicate, delete;
+  - `?` / ⌨ cheat sheet;
+  - minimap while zoomed in.
 - **Version history:** "History" in the editor: automatic (on open, every 10 min) + named versions;
   restore (undoable), copy as new event, delete.
 - **Trash:** "Move to trash" with Undo; `/trash` restore / delete forever / empty; 30-day purge.
@@ -362,8 +377,8 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
 floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates) → **H ✅** (15 phone
-layout, 24 check-in; 23 QR / 26 Wallet need hosting — parked with sync). Next: **I**
-polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
+layout, 24 check-in; 23 QR / 26 Wallet need hosting — parked with sync). → **I ✅**
+(16 shortcuts, 19 minimap). Next: the user's UX pass after their testing. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 
 ## Git
