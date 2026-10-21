@@ -29,6 +29,7 @@ import { AlignmentGuides } from "./AlignmentGuides";
 import { BackdropLayer } from "./BackdropLayer";
 import { RoomObjectNode } from "./RoomObjectNode";
 import { ChairColorLegend } from "./ChairColorLegend";
+import { Minimap } from "./Minimap";
 import type { SeatOccupant } from "./ChairNode";
 import { GridLayer } from "./GridLayer";
 import { SelectionTransformer } from "./SelectionTransformer";
@@ -401,6 +402,7 @@ export function EditorCanvas(): JSX.Element {
     >
       <ZoomControls />
       <ChairColorLegend />
+      <Minimap />
       <Stage
         ref={stageRef}
         width={stageSize.width}

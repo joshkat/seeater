@@ -6,13 +6,27 @@ import { usePrintStore } from "../../export/store/printStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useEditorStore } from "../store/editorStore";
+import { useClipboardStore } from "../store/clipboardStore";
 import { useLayoutStore } from "../store/layoutStore";
+import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 import { redoEdit, undoEdit } from "../store/historyActions";
 
-/** Editor keyboard shortcuts: undo (Cmd/Ctrl+Z), redo (Shift+Cmd/Ctrl+Z or
- * Ctrl+Y), delete, duplicate (Cmd/Ctrl+D), and Escape
- * (backs out of the placement dialog, a seating prompt or an open drawer,
- * otherwise clears the selection). */
+/** Arrow keys nudge the selection by this much (plan units: cm); Shift moves further. */
+export const NUDGE_STEP = 10;
+export const NUDGE_STEP_LARGE = 50;
+
+const ARROWS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
+
+/** Editor keyboard shortcuts (listed in ShortcutsDialog — keep them in step):
+ * undo (Cmd/Ctrl+Z), redo (Shift+Cmd/Ctrl+Z or Ctrl+Y), delete, duplicate
+ * (Cmd/Ctrl+D), select all / copy / paste (Cmd/Ctrl+A/C/V), arrow-key nudge,
+ * ? for the cheat sheet, and Escape (backs out of the placement dialog, a
+ * seating prompt or an open drawer, otherwise clears the selection). */
 export function useKeyboardShortcuts(): void {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
@@ -65,6 +79,38 @@ export function useKeyboardShortcuts(): void {
       if (event.ctrlKey && !event.metaKey && key === "y") {
         event.preventDefault();
         redoEdit();
+        return;
+      }
+
+      const editor = useEditorStore.getState();
+      const arrow = ARROWS[event.key];
+      // Selects and sliders (e.g. image opacity) use the arrow keys themselves.
+      const ownsArrows =
+        event.target instanceof HTMLSelectElement || event.target instanceof HTMLInputElement;
+      if (arrow && !mod && !ownsArrows && editor.selectedIds.length > 0) {
+        event.preventDefault();
+        const step = event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
+        editor.nudgeSelected(arrow[0] * step, arrow[1] * step);
+        return;
+      }
+      // Copy / paste only take over when they have something to do, so copying
+      // ordinary text on the page still works.
+      const canCopy = editor.selectedIds.length > 0;
+      const canPaste = useClipboardStore.getState().items !== null;
+      if (
+        mod &&
+        !event.shiftKey &&
+        (key === "a" || (key === "c" && canCopy) || (key === "v" && canPaste))
+      ) {
+        event.preventDefault();
+        if (key === "a") editor.selectAll();
+        else if (key === "c") editor.copySelected();
+        else editor.paste();
+        return;
+      }
+      if (event.key === "?") {
+        event.preventDefault();
+        useShortcutsDialogStore.getState().setOpen(true);
         return;
       }
 
