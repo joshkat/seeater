@@ -164,6 +164,13 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
   no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
   there too). Import reads them from headed columns.
+- **Smart import** (`guests/components/import/`): picking a file opens the "Import guests" dialog
+  (portalled to `body`, so the drawer can't clip it): a field per column, pre-filled from
+  `lib/importFields.ts` (header aliases incl. common wedding-site names — not verified against
+  real Zola/Knot/Joy files), First + Last name joined, RSVP column → `GuestInput.rsvpStatus`,
+  likely duplicates (name match, case/space-insensitive) skipped by default. All logic is pure in
+  `lib/importMapping.ts`; `rowsToGuests`/`parseGuestFile` use the same suggested mapping. Import =
+  one `importGuests` call (one undo step).
 - **Households (schema v2; v3 added `settings`):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
   households. The guest list groups unassigned members under a header (`guests/lib/guestListModel`,
   which also defines display order for Shift-click ranges and "Select next N").
@@ -278,7 +285,8 @@ Done:
   multi-select, duplicate/delete, **bounds clamping**, autosave.
 - **Zoom-to-table** on select; zoom controls (+/−/reset), recenter on table resize, reset =
   re-fit to current viewport.
-- Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded), drag-to-seat, **multi-select
+- Guest seating: add, **import CSV + XLSX** (xlsx lazy-loaded; column-mapping dialog with
+  preview, first/last name, RSVP, duplicate skipping), drag-to-seat, **multi-select
   (checkboxes + select-all, ctrl/cmd-click, Shift-click ranges, "Select next N") +
   assign-to-table**, labelled list columns, click-to-assign,
   occupancy initials on chairs.
