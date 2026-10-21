@@ -1,28 +1,32 @@
 import { useRef, useState } from "react";
 
-import { parseGuestFile } from "../lib/spreadsheet";
-import { IMPORT_ACCEPT } from "../lib/spreadsheet";
-import { useGuestStore } from "../store/guestStore";
+import { cleanRows } from "../lib/importMapping";
+import { IMPORT_ACCEPT, readGuestFileRows } from "../lib/spreadsheet";
 import { FormatHelp } from "./FormatHelp";
+import { ImportGuestsDialog } from "./import/ImportGuestsDialog";
 
-/** Imports guests from a spreadsheet (CSV or Excel), with a format help button. */
+interface PendingImport {
+  fileName: string;
+  rows: string[][];
+}
+
+/** Imports guests from a spreadsheet (CSV or Excel): pick a file, then map its
+ * columns in the "Import guests" dialog. Has a format help button. */
 export function ImportButton(): JSX.Element {
-  const importGuests = useGuestStore((state) => state.importGuests);
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingImport | null>(null);
 
   async function handleFile(file: File): Promise<void> {
-    setMessage("Importing…");
+    setMessage("Reading file…");
     try {
-      const { guests, skipped } = await parseGuestFile(file);
-      if (guests.length === 0) {
+      const rows = cleanRows(await readGuestFileRows(file));
+      if (rows.length === 0) {
         setMessage("No guests found in that file.");
         return;
       }
-      const added = importGuests(guests);
-      setMessage(
-        `Imported ${added} guest${added === 1 ? "" : "s"}${skipped ? ` (skipped ${skipped})` : ""}.`,
-      );
+      setMessage(null);
+      setPending({ fileName: file.name, rows });
     } catch {
       setMessage("Import failed. Check the file format.");
     }
@@ -52,6 +56,17 @@ export function ImportButton(): JSX.Element {
         <FormatHelp />
       </div>
       {message && <span className="text-xs text-base-content/60">{message}</span>}
+      {pending && (
+        <ImportGuestsDialog
+          fileName={pending.fileName}
+          rows={pending.rows}
+          onCancel={() => setPending(null)}
+          onImported={(summary) => {
+            setPending(null);
+            setMessage(summary);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { useEditorStore } from "../store/editorStore";
 import { EditorCanvas } from "./canvas/EditorCanvas";
+import { EmptyRoomHint } from "../../templates/components/EmptyRoomHint";
 import { DrawerBackdrop } from "./DrawerBackdrop";
 import { LayoutTabs } from "./layouts/LayoutTabs";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -101,6 +102,7 @@ export function EditorPage(): JSX.Element {
         <div className="relative min-w-0 flex-1">
           <EditorCanvas />
           <LayoutTabs />
+          <EmptyRoomHint />
           <SeatingPrompts />
         </div>
         <PropertiesPanel />
