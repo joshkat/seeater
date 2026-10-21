@@ -66,7 +66,9 @@ erDiagram
   GUEST }o--o| HOUSEHOLD : "householdId"
 
   EVENT_DOC {
-    int schemaVersion "3 — bump + add an upgrade step on breaking changes"
+    int schemaVersion "5 — bump + add an upgrade step on breaking changes"
+    array layouts "id, name, stored (null = active)"
+    string activeLayoutId
     object settings "exactSeatPlacement: auto | on | off"
     string id "client UUID"
     string name "max 120"
@@ -97,6 +99,12 @@ erDiagram
     enum rsvpStatus "pending | accepted | declined"
     string seatId "nullable → SEAT.id"
     string householdId "nullable → HOUSEHOLD.id"
+    string meal "nullable"
+    string dietary "nullable"
+    string accessibility "nullable"
+    string notes "nullable"
+    array tags "strings"
+    bool isChild
   }
   HOUSEHOLD {
     string id "client UUID"
@@ -161,6 +169,27 @@ a table, or lowering its chair count, unseats the affected guests in the same st
 separate cleanup pass. Likewise, a household whose last member leaves (or is deleted) is dropped
 by the same op, so documents never carry empty households.
 
+### Layouts
+
+An event can have several layouts (ceremony, reception…) that share one guest list. The **active**
+layout is the document's top-level `dimensions`, `tables` and each guest's `seatId`; every other
+layout keeps its own copy in `layouts[i].stored`:
+
+```json
+"layouts": [
+  { "id": "main", "name": "Reception", "stored": null },
+  { "id": "9c1…", "name": "Ceremony", "stored": {
+      "dimensions": { "width": 1600, "height": 1000 },
+      "tables": [ … ],
+      "seating": { "<guestId>": "<seatId>" } } }
+],
+"activeLayoutId": "main"
+```
+
+Switching layouts (`switchLayout`) packs the active one into `stored` and unpacks the target. Table
+and seat ids are unique across all layouts. To read every layout (exports, cross-room stats), use
+`layoutViews(doc)`.
+
 ### Settings
 
 `settings` holds per-event preferences that travel with the document (backups, sync).
@@ -186,7 +215,7 @@ layout.
 
 ### Schema versions
 
-`schemaVersion` is `3` (v2 added households, v3 added `settings`). When the shape changes in a way old documents don't
+`schemaVersion` is `5` (v2 households, v3 `settings`, v4 guest details, v5 layouts). When the shape changes in a way old documents don't
 satisfy:
 
 1. Bump `EVENT_DOC_SCHEMA_VERSION` in `schema.ts`.
