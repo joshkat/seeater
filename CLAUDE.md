@@ -343,7 +343,7 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 (13 multiple layouts — shared guests, separate tables + seating; 6 guest details) → **Phase C ✅**
 (7 search/filter + show on map, 8 live stats, 21 colour-coding) → **Phase D ✅** (5 export/print).
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
-floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). Next: **G** 14 onboarding, 22 smart import, 25 templates →
+floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates). Next:
 **H** 15 phone layout, 24 check-in (23 QR / 26 Wallet need hosting — parked with sync) → **I**
 polish (16 shortcuts, 19 minimap, the user's UX pass). Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
