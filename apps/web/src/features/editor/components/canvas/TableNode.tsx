@@ -62,6 +62,8 @@ export function TableNode({
   const seatPositions = resolveSeatPositions(table);
   const chairsEditable = selected && table.chairLayoutMode === "custom";
   const seatedCount = seats.filter((seat) => occupants.has(seat.id)).length;
+  // A row's chairs sit where a table's name would: put the name above them.
+  const labelLift = table.shape === "row" ? table.size.height / 2 + 30 : 0;
 
   // Shared by onClick (mouse) and onTap (touch).
   const handleSelect = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
@@ -148,7 +150,7 @@ export function TableNode({
         fill="#0f172a"
         width={140}
         offsetX={70}
-        offsetY={13}
+        offsetY={13 + labelLift}
         align="center"
         listening={false}
         rotation={table.rotation != 0 ? -table.rotation : 0}
@@ -160,7 +162,7 @@ export function TableNode({
         fill={seats.length > 0 && seatedCount >= seats.length ? "#15803d" : "#64748b"}
         width={140}
         offsetX={70}
-        offsetY={-4}
+        offsetY={-4 + labelLift}
         align="center"
         listening={false}
         rotation={table.rotation != 0 ? -table.rotation : 0}

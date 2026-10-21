@@ -1,6 +1,15 @@
-import type { ExactSeatPlacement, Guest, Household, Layout, Size, Table } from "@seating/shared";
+import type {
+  ExactSeatPlacement,
+  Guest,
+  Household,
+  Layout,
+  Size,
+  Table,
+  UnitSystem,
+} from "@seating/shared";
 import { DEFAULT_FLOOR_PLAN_SIZE, EXACT_SEAT_PLACEMENT_MAX_TABLES } from "@seating/shared";
 
+import { resolveUnits } from "../lib/units";
 import { useDocumentStore } from "../store/documentStore";
 
 /**
@@ -44,6 +53,12 @@ export function useExactSeatPlacement(): { mode: ExactSeatPlacement; active: boo
   const tableCount = useDocumentStore((state) => state.doc?.tables.length ?? 0);
   const active = mode === "auto" ? tableCount <= EXACT_SEAT_PLACEMENT_MAX_TABLES : mode === "on";
   return { mode, active };
+}
+
+/** The unit system to show lengths in (setting resolved against the locale). */
+export function useUnits(): { setting: UnitSystem; units: "metric" | "imperial" } {
+  const setting = useDocumentStore((state) => state.doc?.settings.units ?? "auto");
+  return { setting, units: resolveUnits(setting) };
 }
 
 /** Whether there's anything to undo or redo in the open document. */
