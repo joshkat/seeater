@@ -4,6 +4,7 @@ import { THEMES, type ThemeValue, applyTheme, getSavedTheme } from "../../../lib
 import { PHONE_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
 import { useEditorStore } from "../store/editorStore";
 import { useLayoutStore } from "../store/layoutStore";
+import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 import { ExactPlacementToggle } from "./ExactPlacementToggle";
 import { AddRoomObjectMenu } from "./room/AddRoomObjectMenu";
 import { AddTableMenu } from "./room/AddTableMenu";
@@ -19,6 +20,7 @@ export function Toolbar(): JSX.Element {
   const propertiesOpen = useLayoutStore((state) => state.propertiesOpen);
   const setGuestsOpen = useLayoutStore((state) => state.setGuestsOpen);
   const setPropertiesOpen = useLayoutStore((state) => state.setPropertiesOpen);
+  const openShortcuts = useShortcutsDialogStore((state) => state.setOpen);
 
   // Phones: the toolbar keeps the essentials (exact placement moves to the
   // Properties panel; Duplicate / Delete appear once something is selected).
@@ -100,6 +102,16 @@ export function Toolbar(): JSX.Element {
           onClick={() => setPropertiesOpen(!propertiesOpen)}
         >
           Properties
+        </button>
+        {/* Phones have no keyboard, so no cheat sheet. */}
+        <button
+          type="button"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          className="btn btn-ghost btn-sm max-sm:hidden"
+          onClick={() => openShortcuts(true)}
+        >
+          ⌨
         </button>
         <div className="dropdown dropdown-end">
           <div

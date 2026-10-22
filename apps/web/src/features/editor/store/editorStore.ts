@@ -13,6 +13,9 @@ import type {
 import {
   DEFAULT_FLOOR_PLAN_SIZE,
   addTable,
+  copyItems,
+  moveItems,
+  pasteItems,
   type RoomObjectKind,
   type RoomObjectPatch,
   addRoomObject,
@@ -45,6 +48,7 @@ import {
   zoomViewportAtCenter,
 } from "../geometry/viewport";
 import type { Viewport } from "../types";
+import { useClipboardStore } from "./clipboardStore";
 import { useDocumentStore } from "./documentStore";
 
 /**
@@ -103,6 +107,13 @@ interface EditorState {
   setSeatOffset: (id: string, seatIndex: number, offset: Point) => void;
   duplicateSelected: () => void;
   deleteSelected: () => void;
+  /** Moves the selected tables and objects (arrow keys); a burst is one undo step. */
+  nudgeSelected: (dx: number, dy: number) => void;
+  /** Selects every table and room object in the layout. */
+  selectAll: () => void;
+  copySelected: () => void;
+  /** Pastes the clipboard into the current layout, selecting the copies. */
+  paste: () => void;
 }
 
 function currentDoc(): EventDoc | null {
@@ -325,6 +336,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (selectedIds.length === 0) return;
     edit((doc) => deleteRoomObjects(deleteTables(doc, selectedIds), selectedIds));
     set({ selectedIds: [] });
+  },
+
+  nudgeSelected(dx, dy) {
+    const { selectedIds } = get();
+    if (selectedIds.length === 0) return;
+    edit((doc) => moveItems(doc, selectedIds, { x: dx, y: dy }), `nudge:${selectedIds.join()}`);
+  },
+
+  selectAll() {
+    const doc = currentDoc();
+    if (!doc) return;
+    set({ selectedIds: [...doc.tables, ...doc.objects].map((item) => item.id) });
+  },
+
+  copySelected() {
+    const doc = currentDoc();
+    const { selectedIds } = get();
+    if (!doc || selectedIds.length === 0) return;
+    useClipboardStore.getState().set(copyItems(doc, selectedIds));
+  },
+
+  paste() {
+    const doc = currentDoc();
+    const items = useClipboardStore.getState().items;
+    if (!doc || !items) return;
+    const result = pasteItems(doc, items);
+    if (result.ids.length === 0) return;
+    edit(() => result.doc);
+    set({ selectedIds: result.ids });
   },
 
   addRoomObject(kind) {

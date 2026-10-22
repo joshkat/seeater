@@ -24,6 +24,7 @@ import { DrawerBackdrop } from "./DrawerBackdrop";
 import { LayoutTabs } from "./layouts/LayoutTabs";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { SaveStatusBadge } from "./SaveStatusBadge";
+import { ShortcutsDialog } from "./ShortcutsDialog";
 import { Toolbar } from "./Toolbar";
 
 /** Inline-editable event title in the header. */
@@ -112,6 +113,7 @@ export function EditorPage(): JSX.Element {
       </div>
       <PlacementDialog />
       <VersionHistoryDialog />
+      <ShortcutsDialog />
       <GuestDetailsDialog />
       <PrintView />
       <DragGhost />
