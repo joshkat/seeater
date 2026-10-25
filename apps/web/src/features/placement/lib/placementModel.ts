@@ -69,6 +69,30 @@ export function seatOfGuest(state: PlacementState, guestId: string): string | nu
   return state.seatIds.find((seatId) => state.bySeat[seatId] === guestId) ?? null;
 }
 
+/**
+ * "+ Add guest…": brings someone without a seat into the tray, picked so the
+ * next chair tapped is theirs. Nothing changes for them unless they get a
+ * chair before Confirm. Anyone already in the dialog is left as is.
+ */
+export function addToTray(state: PlacementState, guestId: string): PlacementState {
+  if (guestId in state.original) return state;
+  return {
+    ...state,
+    tray: [...state.tray, guestId],
+    original: { ...state.original, [guestId]: null },
+    picked: guestId,
+    pending: null,
+  };
+}
+
+/** Guests who could be added from "+ Add guest…": no seat in this layout,
+ * not declined, and not in the dialog already. */
+export function addableGuests(doc: EventDoc, state: PlacementState): EventDoc["guests"] {
+  return doc.guests.filter(
+    (guest) => !guest.seatId && guest.rsvpStatus !== "declined" && !(guest.id in state.original),
+  );
+}
+
 /** Tap a chip (or a seated guest): pick it for tap-to-place; tap again to unpick. */
 export function pickGuest(state: PlacementState, guestId: string | null): PlacementState {
   return { ...state, picked: state.picked === guestId ? null : guestId, pending: null };
