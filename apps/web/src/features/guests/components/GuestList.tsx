@@ -13,12 +13,11 @@ import type { SelectModifiers } from "../lib/selectModifiers";
 import { filterGuests, isFiltering } from "../lib/guestFilter";
 import { useRuleProblems } from "../../rules/hooks/useRuleProblems";
 import { guestSubtitle } from "../lib/guestSubtitle";
-import { locateGuestSeat } from "../lib/locateGuest";
 import { useGuestFilterStore } from "../store/guestFilterStore";
 import { useGuestDetailsStore } from "../store/guestDetailsStore";
 import { useGuestStore } from "../store/guestStore";
 import { useEditorStore } from "../../editor/store/editorStore";
-import { GuestFilterBar } from "./filter/GuestFilterBar";
+import { AssignBar } from "./AssignBar";
 import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
 import { HouseholdHeader } from "./HouseholdHeader";
@@ -113,12 +112,6 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const selected = useMemo(() => new Set(selectedGuestIds), [selectedGuestIds]);
   const seatedCount = visibleGuests.length - unassignedIds.length;
 
-  // Enter in the search box: show the first matching seated guest on the map.
-  const locateFirstMatch = (): void => {
-    const first = visibleGuests.find((guest) => guest.seatId);
-    if (first?.seatId) locateGuestSeat(first.seatId);
-  };
-
   const handleSelect = (guestId: string, { additive, range }: SelectModifiers): void => {
     if (range) selectRange(guestId, visibleOrder, additive);
     else selectGuest(guestId, additive);
@@ -200,7 +193,6 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 max-sm:flex-none">
-      <GuestFilterBar onLocateFirst={locateFirstMatch} />
       {filtering && (
         <p className="flex items-center justify-between px-1 text-xs text-base-content/60">
           Showing {visibleGuests.length} of {guests.length}
@@ -291,6 +283,10 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         {filtering && visibleGuests.length === 0 && (
           <EmptyHint>No guests match. Try another search or clear the filters.</EmptyHint>
         )}
+        {/* Last in the scroll area and sticky: it floats over the rows while
+            there's more to scroll, and at the end it takes its own space, so
+            ticking a guest never moves the list. */}
+        <AssignBar />
       </div>
     </div>
   );
