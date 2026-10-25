@@ -23,7 +23,7 @@ test("a first/last name + RSVP export maps itself and skips a duplicate", async 
   await expect(preview.getByRole("row", { name: /Ada Lovelace/ })).toContainText("Going");
   await expect(preview.getByRole("row", { name: /Linus Torvalds/ })).toContainText("Pending");
   await expect(preview.getByRole("row", { name: /grace HOPPER/ })).toContainText(
-    "Already in list · skipped",
+    "Duplicate, skipped",
   );
   await expect(dialog.getByText("1 looks like a guest you already have.")).toBeVisible();
   await expect(dialog.getByRole("checkbox", { name: "Skip likely duplicates" })).toBeChecked();
