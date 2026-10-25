@@ -1,11 +1,14 @@
 import { TABLE_PRESETS } from "@seating/shared";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
+import { useModalFocus } from "../../../../lib/useModalFocus";
 import { NumberField } from "../../../../components/NumberField";
 import { useEditorStore } from "../../store/editorStore";
 
 /** "Grid of tables": how many, how many per row, and which kind. */
 export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Element {
+  const boxRef = useRef<HTMLFormElement>(null);
+  useModalFocus(boxRef);
   const addTableGrid = useEditorStore((state) => state.addTableGrid);
   const [count, setCount] = useState(10);
   const [columns, setColumns] = useState(5);
@@ -23,6 +26,7 @@ export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Eleme
       <form
         onSubmit={handleSubmit}
         onKeyDown={(event) => event.key === "Escape" && onClose()}
+        ref={boxRef}
         className="modal-box flex max-w-sm flex-col gap-3 text-base-content"
       >
         <h2 className="text-lg font-semibold">Grid of tables</h2>

@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { isApplePlatform, shortcutLabel } from "../../../lib/platform";
 import { NUDGE_STEP, NUDGE_STEP_LARGE } from "../hooks/useKeyboardShortcuts";
 import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
@@ -38,8 +40,10 @@ function shortcutGroups(): { title: string; rows: [string, string][] }[] {
 
 /** The keyboard-shortcuts cheat sheet (? or the toolbar's ⌨ button). */
 export function ShortcutsDialog(): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
   const open = useShortcutsDialogStore((state) => state.open);
   const setOpen = useShortcutsDialogStore((state) => state.setOpen);
+  useModalFocus(boxRef, open);
   if (!open) return null;
 
   return (
@@ -51,6 +55,7 @@ export function ShortcutsDialog(): JSX.Element | null {
       onClick={() => setOpen(false)}
     >
       <div
+        ref={boxRef}
         className="modal-box flex max-w-lg flex-col gap-4 text-base-content"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => (event.key === "Escape" || event.key === "?") && setOpen(false)}

@@ -1,7 +1,8 @@
 import { createEventDoc, createEventFromTemplate, findTemplate } from "@seating/shared";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { requestPersistentStorage } from "../../../lib/persistentStorage";
 import { createEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
@@ -10,6 +11,8 @@ import { SampleEventButton } from "./SampleEventButton";
 
 /** "New event": a name, and a blank room or a starter template. */
 export function NewEventDialog({ onClose }: { onClose: () => void }): JSX.Element {
+  const boxRef = useRef<HTMLFormElement>(null);
+  useModalFocus(boxRef);
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -36,7 +39,9 @@ export function NewEventDialog({ onClose }: { onClose: () => void }): JSX.Elemen
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
       <form
+        ref={boxRef}
         role="dialog"
+        aria-modal="true"
         aria-label="New event"
         className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-5 text-base-content shadow-xl"
         onClick={(event) => event.stopPropagation()}

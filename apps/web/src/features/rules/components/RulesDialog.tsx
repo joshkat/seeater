@@ -1,12 +1,15 @@
 import { contradictoryPairs, removeRule } from "@seating/shared";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { useRuleProblems } from "../hooks/useRuleProblems";
 import { RuleRow } from "./RuleRow";
 
 /** Every seating rule, whether it holds in this layout, and contradictions. */
 export function RulesDialog({ onClose }: { onClose: () => void }): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalFocus(boxRef);
   const doc = useDocumentStore((state) => state.doc);
   const apply = useDocumentStore((state) => state.apply);
   const { problems } = useRuleProblems();
@@ -26,7 +29,10 @@ export function RulesDialog({ onClose }: { onClose: () => void }): JSX.Element |
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Seating rules">
-      <div className="modal-box flex max-h-[85vh] max-w-xl flex-col gap-3 text-base-content">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[85vh] max-w-xl flex-col gap-3 text-base-content"
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold">Seating rules</h2>

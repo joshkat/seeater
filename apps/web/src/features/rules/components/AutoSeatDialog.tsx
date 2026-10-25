@@ -1,12 +1,15 @@
 import { autoSeat } from "@seating/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { useGuestStore } from "../../guests/store/guestStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 
 /** Auto-seat: fill open seats with guests who don't have one, following households and rules. */
 export function AutoSeatDialog({ onClose }: { onClose: () => void }): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalFocus(boxRef);
   const doc = useDocumentStore((state) => state.doc);
   const selectedGuestIds = useGuestStore((state) => state.selectedGuestIds);
   const [onlySelected, setOnlySelected] = useState(selectedGuestIds.length > 0);
@@ -51,7 +54,7 @@ export function AutoSeatDialog({ onClose }: { onClose: () => void }): JSX.Elemen
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Auto-seat">
-      <div className="modal-box flex max-w-md flex-col gap-3 text-base-content">
+      <div ref={boxRef} className="modal-box flex max-w-md flex-col gap-3 text-base-content">
         <h2 className="text-lg font-semibold">Auto-seat</h2>
         <p className="text-sm text-base-content/70">
           Fills open seats with guests who don’t have one. Households and “keep together” rules stay

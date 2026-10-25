@@ -1,6 +1,7 @@
 import { layoutStats, layoutViews } from "@seating/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { catererText } from "../lib/catererText";
 import { StatTile } from "./StatTile";
@@ -8,6 +9,8 @@ import { TableStatsRow } from "./TableStatsRow";
 
 /** Live numbers for any layout: who's seated, table fill, meal totals for caterers. */
 export function StatsDialog({ onClose }: { onClose: () => void }): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalFocus(boxRef);
   const doc = useDocumentStore((state) => state.doc);
   const views = useMemo(() => (doc ? layoutViews(doc) : []), [doc]);
   const [layoutId, setLayoutId] = useState<string | null>(null);
@@ -34,7 +37,10 @@ export function StatsDialog({ onClose }: { onClose: () => void }): JSX.Element |
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Stats">
-      <div className="modal-box flex max-h-[90vh] w-full max-w-4xl flex-col gap-4 text-base-content">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[90vh] w-full max-w-4xl flex-col gap-4 text-base-content"
+      >
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold">Stats</h2>
           <button

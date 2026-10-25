@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useModalFocus } from "../../../../lib/useModalFocus";
 import { useGuests } from "../../../editor/hooks/useDocumentSelectors";
 import type { ImportField } from "../../lib/importFields";
 import {
@@ -39,6 +40,8 @@ export function ImportGuestsDialog({
   onImported,
   onCancel,
 }: ImportGuestsDialogProps): JSX.Element {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalFocus(boxRef);
   const importGuests = useGuestStore((state) => state.importGuests);
   const existingGuests = useGuests();
   const [hasHeader, setHasHeader] = useState(() => looksLikeHeader(rows[0]));
@@ -87,7 +90,10 @@ export function ImportGuestsDialog({
 
   return createPortal(
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Import guests">
-      <div className="modal-box flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto text-base-content">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto text-base-content"
+      >
         <div>
           <h2 className="text-lg font-semibold">Import guests</h2>
           <p className="truncate text-sm text-base-content/60" title={fileName}>

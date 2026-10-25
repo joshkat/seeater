@@ -1,7 +1,8 @@
 import { layoutViews } from "@seating/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { alphabetical, seatingRows, tableRosters } from "../lib/seatingRows";
 import { PRINT_KINDS, type PrintKind, usePrintStore } from "../store/printStore";
@@ -17,9 +18,11 @@ import { RosterSheets } from "./print/RosterSheets";
  * printing (global.css: body.printing), so only the sheet comes out.
  */
 export function PrintView(): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
   const kind = usePrintStore((state) => state.kind);
   const open = usePrintStore((state) => state.open);
   const close = usePrintStore((state) => state.close);
+  useModalFocus(boxRef, kind !== null);
   const doc = useDocumentStore((state) => state.doc);
   const views = useMemo(() => (doc ? layoutViews(doc) : []), [doc]);
   const [layoutId, setLayoutId] = useState<string | null>(null);
@@ -49,6 +52,8 @@ export function PrintView(): JSX.Element | null {
   return createPortal(
     <div
       id="print-view"
+      ref={boxRef}
+      aria-modal="true"
       role="dialog"
       aria-label="Print"
       className="fixed inset-0 z-[200] overflow-auto bg-white text-neutral-900"

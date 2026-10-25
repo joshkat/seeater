@@ -1,5 +1,6 @@
-import { type PointerEvent, useEffect, useMemo } from "react";
+import { type PointerEvent, useEffect, useMemo, useRef } from "react";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { tableNameById } from "../../editor/lib/tableLabel";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { beginPointerDrag } from "../../dnd/lib/pointerDrag";
@@ -31,10 +32,12 @@ import { TablePreview } from "./TablePreview";
  * change; Cancel changes nothing.
  */
 export function PlacementDialog(): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
   const placement = useSeatingFlowStore((state) => state.placement);
   const updatePlacement = useSeatingFlowStore((state) => state.updatePlacement);
   const confirmPlacement = useSeatingFlowStore((state) => state.confirmPlacement);
   const cancelPlacement = useSeatingFlowStore((state) => state.cancelPlacement);
+  useModalFocus(boxRef, placement !== null);
   const doc = useDocumentStore((state) => state.doc);
   const dragging = useDragStore((state) =>
     state.drag?.payload.kind === "placement-guest" ? state.drag : null,
@@ -112,7 +115,10 @@ export function PlacementDialog(): JSX.Element | null {
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Seat placement">
-      <div className="modal-box flex max-h-[92vh] w-full max-w-4xl flex-col gap-3 p-4 sm:p-6">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[92vh] w-full max-w-4xl flex-col gap-3 p-4 sm:p-6"
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-base-content">
