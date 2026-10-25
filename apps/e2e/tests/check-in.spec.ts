@@ -17,7 +17,8 @@ test("check guests in at the door, by household, and add a walk-in", async ({ pa
   await guests.getByRole("button", { name: "Check in all 3" }).first().click();
   await expect(summary).toHaveText("3 of 44 arrived");
 
-  await page.getByRole("button", { name: "Undo" }).click();
+  // The header undo (the rows' own "Undo check-in for …" buttons are named in full).
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(summary).toHaveText("0 of 44 arrived");
 
   await page.getByLabel("Find a guest").fill("Zed Walker");
