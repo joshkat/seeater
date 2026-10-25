@@ -1,7 +1,11 @@
 import { useCallback, useState } from "react";
 
 import { AuthControls } from "../../auth/components/AuthControls";
-import { ImportBackupButton } from "../../backup/components/ImportBackupButton";
+import { BackupImportNotice } from "../../backup/components/BackupImportNotice";
+import {
+  type BackupImportResult,
+  ImportBackupButton,
+} from "../../backup/components/ImportBackupButton";
 import { SyncNotice } from "../../sync/components/SyncNotice";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { useEventSummaries } from "../hooks/useEventSummaries";
@@ -18,6 +22,7 @@ export function Dashboard(): JSX.Element {
   usePurgeExpiredTrash();
   const [lastTrashed, setLastTrashed] = useState<{ id: string; name: string } | null>(null);
   const clearLastTrashed = useCallback(() => setLastTrashed(null), []);
+  const [backupImport, setBackupImport] = useState<BackupImportResult | null>(null);
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
@@ -26,7 +31,7 @@ export function Dashboard(): JSX.Element {
           <h1 className="text-xl font-bold">My Events</h1>
           <div className="flex items-center gap-3">
             <TrashLink />
-            <ImportBackupButton />
+            <ImportBackupButton onResult={setBackupImport} />
             <NewEventButton />
             <SyncStatusBadge />
             <AuthControls />
@@ -36,6 +41,9 @@ export function Dashboard(): JSX.Element {
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <SyncNotice />
+        {backupImport && (
+          <BackupImportNotice result={backupImport} onDismiss={() => setBackupImport(null)} />
+        )}
         {lastTrashed && <TrashUndoNotice event={lastTrashed} onDone={clearLastTrashed} />}
         {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
         {summaries?.length === 0 && (

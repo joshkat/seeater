@@ -37,20 +37,23 @@ export function TrashRow({ event }: { event: TrashedEvent }): JSX.Element {
             : `Deleted for good in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
         </p>
       </div>
-      <button
-        type="button"
-        className="btn btn-primary btn-sm"
-        onClick={() => void restoreFromTrash(activeDb(), summary.id)}
-      >
-        Restore
-      </button>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm text-error"
-        onClick={() => void handleDeleteForever()}
-      >
-        Delete forever
-      </button>
+      {/* Phones: the buttons go under the text as one full-width bar, so the name has room. */}
+      <div className="flex gap-3 max-sm:join max-sm:w-full max-sm:gap-0">
+        <button
+          type="button"
+          className="btn btn-primary btn-sm max-sm:join-item max-sm:flex-1"
+          onClick={() => void restoreFromTrash(activeDb(), summary.id)}
+        >
+          Restore
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm text-error-strong max-sm:join-item max-sm:flex-1"
+          onClick={() => void handleDeleteForever()}
+        >
+          Delete forever
+        </button>
+      </div>
     </li>
   );
 }
