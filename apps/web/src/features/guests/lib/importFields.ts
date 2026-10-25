@@ -1,13 +1,16 @@
 /**
  * The guest fields a spreadsheet column can be mapped to on import, and the
- * header names we recognise for each (including common wedding-site export
- * column names — not a guarantee of any one site's exact format).
+ * header names we guess each from (including names seen in wedding-site
+ * exports — not verified against any one site's exact format, so the dialog
+ * asks people to check the guesses).
  */
 
 export type ImportField =
   | "name"
   | "firstName"
   | "lastName"
+  | "partnerFirstName"
+  | "partnerLastName"
   | "email"
   | "phone"
   | "rsvp"
@@ -25,6 +28,8 @@ export const IMPORT_FIELDS: { field: ImportField; label: string }[] = [
   { field: "name", label: "Name" },
   { field: "firstName", label: "First name" },
   { field: "lastName", label: "Last name" },
+  { field: "partnerFirstName", label: "Partner first name" },
+  { field: "partnerLastName", label: "Partner last name" },
   { field: "email", label: "Email" },
   { field: "phone", label: "Phone" },
   { field: "rsvp", label: "RSVP" },
@@ -125,11 +130,40 @@ const HEADER_ALIASES: Record<string, Exclude<ImportField, "ignore">> = {
   "is child": "isChild",
   "age group": "isChild",
   "age category": "isChild",
-  type: "isChild",
+  // Party-per-row exports: a second person on the same row (see also PARTNER_PATTERNS).
+  "partner first name": "partnerFirstName",
+  "partner's first name": "partnerFirstName",
+  "partner name": "partnerFirstName",
+  "partner full name": "partnerFirstName",
+  "partner last name": "partnerLastName",
+  "partner's last name": "partnerLastName",
+  "partner surname": "partnerLastName",
 };
+
+/**
+ * Headers that only name a field when the column's values fit it. "Type" is
+ * "Adult" / "Child" in some exports but "Primary" / "Plus-one" in others.
+ */
+const VALUE_CHECKED_ALIASES: Record<string, Exclude<ImportField, "ignore">> = {
+  type: "isChild",
+  "guest type": "isChild",
+};
+
+/** Values an adult/child column holds. */
+const AGE_VALUE = /^(adults?|child(ren)?|kids?|infants?|bab(y|ies)|toddlers?|teens?|youth)$/i;
+
+/** How exports name the second person on a row: "Partner", "Plus one", "+1", "Guest 2"… */
+const PARTNER = String.raw`(partner|spouse|plus[ -]?one|\+ ?1|guest 2|second guest)`;
+
+/** Checked before HEADER_PATTERNS: "Plus One First Name" is the partner's, not the guest's. */
+const PARTNER_PATTERNS: [RegExp, Exclude<ImportField, "ignore">][] = [
+  [new RegExp(String.raw`${PARTNER}.*\b(last name|surname)\b`), "partnerLastName"],
+  [new RegExp(String.raw`${PARTNER}.*\bname\b`), "partnerFirstName"],
+];
 
 /** Looser matches for headers that aren't an exact alias ("Guest First Name", "RSVP - Wedding"). */
 const HEADER_PATTERNS: [RegExp, Exclude<ImportField, "ignore">][] = [
+  ...PARTNER_PATTERNS,
   [/\bfirst name\b/, "firstName"],
   [/\b(last name|surname)\b/, "lastName"],
   [/\brsvp\b/, "rsvp"],
@@ -147,10 +181,22 @@ export function normaliseHeader(text: string): string {
     .replace(/[\s:*]+$/, "");
 }
 
-/** The field a header names, or null if we don't recognise it. */
-export function fieldForHeader(text: string): Exclude<ImportField, "ignore"> | null {
+/**
+ * The field a header names, or null if we don't recognise it. `values` (the
+ * column's data cells) settles headers like "Type" that only sometimes name a
+ * field; without values those headers aren't recognised.
+ */
+export function fieldForHeader(
+  text: string,
+  values: readonly string[] = [],
+): Exclude<ImportField, "ignore"> | null {
   const header = normaliseHeader(text);
   if (!header) return null;
+  const checked = VALUE_CHECKED_ALIASES[header];
+  if (checked) {
+    const filled = values.map((value) => value.trim()).filter(Boolean);
+    return filled.length > 0 && filled.every((value) => AGE_VALUE.test(value)) ? checked : null;
+  }
   const exact = HEADER_ALIASES[header];
   if (exact) return exact;
   for (const [pattern, field] of HEADER_PATTERNS) if (pattern.test(header)) return field;
