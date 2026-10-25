@@ -49,6 +49,9 @@ describe("templates", () => {
   it("ceremony + reception has two layouts", () => {
     const doc = createEventFromTemplate(findTemplate("ceremony-and-reception")!, "x");
     expect(doc.layouts.map((l) => l.name)).toEqual(["Ceremony", "Reception"]);
+    // It opens on the ceremony (the first layout): rows of chairs.
+    expect(doc.activeLayoutId).toBe(doc.layouts[0].id);
+    expect(doc.tables.every((table) => table.shape === "row")).toBe(true);
   });
 
   it("applying a template replaces the room but keeps guests (unseated)", () => {
