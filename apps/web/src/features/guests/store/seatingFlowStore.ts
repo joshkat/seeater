@@ -10,11 +10,17 @@ import {
   newRuleProblems,
   openSeatCount,
   setSeatCount,
+  swapSeats,
+  swapSplits,
 } from "@seating/shared";
 import { create } from "zustand";
 
 import { useDocumentStore } from "../../editor/store/documentStore";
+// historyActions imports this store too; each only uses the other inside
+// functions, so the cycle is safe.
+import { showUndoNotice } from "../../editor/store/historyActions";
 import { tableNameById } from "../../editor/lib/tableLabel";
+import { swapNotice } from "../lib/seatPlace";
 import {
   type PlacementState,
   createPlacement,
@@ -33,6 +39,12 @@ export type SeatTarget =
 export interface HouseholdQuestion {
   guestIds: string[];
   target: SeatTarget;
+  splits: HouseholdSplit[];
+}
+
+/** "Swap their seats" would split a household: asked before swapping. */
+export interface SwapQuestion {
+  guestIds: [string, string];
   splits: HouseholdSplit[];
 }
 
@@ -73,6 +85,8 @@ export interface SeatingNotice {
  */
 interface SeatingFlowState {
   question: HouseholdQuestion | null;
+  /** "Swap anyway?" while a swap would split a household. */
+  swap: SwapQuestion | null;
   overflow: Overflow | null;
   notice: SeatingNotice | null;
   /** The seat placement dialog, while open. */
@@ -89,6 +103,10 @@ interface SeatingFlowState {
   cancelPlacement: () => void;
 
   requestSeating: (guestIds: string[], target: SeatTarget) => void;
+  /** Swaps two guests' seats, asking first if that would split a household. */
+  requestSwap: (guestA: string, guestB: string) => void;
+  /** "Swap anyway": does the swap the question was about. */
+  confirmSwap: () => void;
   /** Answers the household question: everyone in the household, or only those picked. */
   answerHousehold: (wholeHousehold: boolean) => void;
   /** Seats the leftover guests at another table. */
@@ -197,8 +215,20 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     );
   };
 
+  const swapNow = (guestA: string, guestB: string): void => {
+    const before = currentDoc();
+    useDocumentStore.getState().apply((doc) => swapSeats(doc, guestA, guestB));
+    useGuestStore.getState().clearGuestSelection();
+    set({ swap: null, question: null, overflow: null });
+    const after = currentDoc();
+    if (after && after !== before) {
+      showUndoNotice(`${swapNotice(after, guestA, guestB)}${ruleWarning(before)}`);
+    }
+  };
+
   return {
     question: null,
+    swap: null,
     overflow: null,
     notice: null,
     placement: null,
@@ -249,6 +279,22 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
         return;
       }
       seat(guestIds, target);
+    },
+
+    requestSwap(guestA, guestB) {
+      const doc = currentDoc();
+      if (!doc) return;
+      const splits = swapSplits(doc, guestA, guestB);
+      if (splits.length > 0) {
+        set({ swap: { guestIds: [guestA, guestB], splits }, question: null, overflow: null });
+        return;
+      }
+      swapNow(guestA, guestB);
+    },
+
+    confirmSwap() {
+      const { swap } = get();
+      if (swap) swapNow(swap.guestIds[0], swap.guestIds[1]);
     },
 
     answerHousehold(wholeHousehold) {
@@ -313,7 +359,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     },
 
     dismiss() {
-      set({ overflow: null, question: null, placement: null });
+      set({ overflow: null, question: null, swap: null, placement: null });
     },
 
     clearNotice() {
@@ -325,7 +371,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     },
 
     reset() {
-      set({ question: null, overflow: null, notice: null, placement: null });
+      set({ question: null, swap: null, overflow: null, notice: null, placement: null });
     },
   };
 });

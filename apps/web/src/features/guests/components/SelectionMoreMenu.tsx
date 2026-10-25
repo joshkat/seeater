@@ -1,4 +1,4 @@
-import { addRule, swapSeats } from "@seating/shared";
+import { addRule } from "@seating/shared";
 
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { useSeatingFlowStore } from "../store/seatingFlowStore";
@@ -48,8 +48,8 @@ export function SelectionMoreMenu(): JSX.Element {
             title="Select exactly two guests (at least one seated)"
             onClick={() => {
               closeMenu();
-              apply((current) => swapSeats(current, selectedGuestIds[0], selectedGuestIds[1]));
-              useGuestStore.getState().clearGuestSelection();
+              // Asks before splitting a household, then confirms with Undo.
+              useSeatingFlowStore.getState().requestSwap(selectedGuestIds[0], selectedGuestIds[1]);
             }}
           >
             Swap their seats

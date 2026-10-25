@@ -10,6 +10,7 @@ import {
   householdSplits,
   removeFromHousehold,
   renameHousehold,
+  swapSplits,
 } from "../householdOps.js";
 import { eventDocSchema } from "../schema.js";
 import { addTable } from "../tableOps.js";
@@ -129,5 +130,48 @@ describe("householdSplits", () => {
     const { doc, tableId, guestIds } = fixture();
     const { doc: grouped } = createHousehold(doc, [guestIds[0], guestIds[1]]);
     expect(householdSplits(grouped, [guestIds[0], guestIds[1]], tableId)).toEqual([]);
+  });
+});
+
+describe("swapSplits", () => {
+  it("flags the household a swap to another table splits", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace, linus] = guestIds;
+    const { doc: grouped, householdId } = createHousehold(doc, [ada, grace]);
+    const other = addTable(grouped, { shape: "round", position: { x: 0, y: 0 } });
+    const here = seatIdsOf(other.doc, tableId);
+    const there = seatIdsOf(other.doc, other.tableId);
+    let seated = assignSeat(other.doc, ada, here[0]);
+    seated = assignSeat(seated, grace, here[1]);
+    seated = assignSeat(seated, linus, there[0]);
+
+    const splits = swapSplits(seated, ada, linus);
+    expect(splits).toHaveLength(1);
+    expect(splits[0]).toMatchObject({
+      household: { id: householdId },
+      movingIds: [ada],
+      leftBehindIds: [grace],
+    });
+  });
+
+  it("is empty for a swap within one table or between household members", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace, linus] = guestIds;
+    const { doc: grouped } = createHousehold(doc, [ada, grace]);
+    const here = seatIdsOf(grouped, tableId);
+    const seated = assignSeat(assignSeat(grouped, ada, here[0]), linus, here[2]);
+    expect(swapSplits(seated, ada, linus)).toEqual([]);
+    expect(swapSplits(seated, ada, grace)).toEqual([]);
+  });
+
+  it("treats swapping with an unseated guest as leaving the table", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace, linus] = guestIds;
+    const { doc: grouped } = createHousehold(doc, [ada, grace]);
+    const here = seatIdsOf(grouped, tableId);
+    const seated = assignSeat(assignSeat(grouped, ada, here[0]), grace, here[1]);
+    expect(swapSplits(seated, ada, linus)).toMatchObject([
+      { movingIds: [ada], leftBehindIds: [grace] },
+    ]);
   });
 });
