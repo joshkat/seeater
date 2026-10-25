@@ -262,16 +262,24 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
           <div className="flex flex-col gap-2.5">
             {tableGroups.map((group) => (
               <div key={group.tableId}>
-                <h4 className="mb-0.5 ml-1.5 text-xs font-semibold text-secondary">
+                <h4 className="mb-0.5 text-xs font-semibold text-secondary">
+                  {/* The whole heading is the button (44px tall on touch), with
+                      a visible hint of what it does. */}
                   <button
                     type="button"
-                    className="cursor-pointer hover:underline"
+                    className="group flex w-full cursor-pointer items-center gap-1 rounded-field px-1.5 py-0.5 text-left hover:bg-base-200 pointer-coarse:min-h-11"
                     title="Show this table on the map"
                     onClick={() => selectTable(group.tableId)}
                   >
-                    {group.name}
+                    <span className="group-hover:underline">{group.name}</span>
+                    <span className="font-normal text-base-content/70">
+                      {" "}
+                      • {group.items.length}
+                    </span>
+                    <span className="ml-auto font-normal text-base-content/70">
+                      <span aria-hidden>⌖ </span>Show on map
+                    </span>
                   </button>
-                  <span className="font-normal text-base-content/70"> • {group.items.length}</span>
                 </h4>
                 <ul className={listClass}>
                   {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
