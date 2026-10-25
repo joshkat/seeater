@@ -1,32 +1,33 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { BACKUP_EXTENSION } from "../lib/backupFile";
 import { importEventBackup } from "../lib/backupActions";
 
+/** What happened to the last backup import (shown by BackupImportNotice). */
+export type BackupImportResult = { ok: true; name: string } | { ok: false };
+
 /** Dashboard button that restores an event from a `.seating.json` backup. */
-export function ImportBackupButton(): JSX.Element {
+export function ImportBackupButton({
+  onResult,
+}: {
+  onResult: (result: BackupImportResult) => void;
+}): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   async function handleFile(file: File): Promise<void> {
     try {
       const name = await importEventBackup(file);
-      setMessage({ text: `Imported “${name}”.`, error: false });
+      onResult({ ok: true, name });
     } catch (error) {
-      setMessage({
-        text: error instanceof Error ? error.message : "Couldn't import that file.",
-        error: true,
-      });
+      // The reason ("Missing schemaVersion", …) is for developers; people get
+      // plain words (BackupImportNotice).
+      console.error("Backup import failed:", error);
+      onResult({ ok: false });
     }
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {message && (
-        <span className={`text-xs ${message.error ? "text-error" : "text-base-content/60"}`}>
-          {message.text}
-        </span>
-      )}
+    <>
       <input
         ref={inputRef}
         type="file"
@@ -46,6 +47,6 @@ export function ImportBackupButton(): JSX.Element {
       >
         Import backup
       </button>
-    </div>
+    </>
   );
 }

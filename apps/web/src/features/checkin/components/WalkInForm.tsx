@@ -8,7 +8,8 @@ export function WalkInForm({
   onDone,
 }: {
   initialName: string;
-  onDone: (name: string | null) => void;
+  /** The walk-in that was added, or null if cancelled. */
+  onDone: (added: { name: string; guestId: string | null } | null) => void;
 }): JSX.Element {
   const [name, setName] = useState(initialName);
 
@@ -16,8 +17,8 @@ export function WalkInForm({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    addWalkIn(trimmed);
-    onDone(trimmed);
+    const guestId = addWalkIn(trimmed);
+    onDone({ name: trimmed, guestId });
   }
 
   return (

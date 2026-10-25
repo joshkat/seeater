@@ -9,6 +9,7 @@ import {
 } from "@seating/shared";
 import { describe, expect, it } from "vitest";
 
+import { checkInAnnouncement } from "../lib/checkInAnnouncement";
 import { checkInList } from "../lib/checkInList";
 
 function event() {
@@ -54,5 +55,31 @@ describe("checkInList", () => {
     expect(names(waiting)).toEqual(["Grace Hopper", "Byron Lovelace"]);
     expect(waiting[1].partyWaitingIds).toEqual([]);
     expect(checkInList(doc, view(doc), "ada", "all")[0].partyWaitingIds).toEqual([byron]);
+  });
+
+  it("searches everyone, whatever the arrival filter", () => {
+    const { doc, ada } = event();
+    const inside = setCheckedIn(doc, [ada], "2026-06-01T19:00:00.000Z");
+    // "Did Ada already arrive?" finds her under "Not arrived"…
+    expect(names(checkInList(inside, view(inside), "ada", "waiting"))).toEqual(["Ada Lovelace"]);
+    // …and someone still to come under "Arrived".
+    expect(names(checkInList(inside, view(inside), "grace", "arrived"))).toEqual(["Grace Hopper"]);
+  });
+
+  it("keeps just-arrived guests listed under Not arrived", () => {
+    const { doc, ada } = event();
+    const inside = setCheckedIn(doc, [ada], "2026-06-01T19:00:00.000Z");
+    const rows = checkInList(inside, view(inside), "", "waiting", new Set([ada]));
+    expect(names(rows)).toEqual(["Grace Hopper", "Ada Lovelace", "Byron Lovelace"]);
+  });
+});
+
+describe("checkInAnnouncement", () => {
+  it("names the guest and their table, or the household's size", () => {
+    const { doc } = event();
+    const [grace, ada] = checkInList(doc, view(doc), "", "all");
+    expect(checkInAnnouncement(grace, 1)).toBe("Grace Hopper checked in, Table 1");
+    expect(checkInAnnouncement(ada, 2)).toBe("Ada Lovelace and 1 other checked in, no seat yet");
+    expect(checkInAnnouncement(ada, 4)).toBe("Ada Lovelace and 3 others checked in, no seat yet");
   });
 });
