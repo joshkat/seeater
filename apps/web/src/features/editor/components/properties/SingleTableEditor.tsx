@@ -68,6 +68,9 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
           id="seat-count"
           min={1}
           max={MAX_SEAT_COUNT}
+          // Blank keeps the current count: clearing the box to retype must
+          // not drop the table to one chair and unseat everyone.
+          emptyValue={table.seats.length}
           className="w-full"
           value={table.seats.length}
           onChange={(count) => setSeatCount(table.id, count)}
