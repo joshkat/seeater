@@ -43,9 +43,16 @@ export interface Overflow {
   guestIds: string[];
 }
 
+/** A button on a notice, e.g. Undo. */
+export interface NoticeAction {
+  label: string;
+  run: () => void;
+}
+
 export interface SeatingNotice {
   id: number;
   text: string;
+  action?: NoticeAction;
 }
 
 /**
@@ -96,8 +103,9 @@ interface SeatingFlowState {
   /** Closes whichever prompt is open without seating anyone. */
   dismiss: () => void;
   clearNotice: () => void;
-  /** Shows a short confirmation in the canvas toast slot. */
-  showNotice: (text: string) => void;
+  /** Shows a short confirmation in the canvas toast slot, optionally with a
+   * button (see showUndoNotice for the common Undo case). */
+  showNotice: (text: string, action?: NoticeAction) => void;
   reset: () => void;
 }
 
@@ -312,8 +320,8 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
       set({ notice: null });
     },
 
-    showNotice(text) {
-      set({ notice: { id: ++noticeId, text } });
+    showNotice(text, action) {
+      set({ notice: { id: ++noticeId, text, action } });
     },
 
     reset() {

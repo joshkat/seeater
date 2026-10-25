@@ -43,3 +43,8 @@ export function undoEdit(): boolean {
 export function redoEdit(): boolean {
   return step("redo");
 }
+
+/** A notice with an Undo button (works on touch screens, where ⌘Z doesn't). */
+export function showUndoNotice(text: string): void {
+  useSeatingFlowStore.getState().showNotice(text, { label: "Undo", run: undoEdit });
+}

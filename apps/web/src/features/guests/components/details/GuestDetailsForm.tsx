@@ -2,11 +2,10 @@ import type { Guest, GuestPatch, RsvpStatus } from "@seating/shared";
 import { mealOptions, tagOptions } from "@seating/shared";
 import { type FormEvent, useId, useMemo, useState } from "react";
 
-import { shortcutLabel } from "../../../../lib/platform";
 import { useDocumentStore } from "../../../editor/store/documentStore";
+import { showUndoNotice } from "../../../editor/store/historyActions";
 import { locateGuestSeat } from "../../lib/locateGuest";
 import { useGuestStore } from "../../store/guestStore";
-import { useSeatingFlowStore } from "../../store/seatingFlowStore";
 import { RsvpControl } from "../RsvpControl";
 import { TagInput } from "./TagInput";
 
@@ -61,9 +60,7 @@ export function GuestDetailsForm({ guest, onClose }: GuestDetailsFormProps): JSX
   function handleDelete(): void {
     removeGuest(guest.id);
     onClose();
-    useSeatingFlowStore
-      .getState()
-      .showNotice(`Deleted ${guest.name}. Undo with ${shortcutLabel("Z")}.`);
+    showUndoNotice(`Deleted ${guest.name}.`);
   }
 
   return (
