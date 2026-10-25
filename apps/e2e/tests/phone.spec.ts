@@ -37,3 +37,35 @@ test("check-in works on a phone", async ({ page }) => {
   await page.getByRole("button", { name: "Check in all 4" }).first().tap();
   await expect(page.getByText(/of \d+ arrived/)).toHaveText("4 of 44 arrived");
 });
+
+// ── UX pass: guest list (UX-30) ─────────────────────────────────────────────
+
+test("the phone guest drawer opens on search, with compact rows", async ({ page }) => {
+  await page.getByRole("button", { name: "Guests", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Guests" });
+  const height = page.viewportSize()!.height;
+
+  // Search is on the first screen; the add form and bulk bar stay out of the way.
+  const search = panel.getByRole("searchbox", { name: "Search guests" });
+  // (The review found it at y = 787, below the fold of an 812px screen.)
+  const searchTop = (await search.boundingBox())!.y;
+  expect(searchTop).toBeLessThan(height * 0.6);
+  expect(searchTop - (await panel.boundingBox())!.y).toBeLessThan(150);
+  await expect(panel.getByLabel("Guest name")).toHaveCount(0);
+  await expect(panel.getByRole("region", { name: "Selected guests" })).toHaveCount(0);
+
+  // An unseated row keeps its RSVP on the name's line (~64px, not ~100px).
+  const row = panel.locator("li.cursor-grab").first();
+  const rowBox = (await row.boundingBox())!;
+  expect(rowBox.height).toBeLessThanOrEqual(70);
+  const rsvpBox = (await row.getByRole("button", { name: /^RSVP for / }).boundingBox())!;
+  expect(rsvpBox.y).toBeLessThan(rowBox.y + 20);
+
+  // Ticking a guest docks the bar at the bottom of the drawer.
+  await row.getByRole("checkbox").locator("..").tap();
+  const bar = panel.getByRole("region", { name: "Selected guests" });
+  await expect(bar).toBeVisible();
+  const barBox = (await bar.boundingBox())!;
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual(height + 1);
+  expect(barBox.y + barBox.height).toBeGreaterThan(height - 80);
+});
