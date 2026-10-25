@@ -1,12 +1,15 @@
 import { TABLE_PRESETS } from "@seating/shared";
 import { useState } from "react";
 
+import { useUnits } from "../../hooks/useDocumentSelectors";
+import { presetLabel } from "../../lib/presetLabel";
 import { useEditorStore } from "../../store/editorStore";
 import { TableGridDialog } from "./TableGridDialog";
 
-/** "+ More ▾": real-size table presets, a row of chairs, and a grid of tables. */
+/** "+ Tables ▾": real-size table presets, a row of chairs, and a grid of tables. */
 export function AddTableMenu(): JSX.Element {
   const addPresetTable = useEditorStore((state) => state.addPresetTable);
+  const { units } = useUnits();
   const [gridOpen, setGridOpen] = useState(false);
 
   const closeMenu = (): void => (document.activeElement as HTMLElement | null)?.blur();
@@ -15,7 +18,7 @@ export function AddTableMenu(): JSX.Element {
     <>
       <div className="dropdown">
         <button type="button" tabIndex={0} className="btn btn-primary btn-sm btn-outline">
-          + More ▾
+          + Tables ▾
         </button>
         <ul className="dropdown-content menu z-30 mt-1 w-60 rounded-box border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-lg">
           <li className="menu-title">Tables (real sizes)</li>
@@ -28,7 +31,7 @@ export function AddTableMenu(): JSX.Element {
                   addPresetTable(preset);
                 }}
               >
-                {preset.name}
+                {presetLabel(preset, units)}
               </button>
             </li>
           ))}

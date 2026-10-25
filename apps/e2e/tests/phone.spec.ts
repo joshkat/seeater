@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test("the editor fits a phone: compact toolbar, readable guest rows", async ({ page }) => {
   // Nothing in the header or toolbar runs off the right edge.
   const width = page.viewportSize()!.width;
-  for (const name of ["Check-in", "Properties", "Theme", "+ More ▾"]) {
+  for (const name of ["Check-in", "Properties", "Theme", "+ Tables ▾"]) {
     const role = name === "Check-in" ? "link" : "button";
     const box = await page.getByRole(role, { name, exact: true }).boundingBox();
     expect(box, name).not.toBeNull();

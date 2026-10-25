@@ -22,8 +22,8 @@ export function EmptyRoomHint(): JSX.Element | null {
         <div className="pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-box border border-base-300 bg-base-100/95 p-6 text-center text-base-content shadow">
           <p className="font-semibold">This room is empty</p>
           <p className="text-sm text-base-content/60">
-            Add tables from the toolbar (+ More has real sizes, rows of chairs and grids), or set up
-            a whole room from a template.
+            Add tables from the toolbar (+ Tables has real sizes, rows of chairs and grids), or set
+            up a whole room from a template.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             <button

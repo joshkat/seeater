@@ -18,7 +18,9 @@ import { showUndoNotice } from "./historyActions";
  * you can pick guests and then switch to the layout to seat them in.
  */
 function afterLayoutChange(): void {
-  useEditorStore.getState().resetView();
+  const editor = useEditorStore.getState();
+  editor.clearSelection();
+  editor.resetView();
   useSeatingFlowStore.getState().dismiss();
 }
 

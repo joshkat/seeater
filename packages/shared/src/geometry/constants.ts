@@ -53,7 +53,9 @@ export type ChairSides = "around" | "one-side" | "long-sides";
 /** A ready-made table: real sizes (cm) and a typical chair count. */
 export interface TablePreset {
   id: string;
-  name: string;
+  /** Short kind name ("Round", "Banquet"); the app adds the size in the
+   * event's units and the chair count. */
+  kind: string;
   shape: TableShape;
   size: Size;
   seatCount: number;
@@ -64,7 +66,7 @@ export interface TablePreset {
 export const TABLE_PRESETS: TablePreset[] = [
   {
     id: "round-48",
-    name: "Round 48″ (4 ft) · 6",
+    kind: "Round",
     shape: "round",
     size: { width: 122, height: 122 },
     seatCount: 6,
@@ -72,7 +74,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "round-60",
-    name: "Round 60″ (5 ft) · 8",
+    kind: "Round",
     shape: "round",
     size: { width: 152, height: 152 },
     seatCount: 8,
@@ -80,7 +82,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "round-72",
-    name: "Round 72″ (6 ft) · 10",
+    kind: "Round",
     shape: "round",
     size: { width: 183, height: 183 },
     seatCount: 10,
@@ -88,7 +90,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "banquet-6",
-    name: "Banquet 6 ft · 6",
+    kind: "Banquet",
     shape: "rectangle",
     size: { width: 183, height: 76 },
     seatCount: 6,
@@ -96,7 +98,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "banquet-8",
-    name: "Banquet 8 ft · 8",
+    kind: "Banquet",
     shape: "rectangle",
     size: { width: 244, height: 76 },
     seatCount: 8,
@@ -104,7 +106,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "head-8",
-    name: "Head table 8 ft · 4",
+    kind: "Head table",
     shape: "rectangle",
     size: { width: 244, height: 76 },
     seatCount: 4,
@@ -112,7 +114,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "head-16",
-    name: "Head table 16 ft · 8",
+    kind: "Head table",
     shape: "rectangle",
     size: { width: 488, height: 76 },
     seatCount: 8,
@@ -120,7 +122,7 @@ export const TABLE_PRESETS: TablePreset[] = [
   },
   {
     id: "row-10",
-    name: "Row of chairs · 10",
+    kind: "Row of chairs",
     shape: "row",
     size: { width: rowWidthFor(10), height: ROW_DEPTH },
     seatCount: 10,
