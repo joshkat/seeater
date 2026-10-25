@@ -2,8 +2,10 @@ import { shortcutLabel } from "../../../lib/platform";
 import { useHistoryAvailability } from "../hooks/useDocumentSelectors";
 import { redoEdit, undoEdit } from "../store/historyActions";
 
-/** Toolbar undo / redo (the keyboard shortcuts do the same). */
-export function UndoRedoButtons(): JSX.Element {
+/** Toolbar undo / redo (the keyboard shortcuts do the same). The words show
+ * on wide screens only, unless `labelUndo` keeps "Undo" visible everywhere
+ * (check-in, where an unlabelled ↶ on a phone is easy to miss). */
+export function UndoRedoButtons({ labelUndo = false }: { labelUndo?: boolean }): JSX.Element {
   const { canUndo, canRedo } = useHistoryAvailability();
 
   return (
@@ -16,7 +18,7 @@ export function UndoRedoButtons(): JSX.Element {
         title={`Undo (${shortcutLabel("Z")})`}
         onClick={undoEdit}
       >
-        ↶ <span className="max-xl:hidden">Undo</span>
+        ↶ <span className={labelUndo ? "" : "max-xl:hidden"}>Undo</span>
       </button>
       <button
         type="button"

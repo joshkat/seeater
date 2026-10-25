@@ -16,12 +16,18 @@ export interface CheckInRow extends SeatingRow {
  * The door list: guests sorted by surname, narrowed by the search text and
  * the arrival filter. Declined guests who haven't arrived are left out unless
  * the search finds them (someone who said no may still turn up).
+ *
+ * A search looks at everyone, whatever the arrival filter: "did my aunt
+ * already arrive?" must find her, not offer to add her again as a walk-in.
+ * Guests in `keep` (just checked in) stay listed under "Not arrived" for a
+ * moment, so the door can see it worked.
  */
 export function checkInList(
   doc: EventDoc,
   view: LayoutView,
   query: string,
   arrival: ArrivalFilter,
+  keep: ReadonlySet<string> = new Set(),
 ): CheckInRow[] {
   const households = new Map(doc.households.map((h) => [h.id, h.name]));
   const filter = { ...NO_FILTER, query };
@@ -37,8 +43,10 @@ export function checkInList(
   return seatingRows(doc, view)
     .filter(({ guest }) => {
       const arrived = guest.checkedInAt !== null;
-      if (arrival === "waiting" && arrived) return false;
-      if (arrival === "arrived" && !arrived) return false;
+      if (!searching && !keep.has(guest.id)) {
+        if (arrival === "waiting" && arrived) return false;
+        if (arrival === "arrived" && !arrived) return false;
+      }
       if (!searching && !arrived && guest.rsvpStatus === "declined") return false;
       return matchesFilter(guest, filter, (id) => households.get(id));
     })
