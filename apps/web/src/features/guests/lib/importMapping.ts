@@ -53,13 +53,49 @@ export function suggestMapping(rows: string[][], hasHeader: boolean): ColumnMapp
     return Array.from({ length: count }, (_, index) => POSITIONAL_FIELDS[index] ?? "ignore");
   }
   const header = rows[0] ?? [];
+  const data = rows.slice(1);
   const used = new Set<ImportField>();
   return Array.from({ length: count }, (_, index) => {
-    const field = fieldForHeader(header[index] ?? "");
+    const values = data.map((row) => row[index] ?? "");
+    const field = fieldForHeader(header[index] ?? "", values);
     if (!field || used.has(field)) return "ignore";
     used.add(field);
     return field;
   });
+}
+
+/**
+ * The mapping after "First row is a header" is toggled: columns the user
+ * picked by hand keep their pick (by position); the rest get the new
+ * suggestion.
+ */
+export function remapForHeader(
+  rows: string[][],
+  hasHeader: boolean,
+  current: ColumnMapping,
+  userEdited: ReadonlySet<number>,
+): ColumnMapping {
+  return suggestMapping(rows, hasHeader).map((suggested, index) =>
+    userEdited.has(index) ? (current[index] ?? suggested) : suggested,
+  );
+}
+
+/**
+ * Columns with data that won't be imported (mapped to Ignore), by label —
+ * for "2 columns won't be imported: Partner First Name, Street Address."
+ */
+export function ignoredColumns(
+  rows: string[][],
+  hasHeader: boolean,
+  mapping: ColumnMapping,
+): string[] {
+  const labels = columnLabels(rows, hasHeader);
+  const data = dataRows(rows, hasHeader);
+  return labels.filter(
+    (_, index) =>
+      (mapping[index] ?? "ignore") === "ignore" &&
+      data.some((row) => (row[index] ?? "").trim() !== ""),
+  );
 }
 
 const DECLINED =
@@ -97,6 +133,33 @@ export interface MappedGuest {
   input: GuestInput;
   /** Index into the data rows (after the header). */
   row: number;
+  /** The second person on a party-per-row line (Partner first/last name). */
+  partner?: boolean;
+}
+
+/** Identifies a mapped guest across mapping changes (row, and which person on it). */
+export function guestKey(guest: MappedGuest): string {
+  return guest.partner ? `${guest.row}:partner` : `${guest.row}`;
+}
+
+/** The row number as the file shows it (counting the header), e.g. for "Sam Lee (row 9)". */
+export function fileRowNumber(row: number, hasHeader: boolean): number {
+  return row + (hasHeader ? 2 : 1);
+}
+
+/** A one-word partner name ("Lou") takes the guest's last name; a full one is kept. */
+function partnerName(first: string, last: string, guestLast: string): string {
+  if (!first && !last) return "";
+  const surname = last || (first && !/\s/.test(first) ? guestLast : "");
+  return [first, surname].filter(Boolean).join(" ");
+}
+
+/** A pair's household: the party column, else their last names ("Hill", "Hill & Moss"),
+ * else both names. */
+function pairHousehold(party: string, lastNames: string[], names: [string, string]): string {
+  if (party) return party;
+  const unique = [...new Map(lastNames.filter(Boolean).map((n) => [n.toLowerCase(), n])).values()];
+  return unique.length > 0 ? unique.join(" & ") : names.join(" & ");
 }
 
 export interface MappedRows {
@@ -116,6 +179,11 @@ export function dataRows(rows: string[][], hasHeader: boolean): string[][] {
  * one field are combined (text joined, tags merged; email, phone, RSVP,
  * household and meal take the first filled one). Only mapped fields appear on
  * the input (email and phone are always present, null when blank).
+ *
+ * A row with a partner (Partner first / last name) gives a second guest right
+ * after the first, in the same household (the party column, else their last
+ * names), with the row's RSVP and tags. Their own email, meal and other
+ * details aren't on the row, so they're left blank.
  */
 export function mapRows(rows: string[][], hasHeader: boolean, mapping: ColumnMapping): MappedRows {
   const columns = (field: ImportField): number[] =>
@@ -131,32 +199,52 @@ export function mapRows(rows: string[][], hasHeader: boolean, mapping: ColumnMap
 
   const guests: MappedGuest[] = [];
   let skipped = 0;
+  const tidy = (name: string): string => name.replace(/\s+/g, " ").trim();
   dataRows(rows, hasHeader).forEach((row, index) => {
-    const name =
+    const lastName = joined(row, "lastName", " ");
+    const name = tidy(
       joined(row, "name", " ") ||
-      [joined(row, "firstName", " "), joined(row, "lastName", " ")].filter(Boolean).join(" ");
-    if (!name) {
+        [joined(row, "firstName", " "), lastName].filter(Boolean).join(" "),
+    );
+    const partnerLast = joined(row, "partnerLastName", " ");
+    const partner = tidy(partnerName(joined(row, "partnerFirstName", " "), partnerLast, lastName));
+    if (!name && !partner) {
       skipped += 1;
       return;
     }
-    const input: GuestInput = {
-      name: name.replace(/\s+/g, " "),
-      email: first(row, "email") || null,
-      phone: first(row, "phone") || null,
-    };
-    const household = first(row, "household");
-    if (household) input.household = household;
-    const meal = first(row, "meal");
-    if (meal) input.meal = meal;
-    for (const key of ["dietary", "accessibility", "notes"] as const) {
-      const value = joined(row, key, "; ");
-      if (value) input[key] = value;
-    }
     const tags = values(row, "tags").flatMap(splitTags);
-    if (tags.length > 0) input.tags = tags;
-    if (values(row, "isChild").some(looksLikeChild)) input.isChild = true;
-    if (has("rsvp")) input.rsvpStatus = parseRsvp(first(row, "rsvp"));
-    guests.push({ input, row: index });
+    const rsvp = has("rsvp") ? parseRsvp(first(row, "rsvp")) : undefined;
+    const party = first(row, "household");
+    // A full name in the partner column ("Jo Park") carries its own surname.
+    const partnerSurname = partnerLast || (partner.includes(" ") ? partner.split(" ").pop()! : "");
+    const household =
+      name && partner ? pairHousehold(party, [lastName, partnerSurname], [name, partner]) : party;
+
+    if (name) {
+      const input: GuestInput = {
+        name,
+        email: first(row, "email") || null,
+        phone: first(row, "phone") || null,
+      };
+      if (household) input.household = household;
+      const meal = first(row, "meal");
+      if (meal) input.meal = meal;
+      for (const key of ["dietary", "accessibility", "notes"] as const) {
+        const value = joined(row, key, "; ");
+        if (value) input[key] = value;
+      }
+      if (tags.length > 0) input.tags = tags;
+      if (values(row, "isChild").some(looksLikeChild)) input.isChild = true;
+      if (rsvp) input.rsvpStatus = rsvp;
+      guests.push({ input, row: index });
+    }
+    if (partner) {
+      const input: GuestInput = { name: partner, email: null, phone: null };
+      if (household) input.household = household;
+      if (tags.length > 0) input.tags = tags;
+      if (rsvp) input.rsvpStatus = rsvp;
+      guests.push({ input, row: index, partner: true });
+    }
   });
   return { guests, skipped };
 }
@@ -188,16 +276,29 @@ export function findDuplicates(
   });
 }
 
+/** A likely duplicate that Import will leave out, for the notice. */
+export interface SkippedDuplicate {
+  name: string;
+  /** As the file numbers it (see fileRowNumber). */
+  fileRow: number;
+}
+
 /** Everything the dialog shows and imports for one mapping. */
 export interface ImportPlan {
   guests: MappedGuest[];
   duplicates: (DuplicateKind | null)[];
+  /** Per guest: left out of the import (a duplicate, skipped, not imported anyway). */
+  excluded: boolean[];
   /** Rows without a name. */
   skipped: number;
   existingDuplicates: number;
   fileDuplicates: number;
+  /** The duplicates being left out, in file order. */
+  skippedDuplicates: SkippedDuplicate[];
   /** What Import adds (duplicates left out when skipping them). */
   toImport: GuestInput[];
+  /** How many of `toImport` are partners from party-per-row lines. */
+  partnersToImport: number;
 }
 
 export function planImport(
@@ -207,6 +308,8 @@ export function planImport(
     mapping: ColumnMapping;
     existingNames: Iterable<string>;
     skipDuplicates: boolean;
+    /** guestKey()s of duplicates to import even though duplicates are skipped. */
+    importAnyway?: ReadonlySet<string>;
   },
 ): ImportPlan {
   const { guests, skipped } = mapRows(rows, options.hasHeader, options.mapping);
@@ -214,16 +317,51 @@ export function planImport(
     guests.map((guest) => guest.input),
     options.existingNames,
   );
+  const excluded = guests.map(
+    (guest, index) =>
+      options.skipDuplicates &&
+      duplicates[index] !== null &&
+      !options.importAnyway?.has(guestKey(guest)),
+  );
+  const kept = guests.filter((_, index) => !excluded[index]);
   return {
     guests,
     duplicates,
+    excluded,
     skipped,
     existingDuplicates: duplicates.filter((kind) => kind === "existing").length,
     fileDuplicates: duplicates.filter((kind) => kind === "file").length,
-    toImport: guests
-      .filter((_, index) => !(options.skipDuplicates && duplicates[index]))
-      .map((guest) => guest.input),
+    skippedDuplicates: guests
+      .filter((_, index) => excluded[index])
+      .map((guest) => ({
+        name: guest.input.name,
+        fileRow: fileRowNumber(guest.row, options.hasHeader),
+      })),
+    toImport: kept.map((guest) => guest.input),
+    partnersToImport: kept.filter((guest) => guest.partner).length,
   };
+}
+
+/** "Skipping 1 likely duplicate: Sam Lee (row 9)." — names up to `limit`, then "and N more". */
+export function skippedDuplicatesText(skipped: SkippedDuplicate[], limit = 5): string {
+  if (skipped.length === 0) return "";
+  const named = skipped.slice(0, limit).map((entry) => `${entry.name} (row ${entry.fileRow})`);
+  const more = skipped.length - named.length;
+  const list = more > 0 ? `${named.join(", ")} and ${more} more` : named.join(", ");
+  return `Skipping ${skipped.length} likely duplicate${skipped.length === 1 ? "" : "s"}: ${list}.`;
+}
+
+/** "2 columns won't be imported: Title, Street Address." */
+export function ignoredColumnsText(labels: string[]): string {
+  if (labels.length === 0) return "";
+  const count = labels.length === 1 ? "1 column won’t" : `${labels.length} columns won’t`;
+  return `${count} be imported: ${labels.join(", ")}.`;
+}
+
+/** The Import button: "Import 3 guests (1 partner)". */
+export function importButtonLabel(count: number, partners: number): string {
+  const base = `Import ${count} guest${count === 1 ? "" : "s"}`;
+  return partners > 0 ? `${base} (${partners} partner${partners === 1 ? "" : "s"})` : base;
 }
 
 /** Whether a mapping gives guests a name at all (Import needs one). */
@@ -231,7 +369,8 @@ export function mapsAName(mapping: ColumnMapping): boolean {
   return mapping.some((field) => NAME_FIELDS.has(field));
 }
 
-/** The mapped fields in picker order, without name parts or "ignore" (preview columns). */
+/** The mapped fields in picker order, without name (or partner name) parts or "ignore"
+ * (preview columns). */
 export function previewFields(mapping: ColumnMapping): ImportField[] {
   const order: ImportField[] = [
     "email",
