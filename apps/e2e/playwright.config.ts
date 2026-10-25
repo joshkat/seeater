@@ -1,8 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/** Port for the production preview the tests run against. */
+/** Port for the production preview the tests run against. Override with
+ * E2E_PORT to run two checkouts' suites side by side (each reuses whatever
+ * server is already on its port). */
 // Not 4190: WebKit refuses it (a "restricted" port, ManageSieve).
-const PORT = 4280;
+const PORT = Number(process.env.E2E_PORT ?? 4280);
 
 /**
  * End-to-end tests against the production build (`vite build` + `vite
