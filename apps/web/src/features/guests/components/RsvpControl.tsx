@@ -41,6 +41,9 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
   // Tabbing onto the badge expands it; move focus onto the checked option so
   // it isn't lost when the badge goes away.
   const focusOnExpand = useRef(false);
+  // After a pick the badge appears under the still pointer, and the browser
+  // reports that as the pointer entering it. Don't re-open for that.
+  const pickedAt = useRef(0);
   useEffect(() => {
     if (!expanded || !focusOnExpand.current) return;
     focusOnExpand.current = false;
@@ -53,7 +56,9 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
     return (
       <button
         type="button"
-        onMouseEnter={() => setHovered(true)}
+        onMouseEnter={() => {
+          if (performance.now() - pickedAt.current > 500) setHovered(true);
+        }}
         // The pointer can leave before the expanded group has rendered.
         onMouseLeave={() => setHovered(false)}
         onFocus={() => {
@@ -78,6 +83,7 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
   // Picking with the pointer collapses it again (needed on touch, where
   // there's no mouse leave). The keyboard keeps it open while focus is inside.
   const choose = (next: RsvpStatus): void => {
+    pickedAt.current = performance.now();
     setHovered(false);
     onChange(next);
   };
