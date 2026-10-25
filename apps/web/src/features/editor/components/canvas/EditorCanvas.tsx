@@ -23,6 +23,7 @@ import {
 } from "../../hooks/useDocumentSelectors";
 import { categoryColors, chairColor } from "../../lib/chairColors";
 import { useEditorStore } from "../../store/editorStore";
+import { useTablePreviewStore } from "../../store/tablePreviewStore";
 import { useViewPrefsStore } from "../../store/viewPrefsStore";
 import type { AlignmentGuide } from "../../types";
 import { AlignmentGuides } from "./AlignmentGuides";
@@ -68,6 +69,8 @@ export function EditorCanvas(): JSX.Element {
   const updateRoomObject = useEditorStore((state) => state.updateRoomObject);
   const selectedIds = useEditorStore((state) => state.selectedIds);
   const highlightedSeatId = useEditorStore((state) => state.highlightedSeatId);
+  // A table the overflow prompt is pointing at (hover / focus on its chip).
+  const previewTableId = useTablePreviewStore((state) => state.tableId);
   const viewport = useEditorStore((state) => state.viewport);
   const stageSize = useEditorStore((state) => state.stageSize);
   const selectTable = useEditorStore((state) => state.selectTable);
@@ -442,7 +445,7 @@ export function EditorCanvas(): JSX.Element {
               key={table.id}
               table={table}
               selected={selectedIds.includes(table.id)}
-              dropHighlight={dropHighlightTableId === table.id}
+              dropHighlight={dropHighlightTableId === table.id || previewTableId === table.id}
               highlightedSeatId={highlightedSeatId}
               ruleWarning={ruleTableIds.has(table.id)}
               tableNumber={index + 1}
