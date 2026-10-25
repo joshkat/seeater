@@ -9,6 +9,9 @@
 [data-theme="synthwave"] {
   --color-error: #dc2626;
   --color-error-content: #ffffff;
+  /* DaisyUI's oklch(78% …) leaves base-content/60 helper text at 4.0:1 on the
+     purple background; 85% lifts it to 4.7:1 (WCAG AA). */
+  --color-base-content: oklch(85% 0.115 274.713);
 }
 
 /* Custom DaisyUI theme tuned to the app's existing slate/blue palette so the
