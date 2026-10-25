@@ -1,7 +1,5 @@
 import { create } from "zustand";
 
-import { captureChart } from "../lib/chartCapture";
-
 /** The printable documents. */
 export type PrintKind = "chart" | "rosters" | "find-your-seat" | "place-cards" | "escort-cards";
 
@@ -16,20 +14,23 @@ export const PRINT_KINDS: { value: PrintKind; label: string }[] = [
 /** Which printable document is open (null = none). */
 interface PrintState {
   kind: PrintKind | null;
-  /** The chart image, captured from the canvas when the chart is opened. */
-  chartUrl: string | null;
+  /** A layout picked in the print view (null = each kind's default). */
+  layoutId: string | null;
   open: (kind: PrintKind) => void;
+  setLayoutId: (layoutId: string) => void;
   close: () => void;
 }
 
 export const usePrintStore = create<PrintState>((set) => ({
   kind: null,
-  chartUrl: null,
+  layoutId: null,
   open(kind) {
-    // The chart is the canvas as it is right now (the active layout).
-    set(kind === "chart" ? { kind, chartUrl: captureChart() } : { kind });
+    set({ kind });
+  },
+  setLayoutId(layoutId) {
+    set({ layoutId });
   },
   close() {
-    set({ kind: null, chartUrl: null });
+    set({ kind: null, layoutId: null });
   },
 }));

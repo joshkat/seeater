@@ -1,6 +1,7 @@
 /**
  * The canvas registers how to render the whole floor plan as an image; the
- * export menu (outside the canvas) asks for it. One canvas at a time.
+ * export menu (outside the canvas) asks for it for "Chart image (PNG)". One
+ * canvas at a time. (The printed chart is drawn as SVG instead: chartScene.)
  */
 type Capture = () => string | null;
 

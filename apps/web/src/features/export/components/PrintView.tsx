@@ -4,12 +4,16 @@ import { createPortal } from "react-dom";
 
 import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
+import { CHART_COLOR_MODES, type ChartColorMode, chartScene } from "../lib/chartScene";
+import { defaultPrintLayoutId } from "../lib/printLayout";
 import { alphabetical, seatingRows, tableRosters } from "../lib/seatingRows";
 import { PRINT_KINDS, type PrintKind, usePrintStore } from "../store/printStore";
+import { ChartPrintOptions } from "./print/ChartPrintOptions";
 import { ChartSheet } from "./print/ChartSheet";
 import { EscortCards } from "./print/EscortCards";
 import { FindYourSeatSheet } from "./print/FindYourSeatSheet";
 import { PlaceCards } from "./print/PlaceCards";
+import { PrintLayoutPicker } from "./print/PrintLayoutPicker";
 import { RosterSheets } from "./print/RosterSheets";
 
 /**
@@ -25,9 +29,11 @@ export function PrintView(): JSX.Element | null {
   useModalFocus(boxRef, kind !== null);
   const doc = useDocumentStore((state) => state.doc);
   const views = useMemo(() => (doc ? layoutViews(doc) : []), [doc]);
-  const [layoutId, setLayoutId] = useState<string | null>(null);
+  const layoutId = usePrintStore((state) => state.layoutId);
+  const setLayoutId = usePrintStore((state) => state.setLayoutId);
   const [includeDeclined, setIncludeDeclined] = useState(false);
-  const chartUrl = usePrintStore((state) => state.chartUrl);
+  const [showNames, setShowNames] = useState(false);
+  const [color, setColor] = useState<ChartColorMode>("none");
 
   useEffect(() => {
     if (!kind) return;
@@ -36,13 +42,27 @@ export function PrintView(): JSX.Element | null {
   }, [kind]);
 
   if (!kind || !doc) return null;
-  const active = views.find((view) => view.active)!;
-  const view = kind === "chart" ? active : (views.find((v) => v.id === layoutId) ?? active);
+  // A layout picked here applies to every print kind until the view closes;
+  // until then each kind starts on its own default (see defaultPrintLayoutId).
+  const view =
+    views.find((candidate) => candidate.id === (layoutId ?? defaultPrintLayoutId(kind, views))) ??
+    views.find((candidate) => candidate.active)!;
   const rows = seatingRows(doc, view);
   const options = { includeDeclined };
+  const colorLabel =
+    color === "none"
+      ? null
+      : (CHART_COLOR_MODES.find((mode) => mode.value === color)?.label ?? null);
 
   const sheet: Record<PrintKind, JSX.Element> = {
-    chart: <ChartSheet imageUrl={chartUrl} title={doc.name} layoutName={active.name} />,
+    chart: (
+      <ChartSheet
+        scene={chartScene(doc, view, { showNames, color, includeDeclined })}
+        title={doc.name}
+        layoutName={view.name}
+        colorLabel={colorLabel}
+      />
+    ),
     rosters: <RosterSheets title={doc.name} rosters={tableRosters(rows, options)} />,
     "find-your-seat": <FindYourSeatSheet title={doc.name} rows={alphabetical(rows, options)} />,
     "place-cards": <PlaceCards rows={alphabetical(rows, options)} />,
@@ -73,35 +93,25 @@ export function PrintView(): JSX.Element | null {
             </button>
           ))}
         </div>
-        {kind !== "chart" && views.length > 1 && (
-          <select
-            aria-label="Layout"
-            className="select select-sm w-auto"
-            value={view.id}
-            onChange={(event) => setLayoutId(event.target.value)}
-          >
-            {views.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
+        {views.length > 1 && (
+          <PrintLayoutPicker views={views} value={view.id} onChange={setLayoutId} />
         )}
-        {kind !== "chart" && (
-          <label className="label cursor-pointer gap-1.5 text-sm">
-            <input
-              type="checkbox"
-              className="checkbox checkbox-sm"
-              checked={includeDeclined}
-              onChange={(event) => setIncludeDeclined(event.target.checked)}
-            />
-            Include declined guests
-          </label>
-        )}
-        {kind === "chart" && views.length > 1 && (
-          <span className="text-xs text-base-content/60">
-            The chart shows the current layout. Switch layouts to print another.
-          </span>
+        <label className="label cursor-pointer gap-1.5 text-sm">
+          <input
+            type="checkbox"
+            className="checkbox checkbox-sm"
+            checked={includeDeclined}
+            onChange={(event) => setIncludeDeclined(event.target.checked)}
+          />
+          Include declined guests
+        </label>
+        {kind === "chart" && (
+          <ChartPrintOptions
+            showNames={showNames}
+            onShowNamesChange={setShowNames}
+            color={color}
+            onColorChange={setColor}
+          />
         )}
         <span className="flex-1" />
         <button type="button" className="btn btn-primary btn-sm" onClick={() => window.print()}>
