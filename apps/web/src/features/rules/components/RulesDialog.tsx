@@ -1,9 +1,11 @@
-import { contradictoryPairs, removeRule } from "@seating/shared";
-import { useEffect, useMemo, useRef } from "react";
+import type { SeatingRule } from "@seating/shared";
+import { addRule, contradictoryPairs, removeRule } from "@seating/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { useRuleProblems } from "../hooks/useRuleProblems";
+import { RuleGuestPicker } from "./RuleGuestPicker";
 import { RuleRow } from "./RuleRow";
 
 /** Every seating rule, whether it holds in this layout, and contradictions. */
@@ -16,6 +18,8 @@ export function RulesDialog({ onClose }: { onClose: () => void }): JSX.Element |
   const broken = useMemo(() => new Set(problems.map((problem) => problem.ruleId)), [problems]);
   const names = useMemo(() => new Map((doc?.guests ?? []).map((g) => [g.id, g.name])), [doc]);
   const contradictions = useMemo(() => (doc ? contradictoryPairs(doc) : []), [doc]);
+  /** The kind of rule being added, while the guest picker is open. */
+  const [adding, setAdding] = useState<SeatingRule["kind"] | null>(null);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -37,8 +41,8 @@ export function RulesDialog({ onClose }: { onClose: () => void }): JSX.Element |
           <div>
             <h2 className="text-lg font-semibold">Seating rules</h2>
             <p className="text-sm text-base-content/60">
-              To add one, tick guests, then More ▾ → Keep together / Keep apart. Rules only warn —
-              and Auto-seat follows them.
+              Rules only warn — and Auto-seat follows them. You can also tick guests in the list,
+              then More ▾ → Keep together / Keep apart.
             </p>
           </div>
           <button
@@ -54,6 +58,36 @@ export function RulesDialog({ onClose }: { onClose: () => void }): JSX.Element |
           <div role="alert" className="alert alert-error py-2 text-sm">
             {contradictions.map(([a, b]) => `${names.get(a)} & ${names.get(b)}`).join(", ")} are
             both kept together and kept apart.
+          </div>
+        )}
+        {adding ? (
+          <RuleGuestPicker
+            kind={adding}
+            guests={doc.guests}
+            onAdd={(guestIds) => {
+              apply((current) => addRule(current, adding, guestIds).doc);
+              setAdding(null);
+            }}
+            onCancel={() => setAdding(null)}
+          />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={doc.guests.length < 2}
+              onClick={() => setAdding("together")}
+            >
+              + Keep together
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={doc.guests.length < 2}
+              onClick={() => setAdding("apart")}
+            >
+              + Keep apart
+            </button>
           </div>
         )}
         <ul className="flex min-h-0 flex-col gap-1.5 overflow-y-auto">
