@@ -125,7 +125,7 @@ export function GuestDetailsForm({ guest, onClose }: GuestDetailsFormProps): JSX
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className={labelClass}>RSVP</span>
-          <RsvpControl status={rsvpStatus} onChange={setRsvpStatus} />
+          <RsvpControl status={rsvpStatus} onChange={setRsvpStatus} guestName={guest.name} />
         </div>
         <label className="label cursor-pointer gap-2 text-sm">
           <input
