@@ -21,6 +21,7 @@ import {
   useGuests,
   useTables,
 } from "../../hooks/useDocumentSelectors";
+import { useCanvasKeyboard } from "../../hooks/useCanvasKeyboard";
 import { categoryColors, chairColor } from "../../lib/chairColors";
 import { useEditorStore } from "../../store/editorStore";
 import { useViewPrefsStore } from "../../store/viewPrefsStore";
@@ -32,6 +33,7 @@ import { ChairColorLegend } from "./ChairColorLegend";
 import { Minimap } from "./Minimap";
 import type { SeatOccupant } from "./ChairNode";
 import { GridLayer } from "./GridLayer";
+import { KeyboardFocusRing } from "./KeyboardFocusRing";
 import { SelectionTransformer } from "./SelectionTransformer";
 import { TableNode } from "./TableNode";
 import { ZoomControls } from "./ZoomControls";
@@ -79,11 +81,16 @@ export function EditorCanvas(): JSX.Element {
   const setStageSize = useEditorStore((state) => state.setStageSize);
   const fitToView = useEditorStore((state) => state.fitToView);
   const focusTable = useEditorStore((state) => state.focusTable);
+  // Not drawn until the first fit, so a reload never flashes the room at 100%.
+  const fitted = useEditorStore((state) => state.homeViewport !== null);
   const clearFocus = useEditorStore((state) => state.clearFocus);
 
   const guests = useGuests();
   const requestSeating = useSeatingFlowStore((state) => state.requestSeating);
   const openPlacement = useSeatingFlowStore((state) => state.openPlacement);
+  const keyboard = useCanvasKeyboard(tables, roomObjects, selectedIds, selectTable, (id) =>
+    openPlacement(id, []),
+  );
 
   // seatId -> visual occupant (initials + color) for chair rendering. The
   // colour follows the "Colour chairs by" choice (guest, tag, meal, RSVP).
@@ -254,13 +261,14 @@ export function EditorCanvas(): JSX.Element {
     };
   }, [setStageSize]);
 
-  // Fit-to-view once per event, as soon as the stage has a size.
+  // Fit-to-view once per event, as soon as the stage has a size (and again if
+  // the per-event view state was reset, since the stage stays hidden until then).
   useEffect(() => {
-    if (!documentId || fittedFor.current === documentId) return;
+    if (!documentId || (fittedFor.current === documentId && fitted)) return;
     if (stageSize.width === 0 || stageSize.height === 0) return;
     fitToView();
     fittedFor.current = documentId;
-  }, [documentId, stageSize, fitToView]);
+  }, [documentId, stageSize, fitToView, fitted]);
 
   // Zoom in on a single selected table; restore the prior view when deselected.
   useEffect(() => {
@@ -398,13 +406,25 @@ export function EditorCanvas(): JSX.Element {
     <div
       ref={containerRef}
       data-drop-zone="canvas"
-      className="relative h-full w-full touch-none bg-base-200"
+      tabIndex={0}
+      role="group"
+      aria-label={`Floor plan, ${tables.length} table${tables.length === 1 ? "" : "s"}`}
+      aria-describedby="floor-plan-help"
+      className="relative h-full w-full touch-none bg-base-200 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+      {...keyboard.handlers}
     >
+      <p id="floor-plan-help" className="sr-only">
+        Tab moves between tables and room items.
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {keyboard.announcement}
+      </p>
       <ZoomControls />
       <ChairColorLegend />
       <Minimap />
       <Stage
         ref={stageRef}
+        className={fitted ? undefined : "invisible"}
         width={stageSize.width}
         height={stageSize.height}
         x={viewport.x}
@@ -474,6 +494,9 @@ export function EditorCanvas(): JSX.Element {
               dash={[4, 4]}
               listening={false}
             />
+          )}
+          {keyboard.focusedItem && (
+            <KeyboardFocusRing item={keyboard.focusedItem} scale={viewport.scale} />
           )}
           <SelectionTransformer selectedIds={selectedIds} nodeRefs={nodeRefs} />
         </Layer>
