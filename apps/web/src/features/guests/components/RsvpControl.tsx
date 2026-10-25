@@ -1,104 +1,141 @@
 import type { RsvpStatus } from "@seating/shared";
-import { useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import { PHONE_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
 import { rsvpMeta } from "../lib/rsvp";
 
 interface RsvpControlProps {
   status: RsvpStatus;
   onChange: (status: RsvpStatus) => void;
+  /** Whose RSVP this is, for screen readers ("RSVP for Grace Hopper"). */
+  guestName: string;
 }
 
+/** Option order, left to right (and for the arrow keys). */
+const OPTIONS: { status: RsvpStatus; glyph: string; label: string; activeClass: string }[] = [
+  { status: "pending", glyph: "Pending", label: "Pending", activeClass: "btn-active" },
+  { status: "accepted", glyph: "✓", label: "Going", activeClass: "btn-success" },
+  { status: "declined", glyph: "✗", label: "Declined", activeClass: "btn-error" },
+];
+
+const BADGE_TONE: Record<RsvpStatus, string> = {
+  pending: "badge-neutral",
+  accepted: "badge-success text-success-strong",
+  declined: "badge-error text-error-strong",
+};
+
 /**
- * Segmented RSVP control. When pending it shows all three options
- * ([Pending] [✓] [✗]); choosing Going/Declined collapses it to a single
- * colored badge that re-expands on hover so the choice can be changed.
+ * Segmented RSVP control, a radio group: [Pending] [✓] [✗]. Once Going or
+ * Declined is chosen it collapses to a single coloured badge that re-expands
+ * on hover, focus or tap so the choice can be changed. On phones Pending
+ * collapses too, so the badge fits on the name's line.
+ *
+ * Keyboard: Tab reaches the checked option; the arrow keys (and Home/End)
+ * move and choose, as in any radio group.
  */
-export function RsvpControl({ status, onChange }: RsvpControlProps): JSX.Element {
+export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): JSX.Element {
   const [hovered, setHovered] = useState(false);
-  const expanded = status === "pending" || hovered;
+  const phone = useMediaQuery(PHONE_QUERY);
+  const expanded = (status === "pending" && !phone) || hovered;
+  const groupRef = useRef<HTMLDivElement>(null);
+  // Tabbing onto the badge expands it; move focus onto the checked option so
+  // it isn't lost when the badge goes away.
+  const focusOnExpand = useRef(false);
+  useEffect(() => {
+    if (!expanded || !focusOnExpand.current) return;
+    focusOnExpand.current = false;
+    groupRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+  }, [expanded]);
 
   // Collapsed: a single soft badge for the chosen status.
   if (!expanded) {
     const meta = rsvpMeta(status);
-    const tone =
-      status === "accepted" ? "badge-success text-success-strong" : "badge-error text-error-strong";
     return (
       <button
         type="button"
         onMouseEnter={() => setHovered(true)}
-        onFocus={() => setHovered(true)}
+        // The pointer can leave before the expanded group has rendered.
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => {
+          focusOnExpand.current = true;
+          setHovered(true);
+        }}
         onClick={(event) => {
           // Tap (touch has no hover, and iOS doesn't focus on tap) opens it too.
           event.stopPropagation();
           setHovered(true);
         }}
         title={`RSVP: ${meta.label} — hover or tap to change`}
-        className={`badge badge-soft outline ${tone} shrink-0 cursor-pointer gap-1 border-none font-semibold pointer-coarse:min-h-11`}
+        aria-label={`RSVP for ${guestName}: ${meta.label}. Change`}
+        className={`badge badge-soft outline ${BADGE_TONE[status]} shrink-0 cursor-pointer gap-1 border-none font-semibold pointer-coarse:min-h-11`}
       >
-        <span aria-hidden>{meta.symbol}</span>
+        {status !== "pending" && <span aria-hidden>{meta.symbol}</span>}
         {meta.label}
       </button>
     );
   }
 
-  // Picking collapses it again (needed on touch, where there's no mouse leave).
+  // Picking with the pointer collapses it again (needed on touch, where
+  // there's no mouse leave). The keyboard keeps it open while focus is inside.
   const choose = (next: RsvpStatus): void => {
     setHovered(false);
     onChange(next);
   };
 
+  const onKeyDown = (event: KeyboardEvent): void => {
+    const index = OPTIONS.findIndex((option) => option.status === status);
+    const last = OPTIONS.length - 1;
+    const next =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? (index + 1) % OPTIONS.length
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? (index + last) % OPTIONS.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onChange(OPTIONS[next].status);
+    groupRef.current?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
+
   // Expanded: the three-option segmented control.
   return (
     <div
-      role="group"
-      aria-label="RSVP status"
+      ref={groupRef}
+      role="radiogroup"
+      aria-label={`RSVP for ${guestName}`}
       onMouseLeave={() => setHovered(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHovered(false);
+      }}
+      onKeyDown={onKeyDown}
       className="join shrink-0 text-base-content"
     >
-      <Segment
-        label="Pending"
-        active={status === "pending"}
-        activeClass="btn-active"
-        onClick={() => choose("pending")}
-      />
-      <Segment
-        label="✓"
-        title="Going"
-        active={status === "accepted"}
-        activeClass="btn-success"
-        onClick={() => choose("accepted")}
-      />
-      <Segment
-        label="✗"
-        title="Declined"
-        active={status === "declined"}
-        activeClass="btn-error"
-        onClick={() => choose("declined")}
-      />
+      {OPTIONS.map((option) => {
+        const checked = status === option.status;
+        return (
+          <button
+            key={option.status}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            aria-label={option.label}
+            tabIndex={checked ? 0 : -1}
+            title={option.label}
+            onClick={(event) => {
+              event.stopPropagation();
+              choose(option.status);
+            }}
+            className={`btn join-item btn-xs ${checked ? option.activeClass : "btn-ghost"}`}
+          >
+            {option.glyph}
+          </button>
+        );
+      })}
     </div>
-  );
-}
-
-interface SegmentProps {
-  label: string;
-  title?: string;
-  active: boolean;
-  activeClass: string;
-  onClick: () => void;
-}
-
-function Segment({ label, title, active, activeClass, onClick }: SegmentProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      title={title ?? label}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      className={`btn join-item btn-xs ${active ? activeClass : "btn-ghost"}`}
-    >
-      {label}
-    </button>
   );
 }

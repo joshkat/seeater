@@ -72,7 +72,7 @@ export function GuestListItem({
       <div
         className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center max-sm:ml-[3.25rem] max-sm:justify-start`}
       >
-        <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} />
+        <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} guestName={guest.name} />
       </div>
 
       <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end max-sm:ml-auto`}>
