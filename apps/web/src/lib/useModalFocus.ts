@@ -23,16 +23,34 @@ const INITIAL = [
  * placement dialog's "Replace?" confirmation over the dialog). */
 const openModals: HTMLElement[] = [];
 
+/** A radio group is one Tab stop, like the browser's: its checked radio, or
+ * the first one while none is checked. */
+function isRadioStop(element: HTMLElement): boolean {
+  if (!(element instanceof HTMLInputElement) || element.type !== "radio" || !element.name) {
+    return true;
+  }
+  if (element.checked) return true;
+  const radios = element.ownerDocument.querySelectorAll<HTMLInputElement>(
+    `input[type="radio"][name="${CSS.escape(element.name)}"]`,
+  );
+  return ![...radios].some((radio) => radio.checked) && radios[0] === element;
+}
+
 function focusables(container: HTMLElement): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (element) => !element.closest("[inert]") && element.getClientRects().length > 0,
+    (element) =>
+      element.tabIndex >= 0 &&
+      !element.closest("[inert]") &&
+      element.getClientRects().length > 0 &&
+      isRadioStop(element),
   );
 }
 
 /**
  * Modal focus handling: on open, moves focus into the dialog (an `autoFocus`
  * element if it already took focus, else the first field, else the primary
- * button, else the first focusable thing), keeps Tab and Shift+Tab inside it,
+ * button, else the first focusable thing), keeps Tab and Shift+Tab inside it
+ * (cycling every focusable element, buttons included, in every browser),
  * and on close puts focus back where it was (the trigger).
  *
  * Pass the element that holds the dialog's content (usually `.modal-box`).
@@ -55,22 +73,18 @@ export function useModalFocus(ref: RefObject<HTMLElement | null>, active = true)
     openModals.push(container);
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Tab" || openModals[openModals.length - 1] !== container) return;
+      // Move focus ourselves on every Tab: Safari's native Tab skips buttons
+      // and would jump to a field behind the dialog.
+      event.preventDefault();
       const items = focusables(container);
-      if (items.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
-      const current = document.activeElement;
-      const outside = !container.contains(current);
-      if (event.shiftKey && (current === first || outside)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (current === last || outside)) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (items.length === 0) return;
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const step = event.shiftKey ? -1 : 1;
+      const next =
+        index === -1
+          ? items[event.shiftKey ? items.length - 1 : 0]
+          : items[(index + step + items.length) % items.length];
+      next.focus();
     };
     document.addEventListener("keydown", onKeyDown);
 
