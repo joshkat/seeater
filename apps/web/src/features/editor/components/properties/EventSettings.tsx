@@ -4,7 +4,7 @@ import { NumberField } from "../../../../components/NumberField";
 import { PHONE_QUERY, useMediaQuery } from "../../../../lib/useMediaQuery";
 import { ExactPlacementToggle } from "../ExactPlacementToggle";
 import { useDimensions, useUnits } from "../../hooks/useDocumentSelectors";
-import { fromLargeUnit, largeUnitLabel, toLargeUnit } from "../../lib/units";
+import { fromLargeUnit, largeUnitLabel, resolveUnits, toLargeUnit } from "../../lib/units";
 import { useEditorStore } from "../../store/editorStore";
 import { FloorPlanImageSettings } from "./FloorPlanImageSettings";
 import { labelClass } from "./propertyStyles";
@@ -37,7 +37,8 @@ export function EventSettings(): JSX.Element {
           onChange={(event) => setUnits(event.target.value as UnitSystem)}
         >
           <option value="auto">
-            Automatic ({units === "imperial" ? "feet & inches" : "metres & cm"})
+            {/* What "auto" means here (the locale's units), whatever is picked now. */}
+            Automatic ({resolveUnits("auto") === "imperial" ? "feet & inches" : "metres & cm"})
           </option>
           <option value="metric">Metres &amp; centimetres</option>
           <option value="imperial">Feet &amp; inches</option>

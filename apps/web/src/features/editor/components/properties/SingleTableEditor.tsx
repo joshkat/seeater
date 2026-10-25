@@ -8,6 +8,7 @@ import { tableDisplayName } from "../../lib/tableLabel";
 import { fromSmallUnit, smallUnitLabel, toSmallUnit } from "../../lib/units";
 import { useEditorStore } from "../../store/editorStore";
 import { labelClass } from "./propertyStyles";
+import { TightChairsHint } from "./TightChairsHint";
 
 /** Smallest table width/height (matches the canvas resize limit). */
 const MIN_TABLE_SIZE = 40;
@@ -72,11 +73,12 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
           value={table.seats.length}
           onChange={(count) => setSeatCount(table.id, count)}
         />
+        <TightChairsHint table={table} units={units} />
       </div>
 
       {!isRow && (
         <div>
-          <span className={labelClass}>Chair Layout</span>
+          <span className={labelClass}>Chair layout</span>
           <div className="join w-full">
             {(["auto", "custom"] as const).map((mode) => (
               <button
