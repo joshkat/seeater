@@ -55,7 +55,10 @@ describe("the view", () => {
 
     editor().zoomBy(2);
     const { viewport } = editor();
-    const centre = { x: (250 - viewport.x) / viewport.scale, y: (400 - viewport.y) / viewport.scale };
+    const centre = {
+      x: (250 - viewport.x) / viewport.scale,
+      y: (400 - viewport.y) / viewport.scale,
+    };
     editor().setStageSize({ width: 800, height: 500 });
     const after = editor().viewport;
     expect((400 - after.x) / after.scale).toBeCloseTo(centre.x);
