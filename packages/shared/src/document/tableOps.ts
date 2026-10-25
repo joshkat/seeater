@@ -191,6 +191,16 @@ export function setSeatCount(doc: EventDoc, tableId: string, count: number): Eve
 }
 
 /**
+ * Guests who had a seat in `before` and have none in `after` (in the active
+ * layout), in guest-list order: who a table delete or a chair cut unseated,
+ * for the notice that says so.
+ */
+export function newlyUnseatedIds(before: EventDoc, after: EventDoc): string[] {
+  const seatedBefore = new Set(before.guests.filter((g) => g.seatId).map((g) => g.id));
+  return after.guests.filter((g) => !g.seatId && seatedBefore.has(g.id)).map((g) => g.id);
+}
+
+/**
  * Switches between auto and custom chair layouts. Going custom seeds each seat
  * with the explicit offset it already occupies under the auto layout; going
  * auto drops the offsets. Seat ids (and guests) are preserved either way.

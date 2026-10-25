@@ -7,6 +7,7 @@ import {
   deleteTables,
   duplicateTables,
   resizeTableKeepingChairs,
+  newlyUnseatedIds,
   setChairMode,
   setSeatCount,
   setSeatOffset,
@@ -139,5 +140,18 @@ describe("duplicateTables / deleteTables", () => {
     expect(after.tables).toHaveLength(0);
     expect(after.guests.every((g) => g.seatId === null)).toBe(true);
     expect(eventDocSchema.safeParse(after).success).toBe(true);
+  });
+});
+
+describe("newlyUnseatedIds", () => {
+  it("lists guests a chair cut or a delete left without a seat", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const seated = assignSeat(assignSeat(doc, ada, seats[0]), grace, seats[3]);
+    expect(newlyUnseatedIds(seated, setSeatCount(seated, tableId, 2))).toEqual([grace]);
+    expect(newlyUnseatedIds(seated, deleteTables(seated, [tableId]))).toEqual([ada, grace]);
+    // Linus never had a seat, and nothing changed: nobody is newly unseated.
+    expect(newlyUnseatedIds(seated, seated)).toEqual([]);
   });
 });

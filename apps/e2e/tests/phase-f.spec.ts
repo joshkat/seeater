@@ -16,7 +16,8 @@ test("auto-seat, then a keep-apart rule is flagged when broken", async ({ page }
   const auto = page.getByRole("dialog", { name: "Auto-seat" });
   await auto.getByText(/same tag together/).click();
   await auto.getByRole("button", { name: "Auto-seat", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Auto-seated 4 guests.");
+  // The notice says where people went (first three, then a count).
+  await expect(page.getByRole("status")).toContainText(/Auto-seated 4 guests: .+ and 1 more\./);
 
   // Ada (Work) and Cy (Work) share a table; rule: keep them apart.
   const box = (name: string) =>

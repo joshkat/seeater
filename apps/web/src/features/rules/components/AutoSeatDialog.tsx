@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
+import { showUndoNotice } from "../../editor/store/historyActions";
 import { useGuestStore } from "../../guests/store/guestStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { autoSeatSummary } from "../lib/autoSeatSummary";
 
 /** Auto-seat: fill open seats with guests who don't have one, following households and rules. */
 export function AutoSeatDialog({ onClose }: { onClose: () => void }): JSX.Element | null {
@@ -34,21 +36,20 @@ export function AutoSeatDialog({ onClose }: { onClose: () => void }): JSX.Elemen
 
   function run(): void {
     let summary = "";
+    let seated = 0;
     useDocumentStore.getState().apply((current) => {
       const result = autoSeat(current, {
         guestIds: onlySelected ? selectedGuestIds : undefined,
         groupByTag,
       });
-      const names = new Map(current.guests.map((guest) => [guest.id, guest.name]));
-      summary =
-        `Auto-seated ${result.seatedIds.length} guest${result.seatedIds.length === 1 ? "" : "s"}.` +
-        (result.unplacedIds.length > 0
-          ? ` No room for: ${result.unplacedIds.map((id) => names.get(id)).join(", ")}.`
-          : "");
+      summary = autoSeatSummary(result);
+      seated = result.seatedIds.length;
       return result.doc;
     });
     useGuestStore.getState().clearGuestSelection();
-    useSeatingFlowStore.getState().showNotice(summary);
+    // Says where people went; Undo when it changed anything.
+    if (seated > 0) showUndoNotice(summary);
+    else useSeatingFlowStore.getState().showNotice(summary);
     onClose();
   }
 
@@ -61,26 +62,31 @@ export function AutoSeatDialog({ onClose }: { onClose: () => void }): JSX.Elemen
           at one table; “keep apart” guests never share one. Declined guests are skipped. You can
           undo it.
         </p>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="radio"
-            className="radio radio-sm"
-            checked={!onlySelected}
-            onChange={() => setOnlySelected(false)}
-          />
-          Everyone without a seat
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="radio"
-            className="radio radio-sm"
-            disabled={selectedGuestIds.length === 0}
-            checked={onlySelected}
-            onChange={() => setOnlySelected(true)}
-          />
-          Only the {selectedGuestIds.length} selected guest
-          {selectedGuestIds.length === 1 ? "" : "s"}
-        </label>
+        {/* With nobody ticked there's only one choice, so no radios. */}
+        {selectedGuestIds.length > 0 && (
+          <fieldset className="flex flex-col gap-3">
+            <legend className="sr-only">Who to seat</legend>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                className="radio radio-sm"
+                checked={!onlySelected}
+                onChange={() => setOnlySelected(false)}
+              />
+              Everyone without a seat
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                className="radio radio-sm"
+                checked={onlySelected}
+                onChange={() => setOnlySelected(true)}
+              />
+              Only the {selectedGuestIds.length} selected guest
+              {selectedGuestIds.length === 1 ? "" : "s"}
+            </label>
+          </fieldset>
+        )}
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input
             type="checkbox"

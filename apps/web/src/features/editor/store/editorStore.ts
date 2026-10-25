@@ -58,9 +58,13 @@ import {
   zoomViewportAtCenter,
 } from "../geometry/viewport";
 import { resolveUnits } from "../lib/units";
+import { chairCutNotice, deletedTablesNotice } from "../lib/unseatNotices";
 import type { Viewport } from "../types";
 import { useClipboardStore } from "./clipboardStore";
 import { useDocumentStore } from "./documentStore";
+// historyActions imports this store too; both only use each other inside
+// functions, so the cycle is safe.
+import { showUndoNotice } from "./historyActions";
 
 /**
  * Editor view state (viewport, zoom/focus, selection) plus table actions.
@@ -370,7 +374,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setSeatCount(id, seatCount) {
+    const before = currentDoc();
     edit((doc) => setSeatCount(doc, id, seatCount));
+    const after = currentDoc();
+    // Fewer chairs can unseat people: say who, with Undo.
+    const notice = before && after ? chairCutNotice(before, after, id) : null;
+    if (notice) showUndoNotice(notice);
   },
 
   resizeTable(id, size) {
@@ -399,8 +408,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   deleteSelected() {
     const { selectedIds } = get();
     if (selectedIds.length === 0) return;
+    const before = currentDoc();
     edit((doc) => deleteRoomObjects(deleteTables(doc, selectedIds), selectedIds));
     set({ selectedIds: [] });
+    // One undo step, no confirm, but never silent about who lost a seat.
+    const after = currentDoc();
+    const notice = before && after ? deletedTablesNotice(before, after, selectedIds) : null;
+    if (notice) showUndoNotice(notice);
   },
 
   nudgeSelected(dx, dy) {

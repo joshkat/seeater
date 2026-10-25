@@ -6,6 +6,8 @@ interface PlacementTrayProps {
   inviting: boolean;
   onActivate: () => void;
   children: ReactNode;
+  /** "+ Add guest…", under the chips. */
+  footer?: ReactNode;
 }
 
 /** Guests in the dialog without a chair. Also a drop zone: drop (or tap the
@@ -15,6 +17,7 @@ export function PlacementTray({
   inviting,
   onActivate,
   children,
+  footer,
 }: PlacementTrayProps): JSX.Element {
   return (
     <section
@@ -36,6 +39,7 @@ export function PlacementTray({
           Everyone has a chair. Drag someone here to take them off the table.
         </p>
       )}
+      {footer}
     </section>
   );
 }

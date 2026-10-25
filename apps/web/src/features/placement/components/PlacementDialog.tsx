@@ -9,6 +9,8 @@ import { useDragStore } from "../../dnd/store/dragStore";
 import { guestColor, guestInitials } from "../../guests/lib/guestDisplay";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import {
+  addToTray,
+  addableGuests,
   canSwap,
   elsewhereTableIds,
   pickGuest,
@@ -20,6 +22,7 @@ import {
   unplaceGuest,
 } from "../lib/placementModel";
 import { previewLayout } from "../lib/previewGeometry";
+import { PlacementAddGuest } from "./PlacementAddGuest";
 import { PlacementChip } from "./PlacementChip";
 import { PlacementTray } from "./PlacementTray";
 import { ReplaceConfirm } from "./ReplaceConfirm";
@@ -182,6 +185,12 @@ export function PlacementDialog(): JSX.Element | null {
           <PlacementTray
             count={placement.tray.length}
             inviting={dragging !== null || pickedSeatId !== null}
+            footer={
+              <PlacementAddGuest
+                candidates={addableGuests(doc, placement)}
+                onAdd={(guestId) => updatePlacement((state) => addToTray(state, guestId))}
+              />
+            }
             onActivate={() => {
               const { picked } = placement;
               if (picked && pickedSeatId) updatePlacement((state) => unplaceGuest(state, picked));
