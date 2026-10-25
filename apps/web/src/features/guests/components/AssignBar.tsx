@@ -52,7 +52,7 @@ export function AssignBar(): JSX.Element {
       }`}
     >
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-semibold ${none ? "text-base-content/50" : "text-primary"}`}>
+        <span className={`text-xs font-semibold ${none ? "text-base-content/70" : "text-primary"}`}>
           {none
             ? "Tick guests to seat or group them"
             : `${count} guest${count === 1 ? "" : "s"} selected`}

@@ -192,7 +192,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   if (guests.length === 0) {
     return (
-      <p className="mx-1 my-2 text-sm text-base-content/40">
+      <p className="mx-1 my-2 text-sm text-base-content/70">
         No guests yet. Add one above or import a spreadsheet.
       </p>
     );
@@ -271,7 +271,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
                   >
                     {group.name}
                   </button>
-                  <span className="font-normal text-base-content/40"> • {group.items.length}</span>
+                  <span className="font-normal text-base-content/70"> • {group.items.length}</span>
                 </h4>
                 <ul className={listClass}>
                   {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
@@ -292,5 +292,5 @@ const headingClass = "ml-1 text-[11px] uppercase tracking-wide text-base-content
 const listClass = "m-0 flex list-none flex-col gap-0.5 p-0";
 
 function EmptyHint({ children }: { children: React.ReactNode }): JSX.Element {
-  return <p className="m-0 px-2 py-1 text-xs text-base-content/40">{children}</p>;
+  return <p className="m-0 px-2 py-1 text-xs text-base-content/70">{children}</p>;
 }

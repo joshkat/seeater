@@ -57,7 +57,7 @@ export function VersionRow({
         </button>
         <button
           type="button"
-          className="btn btn-ghost btn-sm btn-square text-base-content/50"
+          className="btn btn-ghost btn-sm btn-square text-base-content/60"
           aria-label={`Delete version “${version.label}”`}
           title="Delete this version"
           disabled={busy}

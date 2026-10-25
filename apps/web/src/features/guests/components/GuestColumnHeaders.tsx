@@ -14,7 +14,7 @@ export function GuestColumnHeaders({
   onToggleAll,
 }: GuestColumnHeadersProps): JSX.Element {
   return (
-    <div className="sticky top-0 z-[1] flex items-center gap-2 border border-transparent border-b-base-300 bg-base-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-base-content/50">
+    <div className="sticky top-0 z-10 flex items-center gap-2 border border-transparent border-b-base-300 bg-base-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-base-content/70">
       <SelectCheckbox
         checked={allSelected}
         indeterminate={someSelected && !allSelected}

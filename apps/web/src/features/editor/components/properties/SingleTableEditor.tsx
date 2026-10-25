@@ -45,7 +45,7 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
           placeholder={tableDisplayName("", index)}
           onChange={(event) => setTableLabel(table.id, event.target.value)}
         />
-        <p className="mt-1 text-[11px] text-base-content/40">
+        <p className="mt-1 text-[11px] text-base-content/70">
           Leave blank to use “{tableDisplayName("", index)}”.
         </p>
       </div>

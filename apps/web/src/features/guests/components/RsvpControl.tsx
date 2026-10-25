@@ -20,7 +20,8 @@ export function RsvpControl({ status, onChange }: RsvpControlProps): JSX.Element
   // Collapsed: a single soft badge for the chosen status.
   if (!expanded) {
     const meta = rsvpMeta(status);
-    const tone = status === "accepted" ? "badge-success" : "badge-error";
+    const tone =
+      status === "accepted" ? "badge-success text-success-strong" : "badge-error text-error-strong";
     return (
       <button
         type="button"

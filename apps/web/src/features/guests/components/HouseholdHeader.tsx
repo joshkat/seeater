@@ -77,7 +77,7 @@ export function HouseholdHeader({
         onToggle={(range) => onSelect({ additive: true, range })}
         className="-my-1"
       />
-      <span aria-hidden className="text-xs text-base-content/40">
+      <span aria-hidden className="text-xs text-base-content/70">
         ⌂
       </span>
       <span className="min-w-0 flex-1 truncate text-xs font-semibold text-base-content">
@@ -90,7 +90,7 @@ export function HouseholdHeader({
         type="button"
         title="Rename household"
         aria-label="Rename household"
-        className="btn btn-ghost btn-xs px-1 text-base-content/40"
+        className="btn btn-ghost btn-xs px-1 text-base-content/60"
         onClick={(event) => {
           event.stopPropagation();
           setDraft(household.name);
@@ -102,7 +102,7 @@ export function HouseholdHeader({
       <button
         type="button"
         title="Ungroup (keeps the guests)"
-        className="btn btn-ghost btn-xs px-1 text-base-content/40"
+        className="btn btn-ghost btn-xs px-1 text-base-content/60"
         onClick={(event) => {
           event.stopPropagation();
           onDissolve();

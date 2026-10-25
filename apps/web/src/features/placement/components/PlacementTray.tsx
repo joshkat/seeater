@@ -32,7 +32,7 @@ export function PlacementTray({
       </h3>
       <div className="flex flex-wrap gap-2">{children}</div>
       {count === 0 && (
-        <p className="pointer-events-none text-xs text-base-content/50">
+        <p className="pointer-events-none text-xs text-base-content/70">
           Everyone has a chair. Drag someone here to take them off the table.
         </p>
       )}

@@ -14,7 +14,7 @@ export function GuestFilterBar({ onLocateFirst }: GuestFilterBarProps): JSX.Elem
   return (
     <div className="flex items-center gap-1.5">
       <label className="input input-sm flex flex-1 items-center gap-1.5">
-        <span aria-hidden className="text-base-content/40">
+        <span aria-hidden className="text-base-content/60">
           ⌕
         </span>
         <input

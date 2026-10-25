@@ -51,7 +51,7 @@ export function ImportPreviewTable({
               const duplicate = plan.duplicates[index];
               const skipped = skipDuplicates && duplicate !== null;
               return (
-                <tr key={guest.row} className={skipped ? "text-base-content/40" : ""}>
+                <tr key={guest.row} className={skipped ? "text-base-content/70" : ""}>
                   <td className={`font-medium ${skipped ? "line-through" : ""}`}>
                     {guest.input.name}
                   </td>

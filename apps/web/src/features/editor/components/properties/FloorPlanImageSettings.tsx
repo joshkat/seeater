@@ -74,7 +74,7 @@ export function FloorPlanImageSettings(): JSX.Element {
         </label>
       )}
       {error && <p className="text-xs text-error">{error}</p>}
-      <p className="text-[11px] text-base-content/50">
+      <p className="text-[11px] text-base-content/70">
         Trace tables over a venue plan. It fits the room’s width, so set the room width to the
         plan’s real width for true scale. Kept on this device only.
       </p>

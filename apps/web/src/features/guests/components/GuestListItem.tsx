@@ -59,7 +59,7 @@ export function GuestListItem({
       <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-3.5rem)]">
         <span
           className={`block truncate text-[13px] ${
-            declined ? "text-base-content/40 line-through" : "text-base-content"
+            declined ? "text-base-content/70 line-through" : "text-base-content"
           }`}
         >
           {guest.name}
@@ -107,4 +107,4 @@ export function GuestListItem({
 }
 
 const iconButtonClass =
-  "btn btn-ghost btn-sm size-[30px] shrink-0 p-0 text-base text-base-content/40";
+  "btn btn-ghost btn-sm size-[30px] shrink-0 p-0 text-base text-base-content/60";

@@ -8,8 +8,8 @@ const TEXT: Record<SaveStatus, string> = {
 
 const TONE: Record<SaveStatus, string> = {
   saving: "text-warning",
-  saved: "text-success",
-  error: "text-error",
+  saved: "text-success-strong",
+  error: "text-error-strong",
 };
 
 const DOT: Record<SaveStatus, string> = {

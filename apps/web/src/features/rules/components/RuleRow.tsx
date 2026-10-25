@@ -17,7 +17,7 @@ export function RuleRow({ rule, names, problem, onDelete }: RuleRowProps): JSX.E
         {rule.kind === "together" ? "Together" : "Apart"}
       </span>
       <span className="min-w-0 flex-1 text-sm">{names.join(", ")}</span>
-      <span className={`text-xs ${problem ? "text-error" : "text-success"}`}>
+      <span className={`text-xs ${problem ? "text-error-strong" : "text-success-strong"}`}>
         {problem ? "⚠ Broken" : "✓ OK"}
       </span>
       <button

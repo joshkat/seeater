@@ -69,7 +69,7 @@ export function MultiTableEditor({
           </button>
         </div>
       </div>
-      <p className="text-xs text-base-content/50">
+      <p className="text-xs text-base-content/70">
         Shift-click tables or Shift-drag on empty floor to select several.
       </p>
     </div>

@@ -49,7 +49,7 @@ export function Dashboard(): JSX.Element {
               <NewEventButton label="Create your first event" />
               <SampleEventButton />
             </div>
-            <p className="text-xs text-base-content/50">
+            <p className="text-xs text-base-content/70">
               Everything stays on this device. No account needed.
             </p>
           </div>

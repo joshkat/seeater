@@ -110,7 +110,7 @@ export function EventCard({ summary, onTrashed }: EventCardProps): JSX.Element {
           {summary.tableCount} table{summary.tableCount === 1 ? "" : "s"} · {summary.guestCount}{" "}
           guest{summary.guestCount === 1 ? "" : "s"}
         </span>
-        <span className="mt-auto text-[11px] text-base-content/40">
+        <span className="mt-auto text-[11px] text-base-content/70">
           Edited {relativeTime(summary.updatedAt)}
         </span>
       </button>

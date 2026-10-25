@@ -27,7 +27,7 @@ export function ColumnMappingRow({
       </div>
       <select
         aria-label={`Field for column “${label}”`}
-        className={`select select-sm w-40 shrink-0 ${field === "ignore" ? "text-base-content/50" : ""}`}
+        className={`select select-sm w-40 shrink-0 ${field === "ignore" ? "text-base-content/70" : ""}`}
         value={field}
         onChange={(event) => onChange(event.target.value as ImportField)}
       >
