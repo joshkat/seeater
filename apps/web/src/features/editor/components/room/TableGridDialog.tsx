@@ -3,6 +3,9 @@ import { type FormEvent, useRef, useState } from "react";
 
 import { useModalFocus } from "../../../../lib/useModalFocus";
 import { NumberField } from "../../../../components/NumberField";
+import { useSeatingFlowStore } from "../../../guests/store/seatingFlowStore";
+import { useUnits } from "../../hooks/useDocumentSelectors";
+import { presetLabel } from "../../lib/presetLabel";
 import { useEditorStore } from "../../store/editorStore";
 
 /** "Grid of tables": how many, how many per row, and which kind. */
@@ -14,11 +17,17 @@ export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Eleme
   const [columns, setColumns] = useState(5);
   const [presetId, setPresetId] = useState("round-60");
   const preset = TABLE_PRESETS.find((candidate) => candidate.id === presetId) ?? TABLE_PRESETS[0];
+  const { units } = useUnits();
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault();
-    addTableGrid({ count, columns, preset });
+    const placed = addTableGrid({ count, columns, preset });
     onClose();
+    if (!placed) {
+      useSeatingFlowStore
+        .getState()
+        .showNotice("These tables overlap others. They’re selected, so drag them into place.");
+    }
   }
 
   return (
@@ -39,7 +48,7 @@ export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Eleme
           >
             {TABLE_PRESETS.map((option) => (
               <option key={option.id} value={option.id}>
-                {option.name}
+                {presetLabel(option, units)}
               </option>
             ))}
           </select>
@@ -67,7 +76,8 @@ export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Eleme
           </label>
         </div>
         <p className="text-xs text-base-content/60">
-          {count} × {preset.name} = {count * preset.seatCount} seats, centred on the floor.
+          {count} × {presetLabel(preset, units)} = {count * preset.seatCount} seats, placed in free
+          floor.
         </p>
         <div className="modal-action mt-1">
           <button type="button" className="btn btn-sm" onClick={onClose}>

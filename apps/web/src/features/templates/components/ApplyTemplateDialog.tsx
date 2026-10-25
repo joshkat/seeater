@@ -16,7 +16,9 @@ export function ApplyTemplateDialog({ onClose }: { onClose: () => void }): JSX.E
     const template = templateId ? findTemplate(templateId) : undefined;
     if (!template) return;
     useDocumentStore.getState().apply((doc) => applyTemplate(doc, template));
-    useEditorStore.getState().resetView();
+    const editor = useEditorStore.getState();
+    editor.clearSelection();
+    editor.resetView();
     onClose();
   }
 

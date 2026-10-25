@@ -12,6 +12,7 @@ import type {
 } from "@seating/shared";
 import {
   DEFAULT_FLOOR_PLAN_SIZE,
+  defaultSizeForShape,
   addTable,
   copyItems,
   moveItems,
@@ -30,6 +31,15 @@ import {
   setFloorSize,
   setUnitSystem,
   duplicateTables,
+  findFreeSpot,
+  gridFootprint,
+  isSpotFree,
+  occupiedRects,
+  resizeTableKeepingChairs,
+  tableFootprint,
+  ROOM_OBJECT_DEFAULTS,
+  TABLE_PRESETS,
+  type Rect,
   renameEventDoc,
   setChairMode,
   setExactSeatPlacement,
@@ -47,6 +57,7 @@ import {
   focusViewportForTable,
   zoomViewportAtCenter,
 } from "../geometry/viewport";
+import { resolveUnits } from "../lib/units";
 import type { Viewport } from "../types";
 import { useClipboardStore } from "./clipboardStore";
 import { useDocumentStore } from "./documentStore";
@@ -88,21 +99,25 @@ interface EditorState {
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
 
+  /** Adds a table in the first free spot on screen (see findFreeSpot), selected. */
   addTable: (shape: TableShape) => void;
-  /** Adds a table from a preset near the middle of the floor, selected. */
+  /** Adds a table from a preset in the first free spot, selected. */
   addPresetTable: (preset: TablePreset) => void;
-  /** Adds a grid of tables centred on the floor, all selected. */
-  addTableGrid: (options: Omit<TableGridOptions, "center">) => void;
+  /** Adds a grid of tables in free floor, all selected. When there's no room
+   * for it, it's centred on the floor and this returns false (they overlap). */
+  addTableGrid: (options: Omit<TableGridOptions, "center">) => boolean;
   alignSelected: (edge: AlignEdge) => void;
   distributeSelected: (axis: "horizontal" | "vertical") => void;
   setUnits: (units: UnitSystem) => void;
-  /** Adds a room object (dance floor, wall…) near the middle, selected. */
+  /** Adds a room object (dance floor, wall…) in the first free spot, selected. */
   addRoomObject: (kind: RoomObjectKind) => void;
   updateRoomObject: (id: string, patch: RoomObjectPatch) => void;
   setFloorSize: (size: Size) => void;
   updateTableTransform: (id: string, transform: TableTransform) => void;
   setTableLabel: (id: string, label: string) => void;
   setSeatCount: (id: string, seatCount: number) => void;
+  /** Resizes a table, keeping custom chairs around it ("Make it 72″"). */
+  resizeTable: (id: string, size: Size) => void;
   setChairMode: (id: string, mode: ChairLayoutMode) => void;
   setSeatOffset: (id: string, seatIndex: number, offset: Point) => void;
   duplicateSelected: () => void;
@@ -131,6 +146,31 @@ let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 function dimensions() {
   return currentDoc()?.dimensions ?? DEFAULT_FLOOR_PLAN_SIZE;
 }
+
+/** The part of the floor on screen, in plan units (null before the stage has a size). */
+function visibleRect(viewport: Viewport, stage: StageSize): Rect | null {
+  if (!stage.width || !stage.height) return null;
+  return {
+    minX: -viewport.x / viewport.scale,
+    minY: -viewport.y / viewport.scale,
+    maxX: (stage.width - viewport.x) / viewport.scale,
+    maxY: (stage.height - viewport.y) / viewport.scale,
+  };
+}
+
+/** Where a new item goes: the first free spot on screen (then anywhere on the
+ * floor); a crowded room falls back to near the middle, staggered. */
+function placeNew(doc: EventDoc, footprint: Size, stagger: number): Point {
+  const { viewport, stageSize } = useEditorStore.getState();
+  const spot = findFreeSpot(doc, footprint, visibleRect(viewport, stageSize));
+  if (spot) return spot;
+  const jitter = (stagger % 5) * 24;
+  return { x: doc.dimensions.width / 2 + jitter, y: doc.dimensions.height / 2 + jitter };
+}
+
+/** New rounds in imperial events are a real 48″ (4 ft) round rather than
+ * 120 cm, which reads as 47″. Keeps the usual chair count. */
+const ROUND_48 = TABLE_PRESETS.find((preset) => preset.id === "round-48")!.size;
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   selectedIds: [],
@@ -167,7 +207,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setStageSize(size) {
-    set({ stageSize: size });
+    const { stageSize: before, viewport, homeViewport } = get();
+    if (!before.width || !before.height || !size.width || !size.height) {
+      set({ stageSize: size });
+      return;
+    }
+    // A resize (iPad rotation, window resize): re-fit if the view is still
+    // the fitted one; otherwise keep the same point in the middle.
+    if (viewport === homeViewport) {
+      const fitted = fitViewport(dimensions(), size);
+      set({ stageSize: size, viewport: fitted, homeViewport: fitted });
+      return;
+    }
+    set({
+      stageSize: size,
+      viewport: {
+        ...viewport,
+        x: viewport.x + (size.width - before.width) / 2,
+        y: viewport.y + (size.height - before.height) / 2,
+      },
+    });
   },
 
   fitToView() {
@@ -218,13 +277,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       stageSize.width && stageSize.height
         ? fitViewport(dimensions(), stageSize)
         : (get().homeViewport ?? get().viewport);
-    set({
-      viewport,
-      homeViewport: viewport,
-      focusedTableId: null,
-      preFocusViewport: null,
-      selectedIds: [],
-    });
+    // The selection stays: "Reset view" is about the view only.
+    set({ viewport, homeViewport: viewport, focusedTableId: null, preFocusViewport: null });
   },
 
   selectTable(id, additive = false) {
@@ -251,11 +305,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addTable(shape) {
     const doc = currentDoc();
     if (!doc) return;
-    const jitter = (doc.tables.length % 5) * 24;
-    const { width, height } = doc.dimensions;
+    const size =
+      shape === "round" && resolveUnits(doc.settings.units) === "imperial"
+        ? { ...ROUND_48 }
+        : defaultSizeForShape(shape);
     const result = addTable(doc, {
       shape,
-      position: { x: width / 2 + jitter, y: height / 2 + jitter },
+      size,
+      position: placeNew(doc, tableFootprint(shape, size), doc.tables.length),
     });
     edit(() => result.doc);
     set({ selectedIds: [result.tableId] });
@@ -264,22 +321,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addPresetTable(preset) {
     const doc = currentDoc();
     if (!doc) return;
-    const jitter = (doc.tables.length % 5) * 24;
-    const result = addTableFromPreset(doc, preset, {
-      x: doc.dimensions.width / 2 + jitter,
-      y: doc.dimensions.height / 2 + jitter,
-    });
+    const result = addTableFromPreset(
+      doc,
+      preset,
+      placeNew(doc, tableFootprint(preset.shape, preset.size), doc.tables.length),
+    );
     edit(() => result.doc);
     set({ selectedIds: [result.tableId] });
   },
 
   addTableGrid(options) {
     const doc = currentDoc();
-    if (!doc) return;
-    const center = { x: doc.dimensions.width / 2, y: doc.dimensions.height / 2 };
+    if (!doc) return true;
+    const footprint = gridFootprint(options);
+    const { viewport, stageSize } = get();
+    const spot = findFreeSpot(doc, footprint, visibleRect(viewport, stageSize));
+    const center = spot ?? { x: doc.dimensions.width / 2, y: doc.dimensions.height / 2 };
     const result = addTableGrid(doc, { ...options, center });
     edit(() => result.doc);
     set({ selectedIds: result.tableIds });
+    return spot !== null || isSpotFree(occupiedRects(doc), center, footprint, 0);
   },
 
   alignSelected(edge) {
@@ -310,6 +371,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setSeatCount(id, seatCount) {
     edit((doc) => setSeatCount(doc, id, seatCount));
+  },
+
+  resizeTable(id, size) {
+    edit((doc) => resizeTableKeepingChairs(doc, id, size));
   },
 
   setChairMode(id, mode) {
@@ -370,11 +435,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addRoomObject(kind) {
     const doc = currentDoc();
     if (!doc) return;
-    const jitter = (doc.objects.length % 5) * 24;
-    const result = addRoomObject(doc, kind, {
-      x: doc.dimensions.width / 2 + jitter,
-      y: doc.dimensions.height / 2 + jitter,
-    });
+    const result = addRoomObject(
+      doc,
+      kind,
+      placeNew(doc, ROOM_OBJECT_DEFAULTS[kind].size, doc.objects.length),
+    );
     if (!result.objectId) return;
     edit(() => result.doc);
     set({ selectedIds: [result.objectId] });
