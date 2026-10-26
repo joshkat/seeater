@@ -118,7 +118,7 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  color: #1a1a2e;
+  color: var(--color-base-content);
 }
 
 html,
