@@ -5,9 +5,8 @@ import {
   restoreEventDoc,
 } from "@seating/shared";
 
-import { shortcutLabel } from "../../../lib/platform";
 import { useDocumentStore } from "../../editor/store/documentStore";
-import { pruneStaleSelections } from "../../editor/store/historyActions";
+import { pruneStaleSelections, showUndoNotice } from "../../editor/store/historyActions";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import type { EventVersionRecord } from "../../storage/db/SeatingDb";
 import { createEvent } from "../../storage/repository/eventRepository";
@@ -37,9 +36,8 @@ export async function restoreVersion(version: EventVersionRecord): Promise<void>
   });
   documents.apply((doc) => restoreEventDoc(doc, restored));
   pruneStaleSelections();
-  const flow = useSeatingFlowStore.getState();
-  flow.dismiss();
-  flow.showNotice(`Restored “${version.label}”. Undo with ${shortcutLabel("Z")}.`);
+  useSeatingFlowStore.getState().dismiss();
+  showUndoNotice(`Restored “${version.label}”.`);
 }
 
 /** Copies a version into a brand-new event; returns its id (to open it). */

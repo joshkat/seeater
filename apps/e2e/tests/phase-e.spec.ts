@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-import { createEvent, isTabletLayout } from "./helpers";
+import { createEvent, isTabletLayout, redoControl } from "./helpers";
 
 test("add a grid of tables, then align a head table", async ({ page }) => {
   await createEvent(page, "Room");
-  await page.getByRole("button", { name: "+ More ▾" }).click();
+  await page.getByRole("button", { name: "+ Tables ▾" }).click();
   await page.getByRole("button", { name: "Grid of tables…" }).click();
   const dialog = page.getByRole("dialog", { name: "Grid of tables" });
-  await expect(dialog.getByText("10 × Round 60″ (5 ft) · 8 = 80 seats")).toBeVisible();
+  await expect(dialog.getByText("10 × Round 60″ · 8 = 80 seats")).toBeVisible();
   await dialog.getByRole("button", { name: "Add tables" }).click();
 
   if (isTabletLayout(page))
@@ -38,7 +38,7 @@ const TINY_PNG = Buffer.from(
 
 test("room objects are added, edited and deleted (undoably)", async ({ page }) => {
   await createEvent(page, "Objects");
-  await page.getByRole("button", { name: "Room ▾" }).click();
+  await page.getByRole("button", { name: "+ Room item ▾" }).click();
   await page.getByRole("button", { name: "Dance floor" }).click();
 
   if (isTabletLayout(page))
@@ -49,7 +49,7 @@ test("room objects are added, edited and deleted (undoably)", async ({ page }) =
   await expect(properties.getByLabel("Units")).toBeVisible();
   if (isTabletLayout(page)) await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
+  await expect(await redoControl(page)).toBeEnabled();
 });
 
 test("a floor-plan image can be uploaded and removed", async ({ page }) => {

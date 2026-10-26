@@ -9,6 +9,9 @@
 [data-theme="synthwave"] {
   --color-error: #dc2626;
   --color-error-content: #ffffff;
+  /* DaisyUI's oklch(78% …) leaves base-content/60 helper text at 4.0:1 on the
+     purple background; 85% lifts it to 4.7:1 (WCAG AA). */
+  --color-base-content: oklch(85% 0.115 274.713);
 }
 
 /* Custom DaisyUI theme tuned to the app's existing slate/blue palette so the
@@ -86,6 +89,28 @@
   --noise: 0;
 }
 
+/* Success / error colour for *text* (pills, "Saved on this device", rule
+   status). The fills keep --color-success / --color-error; where those are
+   too light or too dark to read as text on the theme's background (< 4.5:1),
+   the theme sets a stronger text colour here. */
+@utility text-success-strong {
+  color: var(--success-text, var(--color-success));
+}
+@utility text-error-strong {
+  color: var(--error-text, var(--color-error));
+}
+:root:not([data-theme]),
+[data-theme="seating"] {
+  --success-text: #15803d;
+  --error-text: #b91c1c;
+}
+[data-theme="black"] {
+  --success-text: #4ade80;
+}
+[data-theme="synthwave"] {
+  --error-text: #fca5a5;
+}
+
 :root {
   font-family:
     system-ui,
@@ -93,7 +118,7 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  color: #1a1a2e;
+  color: var(--color-base-content);
 }
 
 html,

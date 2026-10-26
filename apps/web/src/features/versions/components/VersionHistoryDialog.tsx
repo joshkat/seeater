@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentId } from "../../editor/hooks/useDocumentSelectors";
 import type { EventVersionRecord } from "../../storage/db/SeatingDb";
 import { deleteVersion } from "../../storage/repository/versionRepository";
@@ -17,8 +18,10 @@ import { VersionRow } from "./VersionRow";
  * every 10 minutes of editing (useAutoVersions).
  */
 export function VersionHistoryDialog(): JSX.Element | null {
+  const boxRef = useRef<HTMLDivElement>(null);
   const open = useVersionDialogStore((state) => state.open);
   const setOpen = useVersionDialogStore((state) => state.setOpen);
+  useModalFocus(boxRef, open);
   const eventId = useDocumentId();
   const versions = useVersions(open ? eventId : null);
   const navigate = useNavigate();
@@ -63,7 +66,10 @@ export function VersionHistoryDialog(): JSX.Element | null {
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Version history">
-      <div className="modal-box flex max-h-[85vh] w-full max-w-2xl flex-col gap-3 text-base-content">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[85vh] w-full max-w-2xl flex-col gap-3 text-base-content"
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold">Version history</h2>

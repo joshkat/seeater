@@ -13,6 +13,7 @@ export * from "./document/migrate.js";
 export * from "./document/ids.js";
 export * from "./document/eventOps.js";
 export * from "./document/tableOps.js";
+export * from "./document/freeSpot.js";
 export * from "./document/guestOps.js";
 export * from "./document/householdOps.js";
 export * from "./document/layoutOps.js";
@@ -27,4 +28,5 @@ export * from "./document/stats.js";
 
 export * from "./geometry/constants.js";
 export * from "./geometry/seatLayout.js";
+export * from "./geometry/capacity.js";
 export * from "./sync/protocol.js";

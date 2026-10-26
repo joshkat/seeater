@@ -9,6 +9,8 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  addToTray,
+  addableGuests,
   canSwap,
   createPlacement,
   pickGuest,
@@ -109,5 +111,24 @@ describe("placement model", () => {
   it("returns null for a missing table", () => {
     const { doc } = setup();
     expect(createPlacement(doc, "nope", [])).toBeNull();
+  });
+
+  it("adds an unseated guest to the tray, seated only if given a chair", () => {
+    const { doc, tableA, seatsA, ada, grace, alan } = setup();
+    let state = createPlacement(doc, tableA, [])!;
+    // Ada is at this table and Linus has a seat elsewhere: only Grace and Alan.
+    expect(addableGuests(doc, state).map((guest) => guest.id)).toEqual([grace, alan]);
+
+    state = addToTray(state, grace);
+    expect(state.tray).toEqual([grace]);
+    expect(state.picked).toBe(grace);
+    expect(state.incoming).toEqual([]);
+    expect(addableGuests(doc, state).map((guest) => guest.id)).toEqual([alan]);
+    // Left in the tray, nothing changes for her.
+    expect(placementPlan(state)).toEqual([]);
+
+    state = placeGuest(state, grace, seatsA[1]);
+    expect(placementPlan(state)).toEqual([{ guestId: grace, seatId: seatsA[1] }]);
+    expect(addToTray(state, ada)).toBe(state);
   });
 });

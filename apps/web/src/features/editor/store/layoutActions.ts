@@ -6,10 +6,10 @@ import {
   switchLayout,
 } from "@seating/shared";
 
-import { shortcutLabel } from "../../../lib/platform";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useDocumentStore } from "./documentStore";
 import { useEditorStore } from "./editorStore";
+import { showUndoNotice } from "./historyActions";
 
 /**
  * Layout actions as the user sees them. Each is one document edit (so
@@ -18,7 +18,9 @@ import { useEditorStore } from "./editorStore";
  * you can pick guests and then switch to the layout to seat them in.
  */
 function afterLayoutChange(): void {
-  useEditorStore.getState().resetView();
+  const editor = useEditorStore.getState();
+  editor.clearSelection();
+  editor.resetView();
   useSeatingFlowStore.getState().dismiss();
 }
 
@@ -39,7 +41,5 @@ export function renameLayoutTo(layoutId: string, name: string): void {
 export function removeLayout(layoutId: string, name: string): void {
   useDocumentStore.getState().apply((doc) => deleteLayout(doc, layoutId));
   afterLayoutChange();
-  useSeatingFlowStore
-    .getState()
-    .showNotice(`Deleted the “${name}” layout. Undo with ${shortcutLabel("Z")}.`);
+  showUndoNotice(`Deleted the “${name}” layout.`);
 }

@@ -1,10 +1,9 @@
 import type { UnitSystem } from "@seating/shared";
 
 import { NumberField } from "../../../../components/NumberField";
-import { PHONE_QUERY, useMediaQuery } from "../../../../lib/useMediaQuery";
 import { ExactPlacementToggle } from "../ExactPlacementToggle";
 import { useDimensions, useUnits } from "../../hooks/useDocumentSelectors";
-import { fromLargeUnit, largeUnitLabel, toLargeUnit } from "../../lib/units";
+import { fromLargeUnit, largeUnitLabel, resolveUnits, toLargeUnit } from "../../lib/units";
 import { useEditorStore } from "../../store/editorStore";
 import { FloorPlanImageSettings } from "./FloorPlanImageSettings";
 import { labelClass } from "./propertyStyles";
@@ -16,8 +15,6 @@ export function EventSettings(): JSX.Element {
   const setUnits = useEditorStore((state) => state.setUnits);
   const setFloorSize = useEditorStore((state) => state.setFloorSize);
   const unit = largeUnitLabel(units);
-  // On phones the toolbar has no room for this switch, so it lives here.
-  const phone = useMediaQuery(PHONE_QUERY);
 
   return (
     <div className="flex flex-col gap-3.5 text-base-content">
@@ -25,7 +22,12 @@ export function EventSettings(): JSX.Element {
         Select a table to edit it. Add tables from the toolbar, drag to move, and use the handles to
         rotate or resize.
       </p>
-      {phone && <ExactPlacementToggle />}
+      <p className="text-xs text-base-content/70">
+        To line up tables, choose Select ▾ → Select several.
+      </p>
+      {/* An event setting, so it lives here at every width (the toolbar has
+          no room for it on a 1280px laptop or an iPad). */}
+      <ExactPlacementToggle />
       <div>
         <label className={labelClass} htmlFor="event-units">
           Units
@@ -37,7 +39,8 @@ export function EventSettings(): JSX.Element {
           onChange={(event) => setUnits(event.target.value as UnitSystem)}
         >
           <option value="auto">
-            Automatic ({units === "imperial" ? "feet & inches" : "metres & cm"})
+            {/* What "auto" means here (the locale's units), whatever is picked now. */}
+            Automatic ({resolveUnits("auto") === "imperial" ? "feet & inches" : "metres & cm"})
           </option>
           <option value="metric">Metres &amp; centimetres</option>
           <option value="imperial">Feet &amp; inches</option>

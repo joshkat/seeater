@@ -29,3 +29,6 @@ npm-debug.log*
 # Prisma
 apps/api/prisma/*.db
 apps/api/src/generated/
+
+# Claude Code agent worktrees
+.claude/worktrees/

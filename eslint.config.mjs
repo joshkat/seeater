@@ -13,6 +13,8 @@ export default tseslint.config(
       "**/coverage/**",
       // Prisma 7 generates its client as TypeScript into the API's source tree.
       "apps/api/src/generated/**",
+      // Claude Code's agent worktrees (whole checkouts of this repo).
+      ".claude/worktrees/**",
     ],
   },
   js.configs.recommended,

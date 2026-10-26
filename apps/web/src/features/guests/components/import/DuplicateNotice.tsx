@@ -1,14 +1,20 @@
+import { type SkippedDuplicate, skippedDuplicatesText } from "../../lib/importMapping";
+
 interface DuplicateNoticeProps {
   existing: number;
   repeated: number;
+  /** The duplicates Import will leave out (named, up to 5). */
+  skipped: SkippedDuplicate[];
   skip: boolean;
   onSkipChange: (skip: boolean) => void;
 }
 
-/** "3 look like guests you already have" + the "Skip likely duplicates" box. */
+/** "3 look like guests you already have", who's being skipped, and the "Skip likely
+ * duplicates" box. */
 export function DuplicateNotice({
   existing,
   repeated,
+  skipped,
   skip,
   onSkipChange,
 }: DuplicateNoticeProps): JSX.Element | null {
@@ -20,6 +26,7 @@ export function DuplicateNotice({
     repeated > 0
       ? `${repeated} ${repeated === 1 ? "repeats a name" : "repeat names"} from earlier in the file.`
       : "",
+    skip ? skippedDuplicatesText(skipped) : "",
   ].filter(Boolean);
 
   return (

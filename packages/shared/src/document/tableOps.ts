@@ -124,6 +124,48 @@ export function updateTableTransform(
   }));
 }
 
+/** Moves one custom chair offset so it keeps its place relative to a table
+ * that changed size: chairs past an edge move out with it, chairs along an
+ * edge spread proportionally. */
+function resizeOffset(offset: Point, shape: TableShape, from: Size, to: Size): Point {
+  if (shape === "round") {
+    const distance = Math.hypot(offset.x, offset.y);
+    if (distance === 0) return offset;
+    const scale = (distance + (to.width - from.width) / 2) / distance;
+    return { x: offset.x * scale, y: offset.y * scale };
+  }
+  const along = (value: number, half: number, nextHalf: number): number =>
+    Math.abs(value) > half
+      ? value + Math.sign(value) * (nextHalf - half)
+      : half > 0
+        ? (value * nextHalf) / half
+        : value;
+  return {
+    x: along(offset.x, from.width / 2, to.width / 2),
+    y: along(offset.y, from.height / 2, to.height / 2),
+  };
+}
+
+/**
+ * Resizes a table and keeps hand-placed (custom) chairs around it, e.g.
+ * "Make it 72″" when the chairs don't fit. Auto chairs follow by themselves.
+ */
+export function resizeTableKeepingChairs(doc: EventDoc, tableId: string, size: Size): EventDoc {
+  return mapTable(doc, tableId, (table) => {
+    if (table.shape === "row") return table;
+    const next = table.shape === "round" ? { width: size.width, height: size.width } : size;
+    const seats =
+      table.chairLayoutMode === "custom"
+        ? table.seats.map((seat) =>
+            seat.offset
+              ? { ...seat, offset: resizeOffset(seat.offset, table.shape, table.size, next) }
+              : seat,
+          )
+        : table.seats;
+    return { ...table, size: next, seats };
+  });
+}
+
 export function setTableLabel(doc: EventDoc, tableId: string, label: string): EventDoc {
   return mapTable(doc, tableId, (table) => ({
     ...table,
@@ -146,6 +188,16 @@ export function setSeatCount(doc: EventDoc, tableId: string, count: number): Eve
     return { ...table, size, seats: buildSeats(table.seats, next, offsets) };
   });
   return unseatOrphans(updated);
+}
+
+/**
+ * Guests who had a seat in `before` and have none in `after` (in the active
+ * layout), in guest-list order: who a table delete or a chair cut unseated,
+ * for the notice that says so.
+ */
+export function newlyUnseatedIds(before: EventDoc, after: EventDoc): string[] {
+  const seatedBefore = new Set(before.guests.filter((g) => g.seatId).map((g) => g.id));
+  return after.guests.filter((g) => !g.seatId && seatedBefore.has(g.id)).map((g) => g.id);
 }
 
 /**
@@ -334,11 +386,8 @@ export interface TableGridOptions {
   center: Point;
 }
 
-/** Adds `count` tables laid out in a grid (one edit). Returns the new ids. */
-export function addTableGrid(
-  doc: EventDoc,
-  options: TableGridOptions,
-): { doc: EventDoc; tableIds: string[] } {
+/** How a grid of tables is laid out (shared by addTableGrid and gridFootprint). */
+function gridLayout(options: Omit<TableGridOptions, "center">) {
   const count = Math.max(0, Math.min(MAX_TABLES_PER_GRID, Math.round(options.count)));
   const columns = Math.max(1, Math.min(count || 1, Math.round(options.columns)));
   const rows = Math.ceil(count / columns);
@@ -350,6 +399,24 @@ export function addTableGrid(
   const gap = options.gap ?? 80;
   const stepX = size.width + chairRoom + gap;
   const stepY = size.height + chairRoom + gap;
+  return { count, columns, rows, shape, seatCount, size, chairRoom, stepX, stepY };
+}
+
+/** The whole grid's size, chairs included (to find room for it). */
+export function gridFootprint(options: Omit<TableGridOptions, "center">): Size {
+  const { columns, rows, size, chairRoom, stepX, stepY } = gridLayout(options);
+  return {
+    width: (columns - 1) * stepX + size.width + chairRoom,
+    height: (Math.max(1, rows) - 1) * stepY + size.height + chairRoom,
+  };
+}
+
+/** Adds `count` tables laid out in a grid (one edit). Returns the new ids. */
+export function addTableGrid(
+  doc: EventDoc,
+  options: TableGridOptions,
+): { doc: EventDoc; tableIds: string[] } {
+  const { count, columns, rows, shape, seatCount, stepX, stepY } = gridLayout(options);
   const originX = options.center.x - ((columns - 1) * stepX) / 2;
   const originY = options.center.y - ((rows - 1) * stepY) / 2;
 

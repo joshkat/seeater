@@ -1,11 +1,13 @@
 import { MAX_SEAT_COUNT, openSeatCount, tableIdBySeat } from "@seating/shared";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useExactSeatPlacement } from "../../../editor/hooks/useDocumentSelectors";
 import { tableDisplayName, tableNameById } from "../../../editor/lib/tableLabel";
 import { useDocumentStore } from "../../../editor/store/documentStore";
+import { useTablePreviewStore } from "../../../editor/store/tablePreviewStore";
 import { useGuestStore } from "../../store/guestStore";
 import { type Overflow, useSeatingFlowStore } from "../../store/seatingFlowStore";
+import { type OverflowModel, OverflowChoices } from "./OverflowChoices";
 
 function sameIds(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -19,6 +21,8 @@ function sameIds(a: string[], b: string[]): boolean {
  * into the seats left here, adding chairs here, or leaving them as they are
  * (unseated, or in the seats they already had).
  * The leftovers stay selected the whole time, so dragging them still works.
+ * Hovering or focusing a table choice shows that table on the canvas, and
+ * the prompt can shrink to one line so it stops covering the room.
  */
 export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Element | null {
   const doc = useDocumentStore((state) => state.doc);
@@ -32,7 +36,7 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
   // households can be split chair by chair, so no separate split button.
   const exact = useExactSeatPlacement().active;
 
-  const model = useMemo(() => {
+  const model = useMemo((): OverflowModel | null => {
     if (!doc) return null;
     const { guestIds, tableId } = overflow;
     const table = doc.tables.find((candidate) => candidate.id === tableId);
@@ -84,6 +88,13 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
     };
   }, [doc, overflow, exact]);
 
+  // Collapsed, the prompt is one line, so it stops covering the tables it lists.
+  const [collapsed, setCollapsed] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Space the prompt covers above the canvas's bottom edge (it sits 16px up).
+  const coveredHeight = (): number => (cardRef.current?.offsetHeight ?? 0) + 16;
+  useEffect(() => () => useTablePreviewStore.getState().clear(), []);
+
   // The user picked other guests: this prompt no longer applies.
   if (!model || !sameIds(selectedGuestIds, overflow.guestIds)) return null;
 
@@ -91,69 +102,55 @@ export function OverflowPrompt({ overflow }: { overflow: Overflow }): JSX.Elemen
 
   return (
     <div
+      ref={cardRef}
       role="dialog"
       aria-label="Guests that didn't fit"
       className="card pointer-events-auto w-full max-w-lg border border-warning/50 bg-base-100 shadow-xl"
     >
-      <div className="card-body gap-2.5 p-4 text-sm text-base-content">
+      <div
+        className={`card-body text-sm text-base-content ${collapsed ? "gap-0 px-4 py-2" : "gap-2.5 p-4"}`}
+      >
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold">
             {exact
               ? `${count} guest${count === 1 ? "" : "s"} still need${count === 1 ? "s" : ""} a seat — pick a table`
               : `${count} guest${count === 1 ? "" : "s"} didn’t fit at ${model.name} — pick another table`}
           </p>
-          <button
-            type="button"
-            aria-label="Close"
-            title="Close (guests stay selected)"
-            className="btn btn-ghost btn-xs btn-square"
-            onClick={dismiss}
-          >
-            ✕
-          </button>
-        </div>
-
-        {!exact && model.openHere > 0 && model.blockedHouseholds.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-xs">
-            <span>
-              {model.name} still has {model.openHere} open seat{model.openHere === 1 ? "" : "s"},
-              not enough to keep {model.blockedHouseholds.join(", ")} together.
-            </span>
-            <button type="button" className="btn btn-warning btn-xs" onClick={splitOverflow}>
-              Split household here
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Show table choices" : "Hide table choices"}
+              title={collapsed ? "Show the table choices" : "Shrink this to see the room"}
+              className="btn btn-ghost btn-xs btn-square"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <span aria-hidden>{collapsed ? "▴" : "▾"}</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Close"
+              title="Close (guests stay selected)"
+              className="btn btn-ghost btn-xs btn-square"
+              onClick={dismiss}
+            >
+              ✕
             </button>
           </div>
-        )}
-
-        {model.options.length > 0 ? (
-          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-            {model.options.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                title={option.open >= count ? "Everyone fits" : `Only ${option.open} fit`}
-                className={`btn btn-sm ${option.open >= count ? "btn-success btn-soft" : "btn-outline"}`}
-                onClick={() => placeOverflowAt(option.id)}
-              >
-                {option.name}
-                <span className="badge badge-sm">{option.open} open</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-base-content/60">No other table has open seats.</p>
-        )}
-
-        <div className="card-actions justify-end">
-          {model.canAddChairs && (
-            <button type="button" className="btn btn-outline btn-sm" onClick={addChairsForOverflow}>
-              + {model.chairsToAdd} chair{model.chairsToAdd === 1 ? "" : "s"} at {model.name}
-            </button>
-          )}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={leaveUnseated}>
-            {model.leaveLabel}
-          </button>
         </div>
+
+        {!collapsed && (
+          <OverflowChoices
+            exact={exact}
+            model={model}
+            count={count}
+            coveredHeight={coveredHeight}
+            onSplit={splitOverflow}
+            onPlace={placeOverflowAt}
+            onAddChairs={addChairsForOverflow}
+            onLeave={leaveUnseated}
+          />
+        )}
       </div>
     </div>
   );

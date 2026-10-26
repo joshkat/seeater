@@ -6,6 +6,8 @@ import {
   addTable,
   deleteTables,
   duplicateTables,
+  newlyUnseatedIds,
+  resizeTableKeepingChairs,
   setChairMode,
   setSeatCount,
   setSeatOffset,
@@ -92,6 +94,35 @@ describe("updateTableTransform", () => {
   });
 });
 
+describe("resizeTableKeepingChairs", () => {
+  it("resizes a round and keeps its seats (and guests)", () => {
+    const { doc, tableId, seats, guestIds } = seated();
+    const next = resizeTableKeepingChairs(doc, tableId, { width: 183, height: 100 });
+    expect(next.tables[0].size).toEqual({ width: 183, height: 183 });
+    expect(seatIdsOf(next, tableId)).toEqual(seats);
+    expect(seatOf(next, guestIds[0])).toBe(seats[0]);
+  });
+
+  it("moves custom chairs out with the edges", () => {
+    const base = addTable(fixture().doc, {
+      shape: "rectangle",
+      size: { width: 200, height: 80 },
+      seatCount: 4,
+      chairs: "long-sides",
+      position: { x: 500, y: 500 },
+    });
+    const before = base.doc.tables.find((table) => table.id === base.tableId)!;
+    const next = resizeTableKeepingChairs(base.doc, base.tableId, { width: 400, height: 80 });
+    const after = next.tables.find((table) => table.id === base.tableId)!;
+    for (const [index, seat] of after.seats.entries()) {
+      const was = before.seats[index].offset!;
+      // Along the long side: spread out proportionally. Past the edge: same gap.
+      expect(seat.offset!.x).toBeCloseTo(was.x * 2);
+      expect(seat.offset!.y).toBeCloseTo(was.y);
+    }
+  });
+});
+
 describe("duplicateTables / deleteTables", () => {
   it("duplicates with fresh table and seat ids and no guests", () => {
     const { doc, tableId, seats } = seated();
@@ -109,5 +140,18 @@ describe("duplicateTables / deleteTables", () => {
     expect(after.tables).toHaveLength(0);
     expect(after.guests.every((g) => g.seatId === null)).toBe(true);
     expect(eventDocSchema.safeParse(after).success).toBe(true);
+  });
+});
+
+describe("newlyUnseatedIds", () => {
+  it("lists guests a chair cut or a delete left without a seat", () => {
+    const { doc, tableId, guestIds } = fixture();
+    const [ada, grace] = guestIds;
+    const seats = seatIdsOf(doc, tableId);
+    const seated = assignSeat(assignSeat(doc, ada, seats[0]), grace, seats[3]);
+    expect(newlyUnseatedIds(seated, setSeatCount(seated, tableId, 2))).toEqual([grace]);
+    expect(newlyUnseatedIds(seated, deleteTables(seated, [tableId]))).toEqual([ada, grace]);
+    // Linus never had a seat, and nothing changed: nobody is newly unseated.
+    expect(newlyUnseatedIds(seated, seated)).toEqual([]);
   });
 });

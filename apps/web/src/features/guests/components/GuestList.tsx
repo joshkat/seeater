@@ -13,12 +13,11 @@ import type { SelectModifiers } from "../lib/selectModifiers";
 import { filterGuests, isFiltering } from "../lib/guestFilter";
 import { useRuleProblems } from "../../rules/hooks/useRuleProblems";
 import { guestSubtitle } from "../lib/guestSubtitle";
-import { locateGuestSeat } from "../lib/locateGuest";
 import { useGuestFilterStore } from "../store/guestFilterStore";
 import { useGuestDetailsStore } from "../store/guestDetailsStore";
 import { useGuestStore } from "../store/guestStore";
 import { useEditorStore } from "../../editor/store/editorStore";
-import { GuestFilterBar } from "./filter/GuestFilterBar";
+import { AssignBar } from "./AssignBar";
 import { GuestColumnHeaders } from "./GuestColumnHeaders";
 import { GuestListItem } from "./GuestListItem";
 import { HouseholdHeader } from "./HouseholdHeader";
@@ -113,12 +112,6 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
   const selected = useMemo(() => new Set(selectedGuestIds), [selectedGuestIds]);
   const seatedCount = visibleGuests.length - unassignedIds.length;
 
-  // Enter in the search box: show the first matching seated guest on the map.
-  const locateFirstMatch = (): void => {
-    const first = visibleGuests.find((guest) => guest.seatId);
-    if (first?.seatId) locateGuestSeat(first.seatId);
-  };
-
   const handleSelect = (guestId: string, { additive, range }: SelectModifiers): void => {
     if (range) selectRange(guestId, visibleOrder, additive);
     else selectGuest(guestId, additive);
@@ -192,7 +185,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   if (guests.length === 0) {
     return (
-      <p className="mx-1 my-2 text-sm text-base-content/40">
+      <p className="mx-1 my-2 text-sm text-base-content/70">
         No guests yet. Add one above or import a spreadsheet.
       </p>
     );
@@ -200,7 +193,6 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 max-sm:flex-none">
-      <GuestFilterBar onLocateFirst={locateFirstMatch} />
       {filtering && (
         <p className="flex items-center justify-between px-1 text-xs text-base-content/60">
           Showing {visibleGuests.length} of {guests.length}
@@ -262,16 +254,24 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
           <div className="flex flex-col gap-2.5">
             {tableGroups.map((group) => (
               <div key={group.tableId}>
-                <h4 className="mb-0.5 ml-1.5 text-xs font-semibold text-secondary">
+                <h4 className="mb-0.5 text-xs font-semibold text-secondary">
+                  {/* The whole heading is the button (44px tall on touch), with
+                      a visible hint of what it does. */}
                   <button
                     type="button"
-                    className="cursor-pointer hover:underline"
+                    className="group flex w-full cursor-pointer items-center gap-1 rounded-field px-1.5 py-0.5 text-left hover:bg-base-200 pointer-coarse:min-h-11"
                     title="Show this table on the map"
                     onClick={() => selectTable(group.tableId)}
                   >
-                    {group.name}
+                    <span className="group-hover:underline">{group.name}</span>
+                    <span className="font-normal text-base-content/70">
+                      {" "}
+                      • {group.items.length}
+                    </span>
+                    <span className="ml-auto font-normal text-base-content/70">
+                      <span aria-hidden>⌖ </span>Show on map
+                    </span>
                   </button>
-                  <span className="font-normal text-base-content/40"> • {group.items.length}</span>
                 </h4>
                 <ul className={listClass}>
                   {group.items.map((item) => renderItem(item.guestId, item.seatNumber))}
@@ -283,6 +283,10 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         {filtering && visibleGuests.length === 0 && (
           <EmptyHint>No guests match. Try another search or clear the filters.</EmptyHint>
         )}
+        {/* Last in the scroll area and sticky: it floats over the rows while
+            there's more to scroll, and at the end it takes its own space, so
+            ticking a guest never moves the list. */}
+        <AssignBar />
       </div>
     </div>
   );
@@ -292,5 +296,5 @@ const headingClass = "ml-1 text-[11px] uppercase tracking-wide text-base-content
 const listClass = "m-0 flex list-none flex-col gap-0.5 p-0";
 
 function EmptyHint({ children }: { children: React.ReactNode }): JSX.Element {
-  return <p className="m-0 px-2 py-1 text-xs text-base-content/40">{children}</p>;
+  return <p className="m-0 px-2 py-1 text-xs text-base-content/70">{children}</p>;
 }

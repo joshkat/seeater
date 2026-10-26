@@ -1,7 +1,13 @@
 import { useCallback, useState } from "react";
 
+import { ThemeMenu } from "../../../components/ThemeMenu";
+import { useDocumentTitle } from "../../../lib/useDocumentTitle";
 import { AuthControls } from "../../auth/components/AuthControls";
-import { ImportBackupButton } from "../../backup/components/ImportBackupButton";
+import { BackupImportNotice } from "../../backup/components/BackupImportNotice";
+import {
+  type BackupImportResult,
+  ImportBackupButton,
+} from "../../backup/components/ImportBackupButton";
 import { SyncNotice } from "../../sync/components/SyncNotice";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { useEventSummaries } from "../hooks/useEventSummaries";
@@ -16,18 +22,21 @@ import { TrashUndoNotice } from "./TrashUndoNotice";
 export function Dashboard(): JSX.Element {
   const summaries = useEventSummaries();
   usePurgeExpiredTrash();
+  useDocumentTitle("My events · Seating");
   const [lastTrashed, setLastTrashed] = useState<{ id: string; name: string } | null>(null);
   const clearLastTrashed = useCallback(() => setLastTrashed(null), []);
+  const [backupImport, setBackupImport] = useState<BackupImportResult | null>(null);
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
       <header className="border-b border-base-300 bg-base-100">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-4 max-sm:px-4">
           <h1 className="text-xl font-bold">My Events</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <TrashLink />
-            <ImportBackupButton />
+            <ImportBackupButton onResult={setBackupImport} />
             <NewEventButton />
+            <ThemeMenu />
             <SyncStatusBadge />
             <AuthControls />
           </div>
@@ -36,6 +45,9 @@ export function Dashboard(): JSX.Element {
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <SyncNotice />
+        {backupImport && (
+          <BackupImportNotice result={backupImport} onDismiss={() => setBackupImport(null)} />
+        )}
         {lastTrashed && <TrashUndoNotice event={lastTrashed} onDone={clearLastTrashed} />}
         {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
         {summaries?.length === 0 && (
@@ -49,7 +61,7 @@ export function Dashboard(): JSX.Element {
               <NewEventButton label="Create your first event" />
               <SampleEventButton />
             </div>
-            <p className="text-xs text-base-content/50">
+            <p className="text-xs text-base-content/70">
               Everything stays on this device. No account needed.
             </p>
           </div>

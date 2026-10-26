@@ -1,16 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useModalFocus } from "../../../../lib/useModalFocus";
 import { useGuests } from "../../../editor/hooks/useDocumentSelectors";
 import type { ImportField } from "../../lib/importFields";
 import {
   type ColumnMapping,
   columnLabels,
   dataRows,
+  ignoredColumns,
+  ignoredColumnsText,
+  importButtonLabel,
   importSummary,
   looksLikeHeader,
   mapsAName,
   planImport,
+  remapForHeader,
   suggestMapping,
 } from "../../lib/importMapping";
 import { useGuestStore } from "../../store/guestStore";
@@ -39,6 +44,8 @@ export function ImportGuestsDialog({
   onImported,
   onCancel,
 }: ImportGuestsDialogProps): JSX.Element {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalFocus(boxRef);
   const importGuests = useGuestStore((state) => state.importGuests);
   const existingGuests = useGuests();
   const [hasHeader, setHasHeader] = useState(() => looksLikeHeader(rows[0]));
@@ -46,6 +53,10 @@ export function ImportGuestsDialog({
     suggestMapping(rows, looksLikeHeader(rows[0])),
   );
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  /** Columns the user picked a field for by hand (kept when the header box changes). */
+  const [userEdited, setUserEdited] = useState<ReadonlySet<number>>(new Set());
+  /** Duplicates to import even though duplicates are skipped (guestKey). */
+  const [importAnyway, setImportAnyway] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -64,30 +75,45 @@ export function ImportGuestsDialog({
         mapping,
         existingNames: existingGuests.map((guest) => guest.name),
         skipDuplicates,
+        importAnyway,
       }),
-    [rows, hasHeader, mapping, existingGuests, skipDuplicates],
+    [rows, hasHeader, mapping, existingGuests, skipDuplicates, importAnyway],
   );
   const named = mapsAName(mapping);
   const count = plan.toImport.length;
+  const ignored = ignoredColumns(rows, hasHeader, mapping);
 
   function changeHeader(value: boolean): void {
     setHasHeader(value);
-    setMapping(suggestMapping(rows, value));
+    setMapping((current) => remapForHeader(rows, value, current, userEdited));
+    // Rows shift by one, so "import anyway" picks no longer point at the same people.
+    setImportAnyway(new Set());
   }
 
   function changeField(column: number, field: ImportField): void {
     setMapping((current) => current.map((value, index) => (index === column ? field : value)));
+    setUserEdited((current) => new Set(current).add(column));
+  }
+
+  function toggleImportAnyway(key: string): void {
+    setImportAnyway((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   }
 
   function runImport(): void {
     const added = importGuests(plan.toImport);
-    const duplicatesSkipped = skipDuplicates ? plan.existingDuplicates + plan.fileDuplicates : 0;
-    onImported(importSummary(added, duplicatesSkipped, plan.skipped));
+    onImported(importSummary(added, plan.skippedDuplicates.length, plan.skipped));
   }
 
   return createPortal(
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Import guests">
-      <div className="modal-box flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto text-base-content">
+      <div
+        ref={boxRef}
+        className="modal-box flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto text-base-content"
+      >
         <div>
           <h2 className="text-lg font-semibold">Import guests</h2>
           <p className="truncate text-sm text-base-content/60" title={fileName}>
@@ -95,8 +121,7 @@ export function ImportGuestsDialog({
           </p>
         </div>
         <p className="text-sm text-base-content/70">
-          Choose what each column holds. The app recognises common wedding-site column names (first
-          and last name, party, meal, RSVP…), so most columns are matched for you — check them
+          Choose what each column holds. The app guesses each column from its header. Check them
           before importing.
         </p>
 
@@ -123,6 +148,12 @@ export function ImportGuestsDialog({
               />
             ))}
           </ul>
+          {ignored.length > 0 && (
+            <p className="text-sm text-base-content/70">
+              <span aria-hidden>⚠ </span>
+              {ignoredColumnsText(ignored)}
+            </p>
+          )}
           {!named && (
             <p className="text-sm text-error">
               Map a column to Name, or to First name and Last name, to import guests.
@@ -133,13 +164,19 @@ export function ImportGuestsDialog({
         <DuplicateNotice
           existing={plan.existingDuplicates}
           repeated={plan.fileDuplicates}
+          skipped={plan.skippedDuplicates}
           skip={skipDuplicates}
           onSkipChange={setSkipDuplicates}
         />
 
         <section aria-label="Preview" className="flex flex-col gap-1">
           <h3 className="text-xs font-semibold text-base-content/70">Preview</h3>
-          <ImportPreviewTable plan={plan} mapping={mapping} skipDuplicates={skipDuplicates} />
+          <ImportPreviewTable
+            plan={plan}
+            mapping={mapping}
+            skipDuplicates={skipDuplicates}
+            onToggleImportAnyway={toggleImportAnyway}
+          />
           {plan.skipped > 0 && (
             <p className="text-xs text-base-content/60">
               {plan.skipped} row{plan.skipped === 1 ? " has" : "s have"} no name and will be
@@ -158,7 +195,7 @@ export function ImportGuestsDialog({
             disabled={count === 0}
             onClick={runImport}
           >
-            Import {count} guest{count === 1 ? "" : "s"}
+            {importButtonLabel(count, plan.partnersToImport)}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import {
   addRoundTable,
   createEvent,
   csvOf,
+  exactPlacementToggle,
   guestPanel,
   importGuests,
   isTabletLayout,
@@ -36,7 +37,11 @@ test("press, hold and drag a guest onto a table by touch", async ({ page }) => {
   await addRoundTable(page);
   await importGuests(page, csvOf(["Ada"]));
   // Turn exact placement off so a single drop seats directly.
-  await page.getByText("Exact seat placement").click();
+  await (await exactPlacementToggle(page)).click();
+  // New tables go to the first free spot (top-left), so select it from the
+  // keyboard: the view centres on it, and a drop anywhere on the canvas seats.
+  await page.getByRole("group", { name: /^Floor plan/ }).focus();
+  await page.keyboard.press("Tab");
 
   const panel = await guestPanel(page);
   const row = panel.locator("li.cursor-grab", { hasText: "Ada" });

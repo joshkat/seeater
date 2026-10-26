@@ -1,5 +1,7 @@
 import type { NewLayoutContent } from "@seating/shared";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
+
+import { useModalFocus } from "../../../../lib/useModalFocus";
 
 interface NewLayoutDialogProps {
   /** The current layout's name, for the copy options' labels. */
@@ -24,6 +26,8 @@ export function NewLayoutDialog({
   onCreate,
   onClose,
 }: NewLayoutDialogProps): JSX.Element {
+  const boxRef = useRef<HTMLFormElement>(null);
+  useModalFocus(boxRef);
   const [name, setName] = useState("");
   const [content, setContent] = useState<NewLayoutContent>("blank");
 
@@ -38,6 +42,7 @@ export function NewLayoutDialog({
       <form
         onSubmit={handleSubmit}
         onKeyDown={(event) => event.key === "Escape" && onClose()}
+        ref={boxRef}
         className="modal-box flex max-w-md flex-col gap-3 text-base-content"
       >
         <h2 className="text-lg font-semibold">New layout</h2>
@@ -66,7 +71,7 @@ export function NewLayoutDialog({
                 onChange={() => setContent(option.value)}
               />
               {option.label}
-              <span className="text-xs text-base-content/50">— {option.hint}</span>
+              <span className="text-xs text-base-content/70">— {option.hint}</span>
             </label>
           ))}
         </fieldset>

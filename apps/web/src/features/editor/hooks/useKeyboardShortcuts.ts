@@ -5,15 +5,15 @@ import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { usePrintStore } from "../../export/store/printStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
-import { useEditorStore } from "../store/editorStore";
+import { nudgeSteps } from "../lib/nudge";
+import { resolveUnits } from "../lib/units";
+import { copySelection } from "../store/clipboardActions";
 import { useClipboardStore } from "../store/clipboardStore";
+import { useDocumentStore } from "../store/documentStore";
+import { useEditorStore } from "../store/editorStore";
 import { useLayoutStore } from "../store/layoutStore";
 import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 import { redoEdit, undoEdit } from "../store/historyActions";
-
-/** Arrow keys nudge the selection by this much (plan units: cm); Shift moves further. */
-export const NUDGE_STEP = 10;
-export const NUDGE_STEP_LARGE = 50;
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
@@ -26,7 +26,8 @@ const ARROWS: Record<string, [number, number]> = {
  * undo (Cmd/Ctrl+Z), redo (Shift+Cmd/Ctrl+Z or Ctrl+Y), delete, duplicate
  * (Cmd/Ctrl+D), select all / copy / paste (Cmd/Ctrl+A/C/V), arrow-key nudge,
  * ? for the cheat sheet, and Escape (backs out of the placement dialog, a
- * seating prompt or an open drawer, otherwise clears the selection). */
+ * seating prompt, an open drawer or "Select several", otherwise clears the
+ * selection). Each has a visible control too (toolbar, Select ▾). */
 export function useKeyboardShortcuts(): void {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
@@ -54,10 +55,8 @@ export function useKeyboardShortcuts(): void {
         if (event.key === "Escape") print.close();
         return;
       }
-      // Any other open modal (e.g. New layout) handles its own keys.
-      if (document.querySelector(".modal.modal-open")) return;
-
-      // The placement dialog is modal: only Escape (back out) applies.
+      // The placement dialog is modal too (it also uses .modal-open, so this comes
+      // before the generic check below): only Escape (back out) applies.
       const { placement, updatePlacement, cancelPlacement } = useSeatingFlowStore.getState();
       if (placement) {
         if (event.key === "Escape") {
@@ -67,6 +66,9 @@ export function useKeyboardShortcuts(): void {
         }
         return;
       }
+
+      // Any other open modal (e.g. New layout) handles its own keys.
+      if (document.querySelector(".modal.modal-open")) return;
 
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
@@ -89,7 +91,10 @@ export function useKeyboardShortcuts(): void {
         event.target instanceof HTMLSelectElement || event.target instanceof HTMLInputElement;
       if (arrow && !mod && !ownsArrows && editor.selectedIds.length > 0) {
         event.preventDefault();
-        const step = event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
+        // Arrow keys nudge by round numbers in the event's units (nudgeSteps).
+        const units = resolveUnits(useDocumentStore.getState().doc?.settings.units ?? "auto");
+        const { step: small, large } = nudgeSteps(units);
+        const step = event.shiftKey ? large : small;
         editor.nudgeSelected(arrow[0] * step, arrow[1] * step);
         return;
       }
@@ -104,7 +109,7 @@ export function useKeyboardShortcuts(): void {
       ) {
         event.preventDefault();
         if (key === "a") editor.selectAll();
-        else if (key === "c") editor.copySelected();
+        else if (key === "c") copySelection();
         else editor.paste();
         return;
       }
@@ -125,7 +130,10 @@ export function useKeyboardShortcuts(): void {
         const layout = useLayoutStore.getState();
         if (seating.question || seating.overflow) seating.dismiss();
         else if (layout.guestsOpen || layout.propertiesOpen) layout.closeDrawers();
-        else clearSelection();
+        // "Select several" ends first (keeping the selection), then it clears.
+        else if (useEditorStore.getState().selectSeveral) {
+          useEditorStore.getState().setSelectSeveral(false);
+        } else clearSelection();
       }
     };
 

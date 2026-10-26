@@ -3,7 +3,7 @@ import type { Point } from "../types/geometry.js";
 import { autoSeat } from "./autoSeat.js";
 import { createEventDoc } from "./eventOps.js";
 import { addGuests, type GuestInput, updateGuest } from "./guestOps.js";
-import { addLayout, renameLayout } from "./layoutOps.js";
+import { addLayout, renameLayout, switchLayout } from "./layoutOps.js";
 import { addRoomObject, updateRoomObject } from "./roomObjectOps.js";
 import { addRule } from "./ruleOps.js";
 import type { EventDoc, RoomObjectKind } from "./schema.js";
@@ -116,11 +116,14 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     build: (doc) => {
       let next = object(doc, "stage", { x: 1000, y: 180 }, { width: 500, height: 200 }, "Altar");
       next = ceremonyRows(next, 10, 6, 460, 1000);
-      next = renameLayout(next, next.activeLayoutId, "Ceremony");
+      const ceremonyId = next.activeLayoutId;
+      next = renameLayout(next, ceremonyId, "Ceremony");
       next = addLayout(next, "Reception").doc;
       next = place(next, "head-16", { x: 1000, y: 160 }, "Head table");
       next = object(next, "dance-floor", { x: 1000, y: 560 }, { width: 500, height: 400 });
-      return grid(next, "round-60", 12, 6, { x: 1000, y: 1150 });
+      next = grid(next, "round-60", 12, 6, { x: 1000, y: 1150 });
+      // Open on the ceremony: it's the room couples set up first.
+      return switchLayout(next, ceremonyId);
     },
   },
   {

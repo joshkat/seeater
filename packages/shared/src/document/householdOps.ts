@@ -194,3 +194,40 @@ export function householdSplits(
   }
   return splits;
 }
+
+/**
+ * Households that swapping two guests' seats would split: each guest moves to
+ * the other's table (or off any table, if the other had no seat), so their
+ * household members who aren't at that table end up apart. Swapping within
+ * one table splits nobody. Same shape as householdSplits, for the same prompt.
+ */
+export function swapSplits(doc: EventDoc, guestA: string, guestB: string): HouseholdSplit[] {
+  const a = doc.guests.find((guest) => guest.id === guestA);
+  const b = doc.guests.find((guest) => guest.id === guestB);
+  if (!a || !b || a.id === b.id) return [];
+  const seatTable = tableIdBySeat(doc);
+  const tableOf = (seatId: string | null): string | null =>
+    seatId ? (seatTable.get(seatId) ?? null) : null;
+
+  const splits: HouseholdSplit[] = [];
+  const moves: [Guest, Guest][] = [
+    [a, b],
+    [b, a],
+  ];
+  for (const [mover, other] of moves) {
+    if (!mover.householdId) continue;
+    const destination = tableOf(other.seatId);
+    if (destination === tableOf(mover.seatId)) continue;
+    const household = doc.households.find((candidate) => candidate.id === mover.householdId);
+    if (!household) continue;
+    const leftBehindIds = householdMembers(doc, household.id)
+      .filter((member) => member.id !== a.id && member.id !== b.id)
+      .filter((member) => tableOf(member.seatId) !== destination)
+      .map((member) => member.id);
+    if (leftBehindIds.length === 0) continue;
+    const existing = splits.find((split) => split.household.id === household.id);
+    if (existing) existing.movingIds.push(mover.id);
+    else splits.push({ household, movingIds: [mover.id], leftBehindIds });
+  }
+  return splits;
+}

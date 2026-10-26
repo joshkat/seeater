@@ -1,7 +1,14 @@
 import type { CheckInCounts } from "@seating/shared";
 
-/** "23 of 44 arrived" with a progress bar. */
-export function CheckInSummary({ counts }: { counts: CheckInCounts }): JSX.Element {
+/** "23 of 44 arrived" with a progress bar. `announcement` (e.g. "Frances
+ * Allen checked in, Table 4") is read out by screen readers only. */
+export function CheckInSummary({
+  counts,
+  announcement,
+}: {
+  counts: CheckInCounts;
+  announcement?: string | null;
+}): JSX.Element {
   const { arrived, expected } = counts;
   return (
     <div className="flex items-center gap-3" aria-live="polite">
@@ -14,6 +21,7 @@ export function CheckInSummary({ counts }: { counts: CheckInCounts }): JSX.Eleme
         max={Math.max(expected, 1)}
         aria-label="Arrivals"
       />
+      {announcement && <span className="sr-only">{announcement}</span>}
     </div>
   );
 }

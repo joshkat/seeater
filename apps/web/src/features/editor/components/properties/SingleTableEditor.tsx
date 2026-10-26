@@ -8,6 +8,7 @@ import { tableDisplayName } from "../../lib/tableLabel";
 import { fromSmallUnit, smallUnitLabel, toSmallUnit } from "../../lib/units";
 import { useEditorStore } from "../../store/editorStore";
 import { labelClass } from "./propertyStyles";
+import { TightChairsHint } from "./TightChairsHint";
 
 /** Smallest table width/height (matches the canvas resize limit). */
 const MIN_TABLE_SIZE = 40;
@@ -45,7 +46,7 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
           placeholder={tableDisplayName("", index)}
           onChange={(event) => setTableLabel(table.id, event.target.value)}
         />
-        <p className="mt-1 text-[11px] text-base-content/40">
+        <p className="mt-1 text-[11px] text-base-content/70">
           Leave blank to use “{tableDisplayName("", index)}”.
         </p>
       </div>
@@ -68,15 +69,19 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
           id="seat-count"
           min={1}
           max={MAX_SEAT_COUNT}
+          // Blank keeps the current count: clearing the box to retype must
+          // not drop the table to one chair and unseat everyone.
+          emptyValue={table.seats.length}
           className="w-full"
           value={table.seats.length}
           onChange={(count) => setSeatCount(table.id, count)}
         />
+        <TightChairsHint table={table} units={units} />
       </div>
 
       {!isRow && (
         <div>
-          <span className={labelClass}>Chair Layout</span>
+          <span className={labelClass}>Chair layout</span>
           <div className="join w-full">
             {(["auto", "custom"] as const).map((mode) => (
               <button

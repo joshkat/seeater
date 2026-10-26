@@ -55,11 +55,13 @@ export function GuestListItem({
         className="-my-1.5"
       />
 
-      {/* Phones: the name takes the first line; RSVP and actions wrap below. */}
-      <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-3.5rem)]">
+      {/* Phones: RSVP and actions share the name's line when the name still
+          gets 5rem (a declined pill is wider than "Going"); otherwise they wrap
+          below it, together, on the right. */}
+      <span className="min-w-0 flex-1 max-sm:min-w-20">
         <span
           className={`block truncate text-[13px] ${
-            declined ? "text-base-content/40 line-through" : "text-base-content"
+            declined ? "text-base-content/70 line-through" : "text-base-content"
           }`}
         >
           {guest.name}
@@ -69,42 +71,44 @@ export function GuestListItem({
         )}
       </span>
 
-      <div
-        className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center max-sm:ml-[3.25rem] max-sm:justify-start`}
-      >
-        <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} />
-      </div>
+      {/* A box only on phones (so the two wrap as one); elsewhere the RSVP
+          and actions cells line up under the column headers. */}
+      <div className="contents max-sm:ml-auto max-sm:flex max-sm:shrink-0 max-sm:items-center max-sm:gap-2">
+        <div className={`${GUEST_COLUMNS.rsvp} flex shrink-0 justify-center`}>
+          <RsvpControl status={guest.rsvpStatus} onChange={onSetRsvp} guestName={guest.name} />
+        </div>
 
-      <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end max-sm:ml-auto`}>
-        {guest.seatId && (
+        <div className={`${GUEST_COLUMNS.actions} flex shrink-0 justify-end`}>
+          {guest.seatId && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onUnseat();
+              }}
+              title="Remove from seat"
+              className={iconButtonClass}
+            >
+              ⤺
+            </button>
+          )}
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onUnseat();
+              onEdit();
             }}
-            title="Remove from seat"
+            title="Details: meal, dietary needs, tags, notes…"
+            aria-label={`Details for ${guest.name}`}
             className={iconButtonClass}
           >
-            ⤺
+            ✎
           </button>
-        )}
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEdit();
-          }}
-          title="Details: meal, dietary needs, tags, notes…"
-          aria-label={`Details for ${guest.name}`}
-          className={iconButtonClass}
-        >
-          ✎
-        </button>
+        </div>
       </div>
     </li>
   );
 }
 
 const iconButtonClass =
-  "btn btn-ghost btn-sm size-[30px] shrink-0 p-0 text-base text-base-content/40";
+  "btn btn-ghost btn-sm size-[30px] shrink-0 p-0 text-base text-base-content/60";

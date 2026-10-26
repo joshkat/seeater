@@ -1,22 +1,26 @@
 import { type CSSProperties, useMemo } from "react";
 
 import { DrawerCloseButton } from "../../editor/components/DrawerCloseButton";
-import { useTables } from "../../editor/hooks/useDocumentSelectors";
+import { useGuests, useTables } from "../../editor/hooks/useDocumentSelectors";
 import { useDrawerState } from "../../editor/hooks/useDrawerState";
 import { tableDisplayName } from "../../editor/lib/tableLabel";
 import { usePanelWidth } from "../hooks/usePanelWidth";
 import { useGuestStore } from "../store/guestStore";
 import { GuestTotalsLine } from "../../stats/components/GuestTotalsLine";
-import { AddGuestForm } from "./AddGuestForm";
-import { AssignBar } from "./AssignBar";
+import { GuestFilterBar } from "./filter/GuestFilterBar";
 import { GuestList, type SeatInfo } from "./GuestList";
-import { ImportButton } from "./ImportButton";
+import { GuestPanelActions } from "./GuestPanelActions";
 import { ResizeHandle } from "./ResizeHandle";
 
 /** Left-hand guest panel: add/import guests and assign them to seats. A fixed,
- * resizable column on desktop; a slide-over drawer on tablets. */
+ * resizable column on desktop; a slide-over drawer on tablets.
+ *
+ * The list comes first: totals, search, then one row of actions (add,
+ * import, filters). The bar for ticked guests docks to the bottom of the list
+ * only while someone is ticked (GuestList → AssignBar). */
 export function GuestPanel(): JSX.Element {
   const tables = useTables();
+  const hasGuests = useGuests().length > 0;
   const { open, inert, passThrough, close } = useDrawerState("guests");
   const hasSelection = useGuestStore((state) => state.selectedGuestIds.length > 0);
 
@@ -64,10 +68,8 @@ export function GuestPanel(): JSX.Element {
       </div>
 
       <GuestTotalsLine />
-      <AddGuestForm />
-      <ImportButton />
-
-      <AssignBar />
+      {hasGuests && <GuestFilterBar />}
+      <GuestPanelActions />
 
       <div className="h-px bg-base-300" />
 

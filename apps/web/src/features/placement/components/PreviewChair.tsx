@@ -74,7 +74,7 @@ export function PreviewChair({
         textAnchor="middle"
         dominantBaseline="central"
         className={`pointer-events-none select-none text-[13px] font-bold ${
-          occupant ? "fill-white" : "fill-base-content/50"
+          occupant ? "fill-white" : "fill-base-content/70"
         }`}
       >
         {occupant ? occupant.initials : chair.number}
