@@ -22,10 +22,16 @@ test("the shortcut cheat sheet opens from ? and from the toolbar", async ({ page
   await createEvent(page, "Cheat sheet");
   await page.keyboard.press("?");
   const dialog = page.getByRole("dialog", { name: "Keyboard shortcuts" });
-  await expect(dialog.getByText("Nudge the selection (10 cm)")).toBeVisible();
+  // The test browsers are en-US, so the event's units are feet & inches.
+  await expect(dialog.getByText("Nudge the selection (4″)")).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(dialog).toBeHidden();
 
+  // Touch screens (the iPad projects) have no ⌨ button.
+  if (isTabletLayout(page)) {
+    await expect(page.getByRole("button", { name: "Keyboard shortcuts" })).toHaveCount(0);
+    return;
+  }
   await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
