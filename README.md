@@ -1,6 +1,6 @@
 # Seating App
 
-[![CI](https://github.com/joshkat/custom-seating-app/actions/workflows/ci.yml/badge.svg)](https://github.com/joshkat/custom-seating-app/actions/workflows/ci.yml)
+[![CI](https://github.com/joshkat/seeater/actions/workflows/ci.yml/badge.svg)](https://github.com/joshkat/seeater/actions/workflows/ci.yml)
 
 A visual **seating-chart builder** for weddings, galas, or two tables at a dinner party. Lay out
 round and rectangular tables with auto- or hand-placed chairs, manage the guest list (add, import
