@@ -56,8 +56,9 @@ export function GuestListItem({
       />
 
       {/* Phones: RSVP and actions share the name's line when the name still
-          gets 6rem; otherwise they wrap below it, together, on the right. */}
-      <span className="min-w-0 flex-1 max-sm:min-w-24">
+          gets 5rem (a declined pill is wider than "Going"); otherwise they wrap
+          below it, together, on the right. */}
+      <span className="min-w-0 flex-1 max-sm:min-w-20">
         <span
           className={`block truncate text-[13px] ${
             declined ? "text-base-content/70 line-through" : "text-base-content"
