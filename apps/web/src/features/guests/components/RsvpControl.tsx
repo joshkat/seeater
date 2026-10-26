@@ -56,8 +56,8 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
     return (
       <button
         type="button"
-        onMouseEnter={() => {
-          if (performance.now() - pickedAt.current > 500) setHovered(true);
+        onMouseEnter={(event) => {
+          if (event.timeStamp - pickedAt.current > 500) setHovered(true);
         }}
         // The pointer can leave before the expanded group has rendered.
         onMouseLeave={() => setHovered(false)}
@@ -82,8 +82,8 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
 
   // Picking with the pointer collapses it again (needed on touch, where
   // there's no mouse leave). The keyboard keeps it open while focus is inside.
-  const choose = (next: RsvpStatus): void => {
-    pickedAt.current = performance.now();
+  const choose = (next: RsvpStatus, at: number): void => {
+    pickedAt.current = at;
     setHovered(false);
     onChange(next);
   };
@@ -134,7 +134,7 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
             title={option.label}
             onClick={(event) => {
               event.stopPropagation();
-              choose(option.status);
+              choose(option.status, event.timeStamp);
             }}
             className={`btn join-item btn-xs ${checked ? option.activeClass : "btn-ghost"}`}
           >
