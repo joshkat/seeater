@@ -1,7 +1,7 @@
 import type { UnitSystem } from "@seating/shared";
 
 import { NumberField } from "../../../../components/NumberField";
-import { PHONE_QUERY, useMediaQuery } from "../../../../lib/useMediaQuery";
+import { DESKTOP_QUERY, useMediaQuery } from "../../../../lib/useMediaQuery";
 import { ExactPlacementToggle } from "../ExactPlacementToggle";
 import { useDimensions, useUnits } from "../../hooks/useDocumentSelectors";
 import { fromLargeUnit, largeUnitLabel, toLargeUnit } from "../../lib/units";
@@ -16,8 +16,9 @@ export function EventSettings(): JSX.Element {
   const setUnits = useEditorStore((state) => state.setUnits);
   const setFloorSize = useEditorStore((state) => state.setFloorSize);
   const unit = largeUnitLabel(units);
-  // On phones the toolbar has no room for this switch, so it lives here.
-  const phone = useMediaQuery(PHONE_QUERY);
+  // Below xl (phones and every iPad) the toolbar has no room for this
+  // switch, so it lives here.
+  const desktop = useMediaQuery(DESKTOP_QUERY);
 
   return (
     <div className="flex flex-col gap-3.5 text-base-content">
@@ -25,7 +26,10 @@ export function EventSettings(): JSX.Element {
         Select a table to edit it. Add tables from the toolbar, drag to move, and use the handles to
         rotate or resize.
       </p>
-      {phone && <ExactPlacementToggle />}
+      <p className="text-xs text-base-content/70">
+        To line up tables, choose Select ▾ → Select several.
+      </p>
+      {!desktop && <ExactPlacementToggle />}
       <div>
         <label className={labelClass} htmlFor="event-units">
           Units
