@@ -73,6 +73,7 @@ test("check-in works on a phone", async ({ page }) => {
 // --- UX pass: check-in and trash on a phone (UX-41, UX-52) ---
 
 test("check-in on a phone: a labelled Undo and an in-place confirmation", async ({ page }) => {
+  await editorTools(page).getByRole("button", { name: "More options" }).click();
   await page.getByRole("link", { name: "Check-in" }).click();
   // The header undo says "Undo", not just ↶.
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toContainText("Undo");

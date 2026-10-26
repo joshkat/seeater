@@ -1,6 +1,12 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { addRoundTable, createEvent, editorTools, isTabletLayout } from "./helpers";
+import {
+  addRoundTable,
+  createEvent,
+  editorTools,
+  exactPlacementToggle,
+  isTabletLayout,
+} from "./helpers";
 
 /** Picks an item from the toolbar's Select ▾ menu. */
 async function selectMenu(page: Page, item: string): Promise<void> {
@@ -98,7 +104,11 @@ test("the toolbar slims down below xl", async ({ page }) => {
     expect((await tools.boundingBox())!.height).toBeLessThanOrEqual(50);
   } else {
     await expect(tools.getByRole("button", { name: "Keyboard shortcuts" })).toBeVisible();
-    await expect(tools.getByText("Exact seat placement")).toBeVisible();
+    // Exact seat placement is in Properties, so the toolbar is one row at 1280.
+    await expect(tools.getByText("Exact seat placement")).toHaveCount(0);
+    await expect(await exactPlacementToggle(page)).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    expect((await tools.boundingBox())!.height).toBeLessThanOrEqual(50);
     await tools.getByRole("button", { name: "Theme" }).click();
     await page.getByRole("button", { name: "Dark", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "seating-dark");

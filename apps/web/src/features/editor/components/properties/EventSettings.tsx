@@ -1,7 +1,6 @@
 import type { UnitSystem } from "@seating/shared";
 
 import { NumberField } from "../../../../components/NumberField";
-import { DESKTOP_QUERY, useMediaQuery } from "../../../../lib/useMediaQuery";
 import { ExactPlacementToggle } from "../ExactPlacementToggle";
 import { useDimensions, useUnits } from "../../hooks/useDocumentSelectors";
 import { fromLargeUnit, largeUnitLabel, resolveUnits, toLargeUnit } from "../../lib/units";
@@ -16,9 +15,6 @@ export function EventSettings(): JSX.Element {
   const setUnits = useEditorStore((state) => state.setUnits);
   const setFloorSize = useEditorStore((state) => state.setFloorSize);
   const unit = largeUnitLabel(units);
-  // Below xl (phones and every iPad) the toolbar has no room for this
-  // switch, so it lives here.
-  const desktop = useMediaQuery(DESKTOP_QUERY);
 
   return (
     <div className="flex flex-col gap-3.5 text-base-content">
@@ -29,7 +25,9 @@ export function EventSettings(): JSX.Element {
       <p className="text-xs text-base-content/70">
         To line up tables, choose Select ▾ → Select several.
       </p>
-      {!desktop && <ExactPlacementToggle />}
+      {/* An event setting, so it lives here at every width (the toolbar has
+          no room for it on a 1280px laptop or an iPad). */}
+      <ExactPlacementToggle />
       <div>
         <label className={labelClass} htmlFor="event-units">
           Units

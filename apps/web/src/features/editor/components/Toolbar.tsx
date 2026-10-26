@@ -4,7 +4,6 @@ import { useEditorStore } from "../store/editorStore";
 import { useLayoutStore } from "../store/layoutStore";
 import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 import { ClipboardButtons } from "./ClipboardButtons";
-import { ExactPlacementToggle } from "./ExactPlacementToggle";
 import { GuestsDrawerToggle } from "./GuestsDrawerToggle";
 import { AddRoomObjectMenu } from "./room/AddRoomObjectMenu";
 import { AddTableMenu } from "./room/AddTableMenu";
@@ -16,9 +15,10 @@ import { UndoRedoButtons } from "./UndoRedoButtons";
  * Top toolbar (tablet and desktop; phones use PhoneBottomBar): add tables,
  * act on the selection, and the theme.
  *
- * Below `xl` (every iPad) it slims down to one row: Duplicate, Copy and Paste
- * move into Select ▾, rectangles into + More, Exact seat placement into
- * Properties, and the theme into "⋯". Touch screens get no ⌨ button.
+ * Exact seat placement is in Properties at every width. Below `xl` (every
+ * iPad) the toolbar slims down to one row: Duplicate, Copy and Paste move into
+ * Select ▾, rectangles into + Tables, and the theme into "⋯". Touch screens
+ * get no ⌨ button.
  */
 export function Toolbar(): JSX.Element {
   const addTable = useEditorStore((state) => state.addTable);
@@ -43,7 +43,7 @@ export function Toolbar(): JSX.Element {
         <UndoRedoButtons />
         <span className="mx-1 h-6 w-px bg-base-300" />
         <button type="button" className="btn btn-primary btn-sm" onClick={() => addTable("round")}>
-          + Round<span className="max-xl:hidden"> table</span>
+          + Round
         </button>
         {/* Below xl, rectangles come from + More (banquet and head tables),
             so an iPad's toolbar fits on one row. */}
@@ -53,7 +53,7 @@ export function Toolbar(): JSX.Element {
             className="btn btn-primary btn-sm"
             onClick={() => addTable("rectangle")}
           >
-            + Rectangle table
+            + Rectangle
           </button>
         )}
         <AddTableMenu />
@@ -81,12 +81,6 @@ export function Toolbar(): JSX.Element {
         >
           Delete
         </button>
-        {desktop && (
-          <>
-            <span className="mx-1 h-6 w-px bg-base-300" />
-            <ExactPlacementToggle />
-          </>
-        )}
       </div>
 
       <div className="flex items-center gap-2">

@@ -98,10 +98,14 @@ export function csvOf(names: string[]): string {
   return ["Name", ...names].join("\n") + "\n";
 }
 
-/** The "Exact seat placement" switch: in the toolbar on desktop; below xl it's
- * in Properties (with nothing selected), which this opens. */
+/** The "Exact seat placement" switch, in Properties (with nothing selected);
+ * below xl this opens the Properties drawer first. */
 export async function exactPlacementToggle(page: Page): Promise<Locator> {
-  if (!isTabletLayout(page)) return page.getByText("Exact seat placement");
+  if (!isTabletLayout(page)) {
+    return page
+      .getByRole("complementary", { name: "Properties" })
+      .getByText("Exact seat placement");
+  }
   const toggle = page.getByRole("button", { name: "Properties", exact: true });
   if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
   return page.getByRole("complementary", { name: "Properties" }).getByText("Exact seat placement");
