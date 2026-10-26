@@ -1,4 +1,3 @@
-import type { Point } from "@seating/shared";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +33,7 @@ import type { SeatOccupant } from "./ChairNode";
 import { GridLayer } from "./GridLayer";
 import { SelectionTransformer } from "./SelectionTransformer";
 import { TableNode } from "./TableNode";
+import { useMarqueeSelection } from "./useMarqueeSelection";
 import { ZoomControls } from "./ZoomControls";
 
 // Keep hit-testing during drags so a second finger can still be read (pinch).
@@ -42,22 +42,15 @@ Konva.hitOnDragEnabled = true;
 /** Snap threshold in screen pixels (converted to plan units via scale). */
 const SNAP_PX = 8;
 
-interface Marquee {
-  start: Point;
-  end: Point;
-}
-
 export function EditorCanvas(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const nodeRefs = useRef<Map<string, Konva.Group>>(new Map());
   const fittedFor = useRef<string | null>(null);
-  const skipNextClick = useRef(false);
   const pinch = useRef<PinchFrame | null>(null);
 
   const [guides, setGuides] = useState<AlignmentGuide[]>([]);
-  const [marquee, setMarquee] = useState<Marquee | null>(null);
-  const [marqueeMode, setMarqueeMode] = useState(false);
+  const marquee = useMarqueeSelection(stageRef);
 
   const dimensions = useDimensions();
   const documentId = useDocumentId();
@@ -71,7 +64,6 @@ export function EditorCanvas(): JSX.Element {
   const viewport = useEditorStore((state) => state.viewport);
   const stageSize = useEditorStore((state) => state.stageSize);
   const selectTable = useEditorStore((state) => state.selectTable);
-  const setSelection = useEditorStore((state) => state.setSelection);
   const clearSelection = useEditorStore((state) => state.clearSelection);
   const updateTableTransform = useEditorStore((state) => state.updateTableTransform);
   const setSeatOffset = useEditorStore((state) => state.setSeatOffset);
@@ -217,22 +209,6 @@ export function EditorCanvas(): JSX.Element {
     [dropTargetAt],
   );
 
-  // Track Shift to switch between pan (drag) and marquee (shift+drag).
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Shift") setMarqueeMode(true);
-    };
-    const onKeyUp = (event: KeyboardEvent): void => {
-      if (event.key === "Shift") setMarqueeMode(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, []);
-
   // Size the stage to its container. The callback is deferred to the next
   // animation frame so that ResizeObserver never fires synchronously during a
   // layout pass — which is what breaks the page when DevTools opens/closes.
@@ -263,10 +239,12 @@ export function EditorCanvas(): JSX.Element {
   }, [documentId, stageSize, fitToView]);
 
   // Zoom in on a single selected table; restore the prior view when deselected.
+  // Not while picking several: each tap would throw the overview away.
+  const selectSeveral = useEditorStore((state) => state.selectSeveral);
   useEffect(() => {
-    if (selectedIds.length === 1) focusTable(selectedIds[0]);
+    if (selectedIds.length === 1 && !selectSeveral) focusTable(selectedIds[0]);
     else clearFocus();
-  }, [selectedIds, focusTable, clearFocus]);
+  }, [selectedIds, selectSeveral, focusTable, clearFocus]);
 
   // Re-center whenever the focused table is resized (or its chairs move in
   // custom mode). We only track size + seats to avoid re-running on position
@@ -351,47 +329,11 @@ export function EditorCanvas(): JSX.Element {
   const isEmptyTarget = (event: KonvaEventObject<MouseEvent | TouchEvent>): boolean =>
     event.target === event.target.getStage();
 
-  const handleMouseDown = (event: KonvaEventObject<MouseEvent>): void => {
-    if (!marqueeMode || !isEmptyTarget(event)) return;
-    const point = stageRef.current?.getRelativePointerPosition();
-    if (point) setMarquee({ start: point, end: point });
-  };
-
-  const handleMouseMove = (): void => {
-    if (!marquee) return;
-    const point = stageRef.current?.getRelativePointerPosition();
-    if (point) setMarquee((current) => (current ? { ...current, end: point } : current));
-  };
-
-  const handleMouseUp = (): void => {
-    if (!marquee) return;
-    const minX = Math.min(marquee.start.x, marquee.end.x);
-    const maxX = Math.max(marquee.start.x, marquee.end.x);
-    const minY = Math.min(marquee.start.y, marquee.end.y);
-    const maxY = Math.max(marquee.start.y, marquee.end.y);
-
-    const ids = tables
-      .filter(
-        (table) =>
-          table.position.x >= minX &&
-          table.position.x <= maxX &&
-          table.position.y >= minY &&
-          table.position.y <= maxY,
-      )
-      .map((table) => table.id);
-
-    setSelection(ids);
-    setMarquee(null);
-    skipNextClick.current = true;
-  };
-
-  // Click (mouse) or tap (touch) on empty floor clears the selection.
+  // Click (mouse) or tap (touch) on empty floor clears the selection (not
+  // while picking several, where a stray tap shouldn't lose the picks).
   const handleClick = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
-    if (skipNextClick.current) {
-      skipNextClick.current = false;
-      return;
-    }
-    if (isEmptyTarget(event)) clearSelection();
+    if (marquee.consumeClick()) return;
+    if (isEmptyTarget(event) && !selectSeveral) clearSelection();
   };
 
   return (
@@ -411,12 +353,12 @@ export function EditorCanvas(): JSX.Element {
         y={viewport.y}
         scaleX={viewport.scale}
         scaleY={viewport.scale}
-        draggable={!marqueeMode}
+        draggable={!marquee.active}
         onWheel={handleWheel}
         onDragEnd={handleStageDragEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={marquee.onPointerDown}
+        onPointerMove={marquee.onPointerMove}
+        onPointerUp={marquee.onPointerUp}
         onClick={handleClick}
         onTap={handleClick}
         onTouchMove={handleTouchMove}
@@ -462,12 +404,12 @@ export function EditorCanvas(): JSX.Element {
             />
           ))}
           <AlignmentGuides guides={guides} dimensions={dimensions} />
-          {marquee && (
+          {marquee.marquee && (
             <Rect
-              x={Math.min(marquee.start.x, marquee.end.x)}
-              y={Math.min(marquee.start.y, marquee.end.y)}
-              width={Math.abs(marquee.end.x - marquee.start.x)}
-              height={Math.abs(marquee.end.y - marquee.start.y)}
+              x={Math.min(marquee.marquee.start.x, marquee.marquee.end.x)}
+              y={Math.min(marquee.marquee.start.y, marquee.marquee.end.y)}
+              width={Math.abs(marquee.marquee.end.x - marquee.marquee.start.x)}
+              height={Math.abs(marquee.marquee.end.y - marquee.marquee.start.y)}
               fill="rgba(37, 99, 235, 0.1)"
               stroke="#2563eb"
               strokeWidth={1}

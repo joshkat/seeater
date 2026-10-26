@@ -59,6 +59,10 @@ import { useDocumentStore } from "./documentStore";
  */
 interface EditorState {
   selectedIds: string[];
+  /** "Select several" (Select ▾): a click or tap toggles an item in or out of
+   * the selection, and a drag on empty floor draws a marquee — the visible
+   * equivalent of Shift-click / Shift-drag. */
+  selectSeveral: boolean;
   viewport: Viewport;
   stageSize: StageSize;
   /** The fit-to-view baseline, set once the plan loads. */
@@ -87,6 +91,7 @@ interface EditorState {
   selectTable: (id: string | null, additive?: boolean) => void;
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
+  setSelectSeveral: (on: boolean) => void;
 
   addTable: (shape: TableShape) => void;
   /** Adds a table from a preset near the middle of the floor, selected. */
@@ -134,6 +139,7 @@ function dimensions() {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   selectedIds: [],
+  selectSeveral: false,
   viewport: { x: 0, y: 0, scale: 1 },
   stageSize: { width: 0, height: 0 },
   homeViewport: null,
@@ -151,7 +157,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   resetForNewEvent() {
-    set({ selectedIds: [], focusedTableId: null, preFocusViewport: null, homeViewport: null });
+    set({
+      selectedIds: [],
+      selectSeveral: false,
+      focusedTableId: null,
+      preFocusViewport: null,
+      homeViewport: null,
+    });
   },
 
   renameEvent(name) {
@@ -233,7 +245,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
     set((state) => {
-      if (!additive) return { selectedIds: [id] };
+      if (!additive && !state.selectSeveral) return { selectedIds: [id] };
       return state.selectedIds.includes(id)
         ? { selectedIds: state.selectedIds.filter((existing) => existing !== id) }
         : { selectedIds: [...state.selectedIds, id] };
@@ -246,6 +258,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   clearSelection() {
     set({ selectedIds: [] });
+  },
+
+  setSelectSeveral(on) {
+    set({ selectSeveral: on });
   },
 
   addTable(shape) {
