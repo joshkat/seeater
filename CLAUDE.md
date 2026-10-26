@@ -447,4 +447,5 @@ decisions on D1–D7. Deferred on purpose: **error reporting**
 ## Git
 
 - Commit after each feature. Remote: `origin`
-  (github.com/joshkat/custom-seating-app).
+  (github.com/joshkat/seeater; renamed from `custom-seating-app` on 2026-10-26, which GitHub
+  still redirects, and still the name of the local folder).
