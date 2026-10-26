@@ -2,6 +2,7 @@ import { checkInCounts, layoutViews } from "@seating/shared";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import { useDocumentTitle } from "../../../lib/useDocumentTitle";
 import { UndoRedoButtons } from "../../editor/components/UndoRedoButtons";
 import { SaveStatusBadge } from "../../editor/components/SaveStatusBadge";
 import { useUnsavedChangesGuard } from "../../editor/hooks/useUnsavedChangesGuard";
@@ -17,6 +18,7 @@ import { WalkInForm } from "./WalkInForm";
 export function CheckInPage(): JSX.Element {
   useUnsavedChangesGuard();
   const doc = useDocumentStore((state) => state.doc)!;
+  useDocumentTitle(`Check-in · ${doc.name}`);
   const [query, setQuery] = useState("");
   const [arrival, setArrival] = useState<ArrivalFilter>("waiting");
   const [layoutId, setLayoutId] = useState(doc.activeLayoutId);
