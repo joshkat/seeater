@@ -11,10 +11,10 @@ import { useLayoutStore } from "../store/layoutStore";
 import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 
 /**
- * "⋯" at the end of the toolbar below `xl`, for what doesn't fit: the theme,
- * and the cheat sheet when there's a keyboard. On phones (`phone`) it also
- * holds what the header and toolbar drop there: Redo, Properties, Export,
- * History and Check-in.
+ * "⋯" at the end of the toolbar below `xl`, for what doesn't fit: Redo, the
+ * theme, and the cheat sheet when there's a keyboard. On phones (`phone`) it
+ * also holds what the header drops there: Properties, Export, History and
+ * Check-in.
  */
 export function ToolbarOverflowMenu({ phone = false }: { phone?: boolean }): JSX.Element {
   const coarse = useMediaQuery(COARSE_POINTER_QUERY);
@@ -34,13 +34,13 @@ export function ToolbarOverflowMenu({ phone = false }: { phone?: boolean }): JSX
         ⋯
       </button>
       <ul className="dropdown-content menu z-30 my-1 max-h-[70vh] w-56 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-lg">
+        <li className={canRedo ? "" : "menu-disabled"}>
+          <button type="button" disabled={!canRedo} onClick={run(redoEdit)}>
+            ↷ Redo
+          </button>
+        </li>
         {phone && (
           <>
-            <li className={canRedo ? "" : "menu-disabled"}>
-              <button type="button" disabled={!canRedo} onClick={run(redoEdit)}>
-                ↷ Redo
-              </button>
-            </li>
             <li>
               <button
                 type="button"

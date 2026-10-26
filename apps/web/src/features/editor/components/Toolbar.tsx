@@ -17,8 +17,10 @@ import { UndoRedoButtons } from "./UndoRedoButtons";
  *
  * Exact seat placement is in Properties at every width. Below `xl` (every
  * iPad) the toolbar slims down to one row: Duplicate, Copy and Paste move into
- * Select ▾, rectangles into + Tables, and the theme into "⋯". Touch screens
- * get no ⌨ button.
+ * Select ▾, rectangles into + Tables, Redo and the theme into "⋯", and the
+ * separators go. Touch screens get no ⌨ button. It has little slack on an
+ * 834px iPad with 44px touch targets: check ux-toolbar.spec in CI (Linux
+ * fonts are wider) before adding anything here.
  */
 export function Toolbar(): JSX.Element {
   const addTable = useEditorStore((state) => state.addTable);
@@ -35,13 +37,13 @@ export function Toolbar(): JSX.Element {
     <div
       role="group"
       aria-label="Editor tools"
-      className="flex flex-wrap items-center justify-between gap-2"
+      className="flex flex-wrap items-center justify-between gap-1.5 xl:gap-2"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 xl:gap-2">
         {/* Tablet widths: the side panels are drawers, opened from here. */}
         {!desktop && <GuestsDrawerToggle />}
-        <UndoRedoButtons />
-        <span className="mx-1 h-6 w-px bg-base-300" />
+        <UndoRedoButtons showRedo={desktop} />
+        {desktop && <span className="mx-1 h-6 w-px bg-base-300" />}
         <button type="button" className="btn btn-primary btn-sm" onClick={() => addTable("round")}>
           + Round
         </button>
@@ -58,7 +60,7 @@ export function Toolbar(): JSX.Element {
         )}
         <AddTableMenu />
         <AddRoomObjectMenu />
-        <span className="mx-1 h-6 w-px bg-base-300" />
+        {desktop && <span className="mx-1 h-6 w-px bg-base-300" />}
         <SelectMenu actions={desktop ? [] : ["duplicate", "copy", "paste"]} />
         {desktop && (
           <>
@@ -83,7 +85,7 @@ export function Toolbar(): JSX.Element {
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 xl:gap-2">
         {!desktop && (
           <button
             type="button"

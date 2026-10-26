@@ -8,6 +8,7 @@ import {
   exactPlacementToggle,
   importGuests,
   isTabletLayout,
+  redoControl,
   seatedCount,
   selectAllGuests,
 } from "./helpers";
@@ -37,7 +38,7 @@ test("seat guests chair by chair, then undo and redo", async ({ page }) => {
   if (isTabletLayout(page)) await page.getByRole("button", { name: "Guests", exact: true }).click();
   await page.getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => seatedCount(page)).toBe(0);
-  await page.getByRole("button", { name: "Redo" }).click();
+  await (await redoControl(page)).click();
   await expect.poll(() => seatedCount(page)).toBe(3);
 });
 

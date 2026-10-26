@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createEvent, isTabletLayout } from "./helpers";
+import { createEvent, isTabletLayout, redoControl } from "./helpers";
 
 test("add a grid of tables, then align a head table", async ({ page }) => {
   await createEvent(page, "Room");
@@ -49,7 +49,7 @@ test("room objects are added, edited and deleted (undoably)", async ({ page }) =
   await expect(properties.getByLabel("Units")).toBeVisible();
   if (isTabletLayout(page)) await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
+  await expect(await redoControl(page)).toBeEnabled();
 });
 
 test("a floor-plan image can be uploaded and removed", async ({ page }) => {

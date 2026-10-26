@@ -17,6 +17,13 @@ export function editorTools(page: Page): Locator {
   return page.getByRole("group", { name: "Editor tools" });
 }
 
+/** Redo: a toolbar button on desktop; below xl it's in "⋯", which this opens. */
+export async function redoControl(page: Page): Promise<Locator> {
+  if (!isTabletLayout(page)) return editorTools(page).getByRole("button", { name: "Redo" });
+  await editorTools(page).getByRole("button", { name: "More options" }).click();
+  return page.getByRole("button", { name: "↷ Redo" });
+}
+
 /** Creates an event from the dashboard and waits for the editor. */
 export async function createEvent(page: Page, name: string): Promise<void> {
   await page.goto("/");

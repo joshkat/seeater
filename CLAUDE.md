@@ -153,8 +153,10 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
   `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
 - **Toolbar by width:** `Toolbar` (sm and up) is one row: at `xl`+ it has Duplicate, Copy,
-  Paste, ⌨ and Theme; below `xl` those go into Select ▾ and "⋯" (`ToolbarOverflowMenu`),
-  rectangles into + Tables ▾, and ⌨ is dropped on coarse pointers (`COARSE_POINTER_QUERY`).
+  Paste, ⌨ and Theme; below `xl` those (and Redo) go into Select ▾ and "⋯"
+  (`ToolbarOverflowMenu`), rectangles into + Tables ▾, and ⌨ is dropped on coarse pointers
+  (`COARSE_POINTER_QUERY`). The iPad portrait row has little slack: CI's Linux WebKit fonts are
+  wider than macOS's, so `ux-toolbar.spec` can pass locally and fail in CI.
   **Exact seat placement lives in Properties (`EventSettings`) at every width**: the toolbar has
   no room for it at 1280px.
 - **Phone layout** (below `sm`, 640px; `PHONE_QUERY` in `lib/useMediaQuery`): the header is ← and
