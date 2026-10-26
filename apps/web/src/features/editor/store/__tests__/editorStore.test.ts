@@ -33,6 +33,20 @@ describe("adding items", () => {
     }
   });
 
+  it("centres a grid on the screen, wherever the view is", () => {
+    // Zoom in, then pan so the screen shows the floor's top-left area.
+    editor().zoomBy(2);
+    const { scale } = editor().viewport;
+    editor().setViewport({ scale, x: -200 * scale, y: -100 * scale });
+    const view = { x: 200 + 400 / scale, y: 100 + 250 / scale };
+    editor().addTableGrid({ count: 4, columns: 2, shape: "round" });
+    const added = doc().tables.filter((table) => editor().selectedIds.includes(table.id));
+    const mean = (pick: (point: { x: number; y: number }) => number) =>
+      added.reduce((sum, table) => sum + pick(table.position), 0) / added.length;
+    expect(mean((point) => point.x)).toBeCloseTo(view.x);
+    expect(mean((point) => point.y)).toBeCloseTo(view.y);
+  });
+
   it("reports when a grid has no room and overlaps", () => {
     expect(editor().addTableGrid({ count: 4, columns: 2, shape: "round" })).toBe(true);
     expect(editor().addTableGrid({ count: 100, columns: 10, shape: "round" })).toBe(false);

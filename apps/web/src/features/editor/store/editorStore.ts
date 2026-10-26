@@ -57,6 +57,7 @@ import {
   focusViewportForTable,
   zoomViewportAtCenter,
 } from "../geometry/viewport";
+import { centerOfView } from "../geometry/viewCenter";
 import { resolveUnits } from "../lib/units";
 import { chairCutNotice, deletedTablesNotice } from "../lib/unseatNotices";
 import type { Viewport } from "../types";
@@ -112,8 +113,8 @@ interface EditorState {
   addTable: (shape: TableShape) => void;
   /** Adds a table from a preset in the first free spot, selected. */
   addPresetTable: (preset: TablePreset) => void;
-  /** Adds a grid of tables in free floor, all selected. When there's no room
-   * for it, it's centred on the floor and this returns false (they overlap). */
+  /** Adds a grid of tables centred on the screen (kept on the floor), all
+   * selected. Returns false when they overlap tables or objects already there. */
   addTableGrid: (options: Omit<TableGridOptions, "center">) => boolean;
   alignSelected: (edge: AlignEdge) => void;
   distributeSelected: (axis: "horizontal" | "vertical") => void;
@@ -355,12 +356,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!doc) return true;
     const footprint = gridFootprint(options);
     const { viewport, stageSize } = get();
-    const spot = findFreeSpot(doc, footprint, visibleRect(viewport, stageSize));
-    const center = spot ?? { x: doc.dimensions.width / 2, y: doc.dimensions.height / 2 };
+    // A grid goes where the user is looking, not into the first free corner.
+    const center = centerOfView(visibleRect(viewport, stageSize), doc.dimensions, footprint);
     const result = addTableGrid(doc, { ...options, center });
     edit(() => result.doc);
     set({ selectedIds: result.tableIds });
-    return spot !== null || isSpotFree(occupiedRects(doc), center, footprint, 0);
+    return isSpotFree(occupiedRects(doc), center, footprint, 0);
   },
 
   alignSelected(edge) {

@@ -88,6 +88,29 @@ test("new tables and room items land in free floor", async ({ page }) => {
   expect(overlapping(await storedFootprints(page))).toBe(0);
 });
 
+test("a grid lands in the middle of the screen", async ({ page }) => {
+  await createEvent(page, "Grid");
+  await page.getByRole("button", { name: "+ Tables ▾" }).click();
+  await page.getByRole("button", { name: "Grid of tables…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Grid of tables" });
+  await expect(dialog).toContainText("centred on your screen");
+  await dialog.getByLabel("How many tables").fill("4");
+  await dialog.getByLabel("Tables per row").fill("2");
+  await dialog.getByRole("button", { name: "Add tables" }).click();
+
+  // The whole room is on screen, so the middle of the screen is the middle
+  // of the floor (not the top-left corner, where single tables go).
+  await expect.poll(async () => (await storedFootprints(page)).length).toBe(4);
+  const boxes = await storedFootprints(page);
+  const minX = Math.min(...boxes.map((box) => box.minX));
+  const maxX = Math.max(...boxes.map((box) => box.maxX));
+  const minY = Math.min(...boxes.map((box) => box.minY));
+  const maxY = Math.max(...boxes.map((box) => box.maxY));
+  // A new event's floor is 16 × 10 m: its middle is (800, 500).
+  expect(Math.abs((minX + maxX) / 2 - 800)).toBeLessThan(5);
+  expect(Math.abs((minY + maxY) / 2 - 500)).toBeLessThan(5);
+});
+
 test("a grid with no room says it overlaps, and stays selected", async ({ page }) => {
   await createEvent(page, "Crowded");
   await page.getByRole("button", { name: /^\+ Round/ }).click();

@@ -76,8 +76,8 @@ export function TableGridDialog({ onClose }: { onClose: () => void }): JSX.Eleme
           </label>
         </div>
         <p className="text-xs text-base-content/60">
-          {count} × {presetLabel(preset, units)} = {count * preset.seatCount} seats, placed in free
-          floor.
+          {count} × {presetLabel(preset, units)} = {count * preset.seatCount} seats, centred on your
+          screen.
         </p>
         <div className="modal-action mt-1">
           <button type="button" className="btn btn-sm" onClick={onClose}>

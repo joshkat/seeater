@@ -111,8 +111,9 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   `KeyboardFocusRing`), Enter opens Edit seating. The stage stays `invisible` until its first fit;
   a resize re-fits while the view is still the fitted one (else keeps the centre).
 - **New items land on free floor** (shared `document/freeSpot.ts`: `findFreeSpot` scans the
-  visible floor top-left first, footprint + `CHAIR_CLEARANCE`). A grid that can't fit is centred
-  and `addTableGrid` returns false (the toolbar shows a notice).
+  visible floor top-left first, footprint + `CHAIR_CLEARANCE`). A **grid** goes in the middle of
+  the screen instead (`geometry/viewCenter.centerOfView`, kept on the floor); `addTableGrid`
+  returns false when it overlaps something (the dialog then shows a notice).
 - **Minimap** (`canvas/Minimap.tsx`, `geometry/minimap.ts`): SVG overlay, hidden while the whole
   floor fits. It draws with `RoomShapes` (shared with the template thumbnails).
 - **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
