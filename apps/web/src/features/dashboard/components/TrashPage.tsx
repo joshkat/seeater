@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { useDocumentTitle } from "../../../lib/useDocumentTitle";
 import { deleteEvent } from "../../storage/repository/eventRepository";
 import { activeDb } from "../../storage/store/storageStore";
 import { usePurgeExpiredTrash } from "../hooks/usePurgeExpiredTrash";
@@ -9,6 +10,7 @@ import { TrashRow } from "./TrashRow";
 /** `/trash`: deleted events, restorable for 30 days. */
 export function TrashPage(): JSX.Element {
   usePurgeExpiredTrash();
+  useDocumentTitle("Trash · Seating");
   const trashed = useTrashedEvents();
 
   async function handleEmpty(): Promise<void> {

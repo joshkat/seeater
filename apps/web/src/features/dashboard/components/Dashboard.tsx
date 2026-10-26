@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { ThemeMenu } from "../../../components/ThemeMenu";
+import { useDocumentTitle } from "../../../lib/useDocumentTitle";
 import { AuthControls } from "../../auth/components/AuthControls";
 import { BackupImportNotice } from "../../backup/components/BackupImportNotice";
 import {
@@ -20,6 +22,7 @@ import { TrashUndoNotice } from "./TrashUndoNotice";
 export function Dashboard(): JSX.Element {
   const summaries = useEventSummaries();
   usePurgeExpiredTrash();
+  useDocumentTitle("My events · Seating");
   const [lastTrashed, setLastTrashed] = useState<{ id: string; name: string } | null>(null);
   const clearLastTrashed = useCallback(() => setLastTrashed(null), []);
   const [backupImport, setBackupImport] = useState<BackupImportResult | null>(null);
@@ -27,12 +30,13 @@ export function Dashboard(): JSX.Element {
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
       <header className="border-b border-base-300 bg-base-100">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-4 max-sm:px-4">
           <h1 className="text-xl font-bold">My Events</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <TrashLink />
             <ImportBackupButton onResult={setBackupImport} />
             <NewEventButton />
+            <ThemeMenu />
             <SyncStatusBadge />
             <AuthControls />
           </div>

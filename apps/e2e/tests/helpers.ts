@@ -7,6 +7,16 @@ export function isTabletLayout(page: Page): boolean {
   return (page.viewportSize()?.width ?? DESKTOP_MIN_WIDTH) < DESKTOP_MIN_WIDTH;
 }
 
+/** Below Tailwind's `sm` (640px): the phone layout, with its bottom bar. */
+export function isPhoneLayout(page: Page): boolean {
+  return (page.viewportSize()?.width ?? DESKTOP_MIN_WIDTH) < 640;
+}
+
+/** The editor's toolbar (the top bar, or the bottom bar on phones). */
+export function editorTools(page: Page): Locator {
+  return page.getByRole("group", { name: "Editor tools" });
+}
+
 /** Creates an event from the dashboard and waits for the editor. */
 export async function createEvent(page: Page, name: string): Promise<void> {
   await page.goto("/");
@@ -14,7 +24,7 @@ export async function createEvent(page: Page, name: string): Promise<void> {
   await page.getByPlaceholder(/Wedding/).fill(name);
   await page.keyboard.press("Enter");
   await page.waitForURL(/\/events\//);
-  await expect(page.getByRole("button", { name: /^\+ Round/ })).toBeVisible();
+  await expect(editorTools(page)).toBeVisible();
 }
 
 /** The guest panel (opening its drawer first on tablets). */
@@ -29,6 +39,8 @@ export async function guestPanel(page: Page): Promise<Locator> {
 }
 
 export async function addRoundTable(page: Page): Promise<void> {
+  // Phones: tables are added from the bottom bar's "+ Add ▾".
+  if (isPhoneLayout(page)) await page.getByRole("button", { name: "+ Add ▾" }).click();
   await page.getByRole("button", { name: /^\+ Round/ }).click();
   // New tables are selected; deselect so the canvas goes back to the full view.
   await page.keyboard.press("Escape");
@@ -84,6 +96,15 @@ export async function seatedCount(page: Page): Promise<number> {
 
 export function csvOf(names: string[]): string {
   return ["Name", ...names].join("\n") + "\n";
+}
+
+/** The "Exact seat placement" switch: in the toolbar on desktop; below xl it's
+ * in Properties (with nothing selected), which this opens. */
+export async function exactPlacementToggle(page: Page): Promise<Locator> {
+  if (!isTabletLayout(page)) return page.getByText("Exact seat placement");
+  const toggle = page.getByRole("button", { name: "Properties", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+  return page.getByRole("complementary", { name: "Properties" }).getByText("Exact seat placement");
 }
 
 /** Closes an open side drawer (tablets) so the canvas and tabs are reachable. */

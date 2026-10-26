@@ -70,7 +70,8 @@ export function MultiTableEditor({
         </div>
       </div>
       <p className="text-xs text-base-content/70">
-        Shift-click tables or Shift-drag on empty floor to select several.
+        To add or remove tables, use Select ▾ → Select several (or Shift-click, and Shift-drag on
+        empty floor).
       </p>
     </div>
   );

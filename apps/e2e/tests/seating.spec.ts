@@ -5,6 +5,7 @@ import {
   assignSelectionTo,
   createEvent,
   csvOf,
+  exactPlacementToggle,
   importGuests,
   isTabletLayout,
   seatedCount,
@@ -17,7 +18,7 @@ test("seat guests chair by chair, then undo and redo", async ({ page }) => {
   await importGuests(page, csvOf(["Ada", "Grace", "Linus"]));
 
   // One table, so "Exact seat placement" is on (auto) and the dialog opens.
-  await expect(page.getByText("Exact seat placement")).toBeVisible();
+  await expect(await exactPlacementToggle(page)).toBeVisible();
   await selectAllGuests(page);
   await assignSelectionTo(page, "Table 1");
 
@@ -45,7 +46,7 @@ test("guests who don't fit stay selected and can go to another table", async ({ 
   await addRoundTable(page);
   await addRoundTable(page);
   // Two tables would default to exact placement; this test is about auto-fill.
-  await page.getByText("Exact seat placement").click();
+  await (await exactPlacementToggle(page)).click();
   await importGuests(page, csvOf(Array.from({ length: 10 }, (_, i) => `Guest ${i + 1}`)));
   await selectAllGuests(page);
   await assignSelectionTo(page, "Table 1");

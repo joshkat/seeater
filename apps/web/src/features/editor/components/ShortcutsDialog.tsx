@@ -1,37 +1,54 @@
 import { useRef } from "react";
 import { useModalFocus } from "../../../lib/useModalFocus";
 import { isApplePlatform, shortcutLabel } from "../../../lib/platform";
-import { NUDGE_STEP, NUDGE_STEP_LARGE } from "../hooks/useKeyboardShortcuts";
+import { type NudgeSteps, nudgeSteps } from "../lib/nudge";
+import { useUnits } from "../hooks/useDocumentSelectors";
 import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 
-function shortcutGroups(): { title: string; rows: [string, string][] }[] {
+const MOD = isApplePlatform() ? "⌘" : "Ctrl";
+
+/** Every shortcut and modifier-click, each with the visible control that does
+ * the same (house rule: nothing is keyboard- or modifier-only). */
+function shortcutGroups(nudge: NudgeSteps): { title: string; rows: [string, string][] }[] {
   return [
     {
       title: "Editing",
       rows: [
-        [shortcutLabel("Z"), "Undo"],
+        [shortcutLabel("Z"), "Undo (↶ in the toolbar)"],
         [`${shortcutLabel("Z", { shift: true })}${isApplePlatform() ? "" : " or Ctrl+Y"}`, "Redo"],
-        [shortcutLabel("A"), "Select every table and room object"],
+        [shortcutLabel("A"), "Select every table and room object (Select ▾ → Select all)"],
         [
           `${shortcutLabel("C")} / ${shortcutLabel("V")}`,
-          "Copy / paste (also into another layout or event)",
+          "Copy / paste, also into another layout or event (Copy and Paste buttons)",
         ],
         [shortcutLabel("D"), "Duplicate the selection"],
         ["Delete or ⌫", "Delete the selection"],
       ],
     },
     {
+      title: "Selecting",
+      rows: [
+        ["Shift-click", "Add a table or room object to the selection (Select ▾ → Select several)"],
+        ["Shift-drag", "Select everything in a box on empty floor (Select several, then drag)"],
+        [`${MOD}-click a guest`, "Tick one more guest (or its checkbox)"],
+        ["Shift-click a guest", "Tick every guest from the last one ticked (or tick each box)"],
+      ],
+    },
+    {
       title: "Moving",
       rows: [
-        ["← ↑ → ↓", `Nudge the selection (${NUDGE_STEP} cm)`],
-        ["Shift + arrow", `Nudge further (${NUDGE_STEP_LARGE} cm)`],
-        ["Scroll / pinch", "Zoom the room"],
+        ["← ↑ → ↓", `Nudge the selection (${nudge.stepLabel})`],
+        ["Shift + arrow", `Nudge further (${nudge.largeLabel})`],
+        ["Scroll / pinch", "Zoom the room (+ and − on the canvas)"],
       ],
     },
     {
       title: "Anywhere",
       rows: [
-        ["Esc", "Back out: close a prompt or drawer, or clear the selection"],
+        [
+          "Esc",
+          "Back out: close a prompt or drawer, stop selecting several, or clear the selection",
+        ],
         ["?", "This list"],
       ],
     },
@@ -43,6 +60,7 @@ export function ShortcutsDialog(): JSX.Element | null {
   const boxRef = useRef<HTMLDivElement>(null);
   const open = useShortcutsDialogStore((state) => state.open);
   const setOpen = useShortcutsDialogStore((state) => state.setOpen);
+  const { units } = useUnits();
   useModalFocus(boxRef, open);
   if (!open) return null;
 
@@ -61,7 +79,7 @@ export function ShortcutsDialog(): JSX.Element | null {
         onKeyDown={(event) => (event.key === "Escape" || event.key === "?") && setOpen(false)}
       >
         <h2 className="text-lg font-semibold">Keyboard shortcuts</h2>
-        {shortcutGroups().map((group) => (
+        {shortcutGroups(nudgeSteps(units)).map((group) => (
           <section key={group.title}>
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-base-content/60">
               {group.title}
