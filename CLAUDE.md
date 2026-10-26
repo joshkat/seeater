@@ -88,13 +88,31 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   `undoEdit`/`redoEdit` (`editor/store/historyActions.ts`) also prune stale selections and close
   seating prompts; they're off while the placement dialog is open. **A user action must be one
   `apply`**, or it takes several ⌘Z to undo.
+- **Notices** (`seatingFlowStore.showNotice(text, action?)`, rendered by `SeatingNoticeToast` over
+  the canvas): anything undoable uses `showUndoNotice(text)` (`historyActions`), which adds an
+  **Undo** button. Never write "Undo with ⌘Z" (tablets have no ⌘). Deleting tables or cutting
+  chairs that unseats someone says who (`editor/lib/unseatNotices.ts`, shared `newlyUnseatedIds`).
+- **Dialogs:** every modal calls `useModalFocus(ref, active?)` (`lib/useModalFocus.ts`) on its
+  `.modal-box`: focus moves in, Tab is trapped (the hook moves focus itself; Safari's Tab skips
+  buttons), focus returns to the trigger on close. New dialogs must use it.
 - **Keyboard shortcuts** (`editor/hooks/useKeyboardShortcuts.ts`; the cheat sheet is
   `ShortcutsDialog` — keep the two in step):
-  - Arrows nudge via `moveItems`, coalesced as `nudge:<ids>`.
+  - Arrows nudge via `moveItems`, coalesced as `nudge:<ids>`; the step follows units
+    (`lib/nudge.nudgeSteps`: 10/50 cm or 4″/20″).
   - ⌘/Ctrl+A/C/V select all, copy and paste. The clipboard is an in-memory `clipboardStore` (not the
     system clipboard), so paste works across layouts and events. C and V only `preventDefault` when
     there's something to copy or paste.
   - Arrows are ignored while a `<select>` or `<input>` has focus.
+  - Visible equivalents (house rule): Select ▾ (`SelectMenu`: Select several = sticky toggle mode
+    with box-drag, `editorStore.selectSeveral`; Select all; Clear), Copy and Paste (n)
+    (`ClipboardButtons`; one copy path, `clipboardActions.copySelection`, which shows a notice).
+- **Floor plan keyboard access** (`hooks/useCanvasKeyboard.ts`): the canvas is a focusable
+  `group` "Floor plan, N tables"; Tab/Shift+Tab select tables then room objects (dashed
+  `KeyboardFocusRing`), Enter opens Edit seating. The stage stays `invisible` until its first fit;
+  a resize re-fits while the view is still the fitted one (else keeps the centre).
+- **New items land on free floor** (shared `document/freeSpot.ts`: `findFreeSpot` scans the
+  visible floor top-left first, footprint + `CHAIR_CLEARANCE`). A grid that can't fit is centred
+  and `addTableGrid` returns false (the toolbar shows a notice).
 - **Minimap** (`canvas/Minimap.tsx`, `geometry/minimap.ts`): SVG overlay, hidden while the whole
   floor fits. It draws with `RoomShapes` (shared with the template thumbnails).
 - **editorStore** = view state only (viewport, focus, selection). **guestStore** = guest selection
@@ -134,11 +152,23 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   slide-over drawers (`editor/store/layoutStore`, `useDrawerState`; closed = `inert`). Canvas:
   pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
   `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
-- **Phone layout** (below `sm`, 640px; `PHONE_QUERY` in `lib/useMediaQuery`): the header wraps,
-  the toolbar's two groups flow together (`max-sm:contents`), and Exact seat placement moves into
-  Properties. When a control **moves** between places, render it in one place via `useMediaQuery`
+- **Toolbar by width:** `Toolbar` (sm and up) is one row: at `xl`+ it has Duplicate, Copy,
+  Paste, ⌨ and Theme; below `xl` those go into Select ▾ and "⋯" (`ToolbarOverflowMenu`),
+  rectangles into + Tables ▾, and ⌨ is dropped on coarse pointers (`COARSE_POINTER_QUERY`).
+  **Exact seat placement lives in Properties (`EventSettings`) at every width**: the toolbar has
+  no room for it at 1280px.
+- **Phone layout** (below `sm`, 640px; `PHONE_QUERY` in `lib/useMediaQuery`): the header is ← and
+  the title; `EditorPage` swaps the toolbar for `PhoneBottomBar` (Guests · + Add ▾ · Select ▾ ·
+  Undo · ⋯ with Redo, Properties, History, Check-in, Export, Theme). Menus share item lists
+  (`TableMenuItems`, `RoomObjectMenuItems`, `ExportMenuItems`, `ThemeMenuItems`). When a control **moves** between places, render it in one place via `useMediaQuery`
   rather than hiding a CSS copy: e2e `getByText` sees hidden copies, which breaks strict mode.
-  The Guests drawer scrolls as a whole, and guest rows wrap (name, then RSVP + actions).
+  The Guests drawer scrolls as a whole; a guest row keeps RSVP + actions on the name's line while
+  the name gets 5rem, else they wrap below it.
+- **Guest panel** (`GuestPanel`): counts, search (`GuestFilterBar`), then one row
+  `+ Add guest · Import ▾ · Filters` (`GuestPanelActions`; the add form opens inline and keeps
+  focus in Name). `AssignBar` renders only with a selection, as the `sticky bottom-0` last item
+  of the list's scroll area (region "Selected guests"), so ticking never moves a row.
+  `RsvpControl` is a radiogroup per guest (needs `guestName`).
 - **Check-in (schema v9):** `guest.checkedInAt` (ISO or null). `setCheckedIn` also marks the RSVP as
   going, and duplicating an event clears check-ins. The `/events/:id/check-in` route
   (`features/checkin/`, lazy, no Konva) is a door list: search, table + seat per guest, "Check in
@@ -178,8 +208,12 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   empty dashboard has "Create your first event" and "Try a sample event".
 - **Export & print** (`features/export/`): print views are a portal (`#print-view`) over the
   app; `body.printing` + `@media print` in `global.css` hide everything else, so the browser's
-  Print / Save as PDF outputs only the sheet (no PDF library, works offline). The chart image comes
-  from the canvas via `registerChartCapture` (2×, cropped to the tables, grid + handles hidden).
+  Print / Save as PDF outputs only the sheet (no PDF library, works offline). The printed chart is
+  SVG from the pure `chartScene(doc, layoutView, {showNames, color, includeDeclined})`, sized for
+  a 7 × 8 in box (table names ≥ 10 pt); any layout can be printed (`printStore.layoutId`,
+  `defaultPrintLayoutId`: cards default to the layout with the most tables). Legend swatches are
+  SVG (browsers drop CSS backgrounds when printing). The PNG download still comes from the canvas
+  via `registerChartCapture` (active layout).
   Lists are built from `seatingRows(doc, layoutView)` (pure). Guest CSV export uses headers the
   importer reads back.
 - **Guest details (schema v4):** `meal`, `dietary`, `accessibility`, `notes`, `tags[]`, `isChild`.
@@ -190,7 +224,10 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   (portalled to `body`, so the drawer can't clip it): a field per column, pre-filled from
   `lib/importFields.ts` (header aliases incl. common wedding-site names — not verified against
   real Zola/Knot/Joy files), First + Last name joined, RSVP column → `GuestInput.rsvpStatus`,
-  likely duplicates (name match, case/space-insensitive) skipped by default. All logic is pure in
+  likely duplicates (name match, case/space-insensitive) skipped by default and shown struck
+  through in a preview of every row ("Import anyway"). Partner first/last columns add a second
+  guest in the same household; "Type" maps to Child only when its values look like adult/child.
+  Hand-picked columns survive the "First row is a header" toggle (`remapForHeader`). All logic is pure in
   `lib/importMapping.ts`; `rowsToGuests`/`parseGuestFile` use the same suggested mapping. Import =
   one `importGuests` call (one undo step).
 - **Households (schema v2; v3 added `settings`):** `doc.households` (id + name) + `guest.householdId`. Ops drop empty
@@ -212,7 +249,7 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
 - **Offline:** the PWA precaches the app shell (`vite.config.ts`); `navigator.storage.persist()` is
   requested on first event creation; backups are `<name>.seating.json` (`features/backup`).
 - **Stored docs are upgraded on DB open:** the Dexie version is `DATABASE_VERSION` = store layout ×
-  100 + `EVENT_DOC_SCHEMA_VERSION` (`storage/db/SeatingDb.ts`, currently 103). A schema bump **or**
+  100 + `EVENT_DOC_SCHEMA_VERSION` (`storage/db/SeatingDb.ts`, currently 2 × 100 + 9 = 209). A schema bump **or**
   a store change (bump `STORE_LAYOUT_VERSION`) re-runs the upgrade, which re-declares the stores
   and runs `upgradeEventDoc` over every stored doc. Local reads don't go through `parseEventDoc`, so
   this is what keeps old local events loadable.
@@ -224,7 +261,14 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   10 min of edits (`useAutoVersions`; unchanged content skipped; newest 50 kept), named versions
   kept forever. Restore = save "Before restoring…" + one `apply(restoreEventDoc)` (undoable). Old
   versions go through `parseEventDoc`. Local only: not synced, not in backups.
-- **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts.
+- **Theme** persisted in `localStorage` and applied to `<html data-theme>` before React mounts
+  (`lib/useTheme`; Theme ▾ on the dashboard and the editor). Contrast: helper text is
+  `text-base-content/70` (never /40–/50), icon buttons /60, and success/error **text** uses
+  `text-success-strong` / `text-error-strong` (`global.css`; per-theme shades). `:root` text
+  follows `--color-base-content`.
+- **Check-in search** (`checkin/lib/checkInList.ts`) covers everyone while a query is typed,
+  whatever the filter; the walk-in is offered only when nobody matches. A check-in stays in place
+  for 5 s (`useRecentCheckIns`). Page titles via `lib/useDocumentTitle`.
 
 ## Gotchas (these cost real time — read before debugging)
 
@@ -248,6 +292,16 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   flags (same as below); run `npx playwright test …` inside `apps/e2e`. Guest checkboxes ignore
   pointer events (their cell is the hit area): click `checkbox.locator("..")`. A closed drawer is
   `inert`, so it's absent from `getByRole` — open it first (`guestPanel()` helper).
+  `E2E_PORT=4281 npx playwright test` runs a second checkout's suite side by side (each port
+  reuses whatever server is already on it, so never share a port between checkouts). Use
+  `editorTools(page)` (top toolbar, or the phone's bottom bar) and `exactPlacementToggle(page)`.
+  Notices have an "Undo" button too: scope with `getByRole("status")` or the toolbar, and use
+  `exact: true` for names like "Select all" / "Copy" (an event title can contain them).
+- **The built-in browser pane, when hidden, runs no `requestAnimationFrame`:** the canvas stays
+  invisible (it waits for its first fit) and drawers don't open until a screenshot forces a
+  frame. That's the pane, not the app.
+- **A fresh worktree's `npm run typecheck` fails in `apps/api`** without `DATABASE_URL` (the API's
+  `.env` is gitignored and `prisma.config.ts` needs it). Any value works for typechecking.
 - **Passing Vite flags through npm:** use `npm run dev --workspace @seating/web -- --port N`. Going
   via the root `dev:web` script swallows the flags.
 - **Service worker only in production builds.** To test offline, build and run `web-preview`.
@@ -320,14 +374,18 @@ Done:
 - **Households:** `householdId` (schema v2), grouped in the list (header selects / drags the whole
   household, rename, ungroup), "Group as household" from a selection, import from a
   "Household"/"Party" column, never split without asking.
-- **Exact seat placement** (per event, schema v3): toolbar toggle (auto = on for ≤ 2 tables);
+- **Exact seat placement** (per event, schema v3): toggle in Properties (auto = on for ≤ 2 tables);
   placement dialog with live table preview, tap or drag, swap/replace asks first, Confirm = one
   change; "Edit seating" / double-click a table.
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
   1280px, 44px targets on touch screens. **Phones:** compact header/toolbar, scrolling guest
   drawer with wrapping rows.
 - **Day-of check-in:** a door list per event (search, table + seat, household check-in, walk-ins,
-  arrivals count, undo), phone-first.
+  arrivals count, undo), phone-first. Search finds arrived guests; check-ins confirm in place.
+- **UX pass (2026-10):** nothing unseats silently (Undo notices), visible Select ▾ / Copy / Paste,
+  free-floor placement, compact guest panel, phone bottom bar, one-row iPad toolbar, focus-trapped
+  dialogs, keyboard floor plan, WCAG AA contrast in every theme, partner import, vector print
+  chart for any layout.
 - **Undo/redo:** ⌘/Ctrl+Z, Shift+⌘/Ctrl+Z or Ctrl+Y, toolbar ↶ ↷. Typing a name is one step; the
   placement dialog's Confirm is one step. Session-only (not kept across reloads).
 - **Keyboard & navigation:**
@@ -378,7 +436,9 @@ Roadmap order (2026-10-09): 1 bulk seating ✅ → 2 exact seat placement ✅ �
 **E ✅** (17 align/distribute + grid, 18 units + presets, chair rows, 9 room objects, 10
 floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G ✅** (14 onboarding + sample event, 22 smart import, 25 templates) → **H ✅** (15 phone
 layout, 24 check-in; 23 QR / 26 Wallet need hosting — parked with sync). → **I ✅**
-(16 shortcuts, 19 minimap). Next: the user's UX pass after their testing. Deferred on purpose: **error reporting**
+(16 shortcuts, 19 minimap). → **UX pass** (`docs/ux-review.md`, review guide
+`docs/reviewing-ux-pass.md`; owner decisions D1–D7 there are still open). Next: the owner's
+decisions on D1–D7. Deferred on purpose: **error reporting**
 (Sentry or an "email us" link) and **re-enabling sign-in + sync**.
 
 ## Git
