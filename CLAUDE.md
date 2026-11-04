@@ -52,11 +52,23 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
 :5175 (`VITE_ENABLE_SYNC=true` + keyless `VITE_DEV_SYNC_OWNER=dev-user`, syncs to the local API),
 `web-preview` :4173 (prod build, service worker active).
 
-- **Self-hosting:** `Dockerfile` (node:24-alpine build → `joseluisq/static-web-server` on
-  `scratch`, ~10 MB, config `docker/static-web-server.toml`: SPA fallback, brotli, immutable
-  `/assets`, no-cache shell). `scripts/deploy-zima.sh` streams the tree to the ZimaOS box
-  (`josh@192.168.1.194`), builds there and runs container `seeater` on :8090 (shows in
-  Portainer as a standalone container). `docker/compose.yml` is the same as a stack.
+- **Self-hosting** (`docs/hosting.md`): `Dockerfile` (node:24-alpine build →
+  `joseluisq/static-web-server` on `scratch`, ~13 MB, config `docker/static-web-server.toml`: SPA
+  fallback, brotli, immutable `/assets`, no-cache shell). Build args `VITE_ENABLE_SYNC`,
+  `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_BASE_URL` (unset = local-only). `apps/api/Dockerfile`
+  (build from the root) runs `prisma migrate deploy`, then the server, as `node`; it's ~150 MB
+  compressed, mostly the Prisma CLI, which can't be trimmed (it loads Studio's deps eagerly).
+  `scripts/deploy-zima.sh` streams the tree to the ZimaOS box (`josh@192.168.1.194`) and builds
+  there. With no flag it runs the local-only container `seeater` on :8090. `--stack` runs
+  `docker/compose.yml` (project `seeater`: web + api + postgres:17 in
+  `/DATA/AppData/seeater/pg` + cloudflared). It's public at `https://$PUBLIC_HOST` via a
+  Cloudflare Tunnel whose routes send `/api/*` → `api:4000` and the rest → `web:8080` (same
+  origin). Secrets: `docker/.env` (gitignored, see `.env.example`) → copied to
+  `/DATA/AppData/seeater/stack.env`. Postgres sits on an internal-only network; api has egress
+  (Clerk fetches its JWKS).
+  **On the box `DOCKER_CONFIG` is a temp dir**, which hides buildx: images must build with the
+  legacy builder (no `COPY --chmod`, no heredocs). It also hides the compose plugin (the
+  script links it back).
 - Smoke-test the API in keyless mode with `curl -H "x-owner-id: dev-user" localhost:4000/api/events`.
 
 ## Conventions (important — user preference)

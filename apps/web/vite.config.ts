@@ -33,6 +33,9 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
         // Client-side routes (/events/:id) are served the app shell offline.
         navigateFallback: "/index.html",
+        // The self-hosted stack serves the sync API on the same origin
+        // (docs/hosting.md); opening an /api URL must reach the server.
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
