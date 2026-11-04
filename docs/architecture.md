@@ -165,9 +165,11 @@ One feature module, `apps/api/src/modules/events/`:
 - `event.service.ts`: Prisma queries. Every write is a compare-and-swap on `version`.
 - `event.schema.ts`: path/query validation. Bodies are validated with the shared `eventDocSchema`.
 
-`lib/auth.ts` resolves the **owner id**: the verified Clerk user when `CLERK_SECRET_KEY` is set,
-otherwise an `x-owner-id` header (keyless dev only). Every query is scoped by owner through the
-`(ownerId, id)` primary key.
+`lib/auth.ts` resolves the **caller** (user id, verified email, name): the Clerk session when
+`CLERK_SECRET_KEY` is set (required in production), otherwise `x-owner-id` / `x-owner-email` /
+`x-owner-name` headers (keyless dev only). `modules/events/access.ts` turns caller + event into a
+role (owner / editor / viewer); `modules/sharing/` holds invites, the public link, the edit lock
+and floor-plan images. See [sync.md](sync.md#sharing).
 
 The API never edits documents. It stores versions and rejects stale writes. All the domain logic
 lives in `@seating/shared` and runs in the browser.

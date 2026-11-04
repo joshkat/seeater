@@ -4,8 +4,8 @@ How a signed-in user's events stay in step between this browser and the server (
 their devices). Signed-out use never touches the network; this whole doc applies only after
 sign-in.
 
-> **Currently disabled.** Everything here is built and tested, but it only runs in builds with
-> `VITE_ENABLE_SYNC=true`. Shipped builds are local-only.
+> Sync runs only in builds with `VITE_ENABLE_SYNC=true` (the public ZimaOS stack, see
+> [hosting.md](hosting.md)). Other builds, like the LAN container, stay local-only.
 
 The short version:
 
@@ -19,18 +19,21 @@ The short version:
 
 ## The protocol
 
-All endpoints are owner-scoped (the owner comes from the Clerk session) and live under `/api`.
+All endpoints live under `/api`. The caller comes from the Clerk session, and what they may do
+with an event comes from their role (see [Sharing](#sharing)).
 Request and response types are in
 [`packages/shared/src/sync/protocol.ts`](../packages/shared/src/sync/protocol.ts).
 
-| Method & path                      | Body / query                            | Success                                                                         | Stale                                       |
-| ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
-| `GET /events`                      | —                                       | `{ events: [{ id, name, version, deleted, updatedAt }] }` (includes tombstones) | —                                           |
-| `GET /events/:id`                  | —                                       | `{ id, version, deleted, updatedAt, data }`                                     | 404 if unknown                              |
-| `PUT /events/:id`                  | `{ baseVersion: number \| null, data }` | `{ id, version }`                                                               | **409** `{ current: { version, deleted } }` |
-| `DELETE /events/:id?baseVersion=N` | —                                       | 204 (also if already gone)                                                      | **409**                                     |
+| Method & path                      | Body / query                            | Success                                                                                                                               | Stale                                       |
+| ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `GET /events`                      | —                                       | `{ events: [{ id, name, version, deleted, updatedAt, role, ownerName, memberCount }] }` (yours and shared with you, incl. tombstones) | —                                           |
+| `GET /events/:id`                  | —                                       | `{ id, version, deleted, updatedAt, data }`                                                                                           | 404 if unknown                              |
+| `PUT /events/:id`                  | `{ baseVersion: number \| null, data }` | `{ id, version }`                                                                                                                     | **409** `{ current: { version, deleted } }` |
+| `DELETE /events/:id?baseVersion=N` | —                                       | 204 (also if already gone)                                                                                                            | **409**                                     |
 
-- `baseVersion: null` means "create". It's a 409 if the id already exists.
+- `baseVersion: null` means "create". It's a 409 if the id already exists. If the id belongs to
+  an event you can't see (two people imported the same backup), the 409 says
+  `reason: "idTaken"` and your copy is given fresh ids and created again.
 - A PUT lands only if the stored version still equals `baseVersion`. It's a single
   `UPDATE … WHERE version = $base` (see
   [`event.service.ts`](../apps/api/src/modules/events/event.service.ts)), so two racing writers
@@ -177,6 +180,64 @@ old `baseVersion` and you get a 409. That's the compare-and-swap at work.
 
 ---
 
+## Sharing
+
+Every event has one owner. The owner can invite people **by email** as editors or viewers, and
+turn on a **public read-only link**.
+
+| Role   | Read | Write | Delete for everyone | Manage sharing | See who has access |
+| ------ | ---- | ----- | ------------------- | -------------- | ------------------ |
+| owner  | ✓    | ✓     | ✓                   | ✓              | ✓                  |
+| editor | ✓    | ✓     |                     |                | ✓                  |
+| viewer | ✓    |       |                     |                |                    |
+
+- **Invites** are matched to an account by its **verified** primary email, the next time that
+  person's app lists events. No email is sent; the owner tells them.
+- **Public link** (`/s/:token`, API `GET /shared/:token`): 256-bit token, no sign-in, 60
+  requests/min per IP, `no-store`. Off → 404; "New link" replaces the token.
+- Endpoints: `GET/POST /events/:id/members`, `PATCH/DELETE /events/:id/members/:email`,
+  `DELETE /events/:id/membership` (leave), `POST /events/:id/share-link`. Types in
+  [`packages/shared/src/sync/sharing.ts`](../packages/shared/src/sync/sharing.ts).
+
+### Shared events in the planner
+
+These rules run before the table above when your role isn't owner:
+
+| Situation                              | Action                                     |
+| -------------------------------------- | ------------------------------------------ |
+| You removed it from your list          | `leave` (the owner's copy is untouched)    |
+| Viewer with local edits                | `forkThenPull` (never pushes)              |
+| The owner deleted it                   | drop it, or `keepAsCopy` if you have edits |
+| Missing from the list (access removed) | drop it, or `keepAsCopy` if you have edits |
+
+`keepAsCopy` saves your unsynced edits as "<name> (copy)", your own new event, and tells you so.
+Role, owner name and member count are refreshed every pass (`refreshAccess`), without counting as
+an edit.
+
+### One editor at a time
+
+Simultaneous editing isn't supported, so a shared event has an advisory **edit lock**
+(`PUT/GET/DELETE /events/:id/lock`, held per browser tab, 90 s lifetime):
+
+- Opening a shared event takes the lock and renews it every 30 s; closing releases it.
+- If someone else holds it, the event opens read-only ("Sam is editing"). That view syncs every
+  10 s and switches to the editor as soon as the lock is free.
+- **Edit anyway** takes the lock over. The previous editor finds out on their next renewal and
+  drops to read-only; their saved changes still sync.
+- Offline, or for an event nobody else can open, there's no lock.
+
+The lock only steers the UI. Writes are still compare-and-swap, so if two people do edit at once
+(Edit anyway, or offline), the second to sync gets a conflicted copy, as between your own devices.
+
+### Floor-plan images
+
+Backdrop pictures live outside the document, so they sync separately after it: pictures an event
+uses go up once per event (`uploadedTo`) and come down when this device lacks them
+(`PUT/GET /events/:id/images/:imageId`, raster types only, write-once). The public link serves
+them too.
+
+---
+
 ## Known limitations (deliberate, for now)
 
 - **Whole-document granularity.** Two devices editing _different_ tables of the same event at the
@@ -185,7 +246,7 @@ old `baseVersion` and you get a 409. That's the compare-and-swap at work.
   multiplayer is ever wanted.
 - **Tombstones are never purged.** Deleted rows keep `id`, `name` and `version` forever. That's
   cheap, but a cleanup job (e.g. purge after 90 days) would be tidy.
-- **No sharing yet.** Every document has exactly one owner. Sharing or co-editing will need an
-  access table on the server; the document format doesn't change.
+- **No simultaneous editing** (backlog). One editor at a time; see above.
+- **Version history is local**, so collaborators each have their own.
 - **Signing out doesn't delete the account's local copy** (so it works offline next time). On a
   shared computer you'd want a "remove from this device" option.
