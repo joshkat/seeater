@@ -1,10 +1,19 @@
+import type { ReactNode } from "react";
+
 import { ROOM_OBJECT_STYLE } from "../../../editor/lib/roomObjectStyle";
-import type { ChartScene } from "../../lib/chartScene";
+import type { Bounds, ChartScene } from "../../lib/chartScene";
 
 interface ChartSvgProps {
   scene: ChartScene;
   /** For the accessible name, e.g. "Seating chart — Reception". */
   label: string;
+  /** The part of the plan shown (default: the whole scene, for printing). */
+  viewBox?: Bounds;
+  className?: string;
+  /** Drawn under everything (e.g. a floor-plan picture), plan units. */
+  underlay?: ReactNode;
+  /** Drawn over everything (e.g. a highlight), plan units. */
+  overlay?: ReactNode;
 }
 
 /**
@@ -12,18 +21,27 @@ interface ChartSvgProps {
  * screenshot): crisp at any size, any layout, and text sized to print at a
  * readable minimum (see chartScene).
  */
-export function ChartSvg({ scene, label }: ChartSvgProps): JSX.Element {
-  const { bounds, chairRadius, tableFont, nameFont } = scene;
+export function ChartSvg({
+  scene,
+  label,
+  viewBox,
+  className = "h-auto max-h-[8in] w-full",
+  underlay,
+  overlay,
+}: ChartSvgProps): JSX.Element {
+  const { chairRadius, tableFont, nameFont } = scene;
+  const box = viewBox ?? scene.bounds;
   const line = Math.max(1, tableFont / 12);
 
   return (
     <svg
       role="img"
       aria-label={label}
-      viewBox={`${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`}
+      viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
       overflow="visible"
-      className="h-auto max-h-[8in] w-full"
+      className={className}
     >
+      {underlay}
       {scene.objects.map((object) => {
         const style = ROOM_OBJECT_STYLE[object.kind];
         return (
@@ -139,6 +157,7 @@ export function ChartSvg({ scene, label }: ChartSvgProps): JSX.Element {
           {table.name}
         </text>
       ))}
+      {overlay}
     </svg>
   );
 }

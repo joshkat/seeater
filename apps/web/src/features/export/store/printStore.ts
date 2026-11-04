@@ -16,7 +16,8 @@ interface PrintState {
   kind: PrintKind | null;
   /** A layout picked in the print view (null = each kind's default). */
   layoutId: string | null;
-  open: (kind: PrintKind) => void;
+  /** Opens a print view; `layoutId` starts every kind on that layout. */
+  open: (kind: PrintKind, layoutId?: string) => void;
   setLayoutId: (layoutId: string) => void;
   close: () => void;
 }
@@ -24,8 +25,8 @@ interface PrintState {
 export const usePrintStore = create<PrintState>((set) => ({
   kind: null,
   layoutId: null,
-  open(kind) {
-    set({ kind });
+  open(kind, layoutId) {
+    set(layoutId === undefined ? { kind } : { kind, layoutId });
   },
   setLayoutId(layoutId) {
     set({ layoutId });
