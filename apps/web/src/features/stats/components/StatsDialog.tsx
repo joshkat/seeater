@@ -1,6 +1,7 @@
 import { layoutStats, layoutViews } from "@seating/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { copyText } from "../../../lib/copyText";
 import { useModalFocus } from "../../../lib/useModalFocus";
 import { useDocumentStore } from "../../editor/store/documentStore";
 import { catererText } from "../lib/catererText";
@@ -31,7 +32,7 @@ export function StatsDialog({ onClose }: { onClose: () => void }): JSX.Element |
 
   async function copyForCaterer(): Promise<void> {
     if (!doc || !stats) return;
-    await navigator.clipboard.writeText(catererText(doc.name, stats));
+    await copyText(catererText(doc.name, stats));
     setCopied(true);
   }
 
