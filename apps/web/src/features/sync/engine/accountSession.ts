@@ -34,6 +34,11 @@ function reloadIfOpen(id: string, replacedBy?: string): void {
 
 const scheduler = createSyncScheduler(httpSyncApi, reloadIfOpen);
 
+/** Asks for a sync pass now (e.g. after changing who an event is shared with). */
+export function requestSync(): void {
+  scheduler.request();
+}
+
 let unwatchDirty: (() => void) | null = null;
 
 /** Sync soon whenever the active database has unsynced changes. */

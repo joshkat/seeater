@@ -3,7 +3,9 @@ import { Link } from "react-router";
 import { ThemeMenuItems } from "../../../components/ThemeMenuItems";
 import { blurActiveElement } from "../../../lib/blurActiveElement";
 import { COARSE_POINTER_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
+import { syncConfigured } from "../../auth/lib/authConfig";
 import { ExportMenuItems } from "../../export/components/ExportMenuItems";
+import { useShareDialogStore } from "../../sharing/store/shareDialogStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { useDocumentId, useHistoryAvailability } from "../hooks/useDocumentSelectors";
 import { redoEdit } from "../store/historyActions";
@@ -13,8 +15,8 @@ import { useShortcutsDialogStore } from "../store/shortcutsDialogStore";
 /**
  * "⋯" at the end of the toolbar below `xl`, for what doesn't fit: Redo, the
  * theme, and the cheat sheet when there's a keyboard. On phones (`phone`) it
- * also holds what the header drops there: Properties, Export, History and
- * Check-in.
+ * also holds what the header drops there: Properties, Export, History,
+ * Share and Check-in.
  */
 export function ToolbarOverflowMenu({ phone = false }: { phone?: boolean }): JSX.Element {
   const coarse = useMediaQuery(COARSE_POINTER_QUERY);
@@ -58,6 +60,16 @@ export function ToolbarOverflowMenu({ phone = false }: { phone?: boolean }): JSX
                 History
               </button>
             </li>
+            {syncConfigured && (
+              <li>
+                <button
+                  type="button"
+                  onClick={run(() => useShareDialogStore.getState().setOpen(true))}
+                >
+                  Share
+                </button>
+              </li>
+            )}
             {eventId && (
               <li>
                 <Link to={`/events/${eventId}/check-in`} onClick={blurActiveElement}>

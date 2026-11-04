@@ -4,6 +4,7 @@ import { isTextEntry } from "../../../lib/isTextEntry";
 import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { usePrintStore } from "../../export/store/printStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
+import { useShareDialogStore } from "../../sharing/store/shareDialogStore";
 import { useVersionDialogStore } from "../../versions/store/versionDialogStore";
 import { nudgeSteps } from "../lib/nudge";
 import { resolveUnits } from "../lib/units";
@@ -42,6 +43,11 @@ export function useKeyboardShortcuts(): void {
       const versions = useVersionDialogStore.getState();
       if (versions.open) {
         if (event.key === "Escape") versions.setOpen(false);
+        return;
+      }
+      const share = useShareDialogStore.getState();
+      if (share.open) {
+        if (event.key === "Escape") share.setOpen(false);
         return;
       }
       const details = useGuestDetailsStore.getState();

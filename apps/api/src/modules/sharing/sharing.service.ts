@@ -48,6 +48,14 @@ export class SharingService {
         members: { orderBy: { createdAt: "asc" } },
       },
     });
+    // Keep the owner's name current (it's shown to everyone they share with).
+    if (access.role === "owner" && row.ownerName !== caller.name) {
+      await this.prisma.eventDocument.update({
+        where: { id: eventId },
+        data: { ownerName: caller.name },
+      });
+      row.ownerName = caller.name;
+    }
     return {
       ownerName: row.ownerName,
       members: row.members.map((member) => ({
