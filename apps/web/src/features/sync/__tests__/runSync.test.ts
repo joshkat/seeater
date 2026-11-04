@@ -1,4 +1,4 @@
-import { addGuests, createEventDoc, renameEventDoc } from "@seating/shared";
+import { addGuests, createEventDoc, renameEventDoc, setBackdrop } from "@seating/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SeatingDb } from "../../storage/db/SeatingDb";
@@ -133,5 +133,119 @@ describe("runSync", () => {
 
     await expect(runSync(db, server)).rejects.toThrow(TypeError);
     expect(await syncMeta(doc.id)).toEqual({ baseVersion: null, dirty: true, deleted: false });
+  });
+});
+
+describe("runSync with shared events", () => {
+  it("records role and owner for events shared with you, and keeps them current", async () => {
+    const shared = createEventDoc({ name: "Their wedding" });
+    server.seed(shared, 2, { role: "editor", ownerName: "Olive" });
+
+    await runSync(db, server);
+    expect(await syncMeta(shared.id)).toMatchObject({ role: "editor", ownerName: "Olive" });
+
+    // Made a viewer without the document changing.
+    server.rows.get(shared.id)!.role = "viewer";
+    await runSync(db, server);
+    expect(await syncMeta(shared.id)).toMatchObject({ role: "viewer", baseVersion: 2 });
+  });
+
+  it("never pushes a viewer's copy", async () => {
+    const shared = createEventDoc({ name: "Look only" });
+    server.seed(shared, 1, { role: "viewer" });
+    await runSync(db, server);
+    await saveEventDoc(db, renameEventDoc(shared, "Sneaky edit"));
+
+    const report = await runSync(db, server);
+
+    expect(server.rows.get(shared.id)?.data?.name).toBe("Look only");
+    expect(report.forked).toBe(1);
+    const names = (await listEventSummaries(db)).map((summary) => summary.name).sort();
+    expect(names).toEqual(["Look only", "Sneaky edit (conflicted copy)"]);
+  });
+
+  it("forgets an event when access is removed, keeping unsynced edits as your copy", async () => {
+    const clean = createEventDoc({ name: "Clean" });
+    const edited = createEventDoc({ name: "Edited" });
+    server.seed(clean, 1, { role: "viewer" });
+    server.seed(edited, 1, { role: "editor" });
+    await runSync(db, server);
+    server.offline = true;
+    await saveEventDoc(db, renameEventDoc(edited, "Edited offline"));
+    server.offline = false;
+    server.rows.delete(clean.id);
+    server.rows.delete(edited.id);
+    const changed: Array<[string, string | undefined]> = [];
+
+    const report = await runSync(db, server, (id, replacedBy) => changed.push([id, replacedBy]));
+
+    expect(await db.events.get(clean.id)).toBeUndefined();
+    expect(await db.events.get(edited.id)).toBeUndefined();
+    expect(report.keptCopies).toEqual(["Edited offline (copy)"]);
+    const [copy] = await listEventSummaries(db);
+    expect(copy?.name).toBe("Edited offline (copy)");
+    // The copy is yours and was uploaded as a new event.
+    expect(server.rows.get(copy!.id)?.role).toBeUndefined();
+    expect(changed).toContainEqual([edited.id, copy!.id]);
+  });
+
+  it("leaves a shared event you deleted instead of deleting it for everyone", async () => {
+    const shared = createEventDoc({ name: "Not mine" });
+    server.seed(shared, 1, { role: "editor" });
+    await runSync(db, server);
+    await deleteEvent(db, shared.id);
+
+    const report = await runSync(db, server);
+
+    expect(report.left).toBe(1);
+    expect(report.deleted).toBe(0);
+    expect(server.left).toEqual([shared.id]);
+    expect(await db.events.get(shared.id)).toBeUndefined();
+  });
+
+  it("re-ids an event whose id belongs to someone else, then uploads it", async () => {
+    const doc = createEventDoc({ name: "Imported backup" });
+    await createEvent(db, doc);
+    server.foreignIds.add(doc.id);
+
+    const report = await runSync(db, server);
+
+    expect(report.reidentified).toBe(1);
+    expect(await db.events.get(doc.id)).toBeUndefined();
+    const [summary] = await listEventSummaries(db);
+    expect(summary?.name).toBe("Imported backup");
+    expect(server.rows.get(summary!.id)?.version).toBe(1);
+  });
+
+  it("uploads floor-plan images once and downloads ones this device lacks", async () => {
+    const bytes = new Uint8Array([1, 2, 3]).buffer;
+    const doc = setBackdrop(createEventDoc({ name: "With plan" }), "img-1");
+    await createEvent(db, doc);
+    await db.images.put({
+      id: "img-1",
+      eventId: doc.id,
+      data: bytes,
+      mimeType: "image/png",
+      width: 10,
+      height: 20,
+      createdAt: new Date().toISOString(),
+    });
+
+    const first = await runSync(db, server);
+    expect(first.imagesUploaded).toBe(1);
+    expect(server.images.get(`${doc.id}/img-1`)?.width).toBe(10);
+    expect((await runSync(db, server)).imagesUploaded).toBe(0);
+
+    // Another device: same account, empty database.
+    const other = new SeatingDb(`sync-test-${crypto.randomUUID()}`);
+    try {
+      const report = await runSync(other, server);
+      expect(report.imagesDownloaded).toBe(1);
+      const image = await other.images.get("img-1");
+      expect(image).toMatchObject({ eventId: doc.id, mimeType: "image/png", width: 10 });
+      expect(new Uint8Array(image!.data)).toEqual(new Uint8Array([1, 2, 3]));
+    } finally {
+      await other.delete();
+    }
   });
 });

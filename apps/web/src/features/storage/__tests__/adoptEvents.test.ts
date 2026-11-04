@@ -44,4 +44,23 @@ describe("adoptEvents", () => {
 
     expect((await getEventDoc(account, older.id))?.name).toBe("New");
   });
+
+  it("brings the events' floor-plan pictures along", async () => {
+    const doc = createEventDoc({ name: "With a plan" });
+    await createEvent(signedOut, doc);
+    await signedOut.images.put({
+      id: "img-1",
+      eventId: doc.id,
+      data: new Uint8Array([7]).buffer,
+      mimeType: "image/png",
+      width: 1,
+      height: 1,
+      createdAt: doc.createdAt,
+    });
+
+    await adoptEvents(signedOut, account);
+
+    expect(await account.images.get("img-1")).toMatchObject({ eventId: doc.id, width: 1 });
+    expect(await signedOut.images.count()).toBe(0);
+  });
 });

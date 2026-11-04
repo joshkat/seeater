@@ -1,4 +1,4 @@
-import type { RemoteEventSummary } from "@seating/shared";
+import type { EventRole, RemoteEventSummary } from "@seating/shared";
 import { describe, expect, it } from "vitest";
 
 import type { SyncMeta } from "../../storage/db/SeatingDb";
@@ -10,8 +10,13 @@ function local(id: string, sync: Partial<SyncMeta>): LocalSyncState {
   return { id, updatedAt: T, sync: { baseVersion: 1, dirty: false, deleted: false, ...sync } };
 }
 
-function remote(id: string, version: number, deleted = false): RemoteEventSummary {
-  return { id, name: id, version, deleted, updatedAt: T };
+function remote(
+  id: string,
+  version: number,
+  deleted = false,
+  role: EventRole = "owner",
+): RemoteEventSummary {
+  return { id, name: id, version, deleted, updatedAt: T, role, ownerName: "Olive", memberCount: 0 };
 }
 
 /** Plans a single event and returns its one action (or undefined). */
@@ -102,6 +107,62 @@ describe("planSync decision table", () => {
       expect(planOne(local("a", { deleted: true, dirty: true }), null)).toMatchObject({
         type: "dropLocal",
       });
+    });
+  });
+});
+
+describe("planSync for shared events", () => {
+  const editor = (sync: Partial<SyncMeta> = {}) => local("a", { role: "editor", ...sync });
+  const viewer = (sync: Partial<SyncMeta> = {}) => local("a", { role: "viewer", ...sync });
+
+  it("an editor pushes and pulls like an owner", () => {
+    expect(planOne(editor({ dirty: true }), remote("a", 1, false, "editor"))).toMatchObject({
+      type: "push",
+      baseVersion: 1,
+    });
+    expect(planOne(editor(), remote("a", 2, false, "editor"))).toMatchObject({ type: "pull" });
+    expect(planOne(editor({ dirty: true }), remote("a", 2, false, "editor"))).toMatchObject({
+      type: "forkThenPull",
+    });
+  });
+
+  it("a viewer pulls changes and never pushes", () => {
+    expect(planOne(viewer(), remote("a", 1, false, "viewer"))).toBeUndefined();
+    expect(planOne(viewer(), remote("a", 2, false, "viewer"))).toMatchObject({ type: "pull" });
+    // Edits from before being made a viewer survive as a copy.
+    expect(planOne(viewer({ dirty: true }), remote("a", 1, false, "viewer"))).toMatchObject({
+      type: "forkThenPull",
+    });
+  });
+
+  it("a member who removed it leaves instead of deleting the owner's event", () => {
+    expect(
+      planOne(editor({ dirty: true, deleted: true }), remote("a", 1, false, "editor")),
+    ).toMatchObject({ type: "leave" });
+  });
+
+  it("never restores an event the owner deleted", () => {
+    expect(planOne(editor(), remote("a", 2, true, "editor"))).toMatchObject({ type: "dropLocal" });
+    expect(planOne(editor({ dirty: true }), remote("a", 2, true, "editor"))).toMatchObject({
+      type: "keepAsCopy",
+    });
+  });
+
+  it("forgets an event whose access was removed, keeping unsynced edits as a copy", () => {
+    expect(planOne(viewer(), null)).toMatchObject({ type: "dropLocal" });
+    expect(planOne(editor({ dirty: true }), null)).toMatchObject({ type: "keepAsCopy" });
+    // A record that was never shared is still uploaded.
+    expect(planOne(local("a", { baseVersion: null, dirty: true }), null)).toMatchObject({
+      type: "push",
+      baseVersion: null,
+    });
+  });
+
+  it("picks up an event newly shared with you", () => {
+    expect(planOne(null, remote("a", 3, false, "viewer"))).toEqual({
+      type: "pull",
+      id: "a",
+      expectedUpdatedAt: null,
     });
   });
 });

@@ -18,8 +18,16 @@ function scopeFor(userId: string | null): StorageScope {
   return userId ? { kind: "account", userId } : LOCAL_SCOPE;
 }
 
-/** If the open editor's event was rewritten by sync, show the new version. */
-function reloadIfOpen(id: string): void {
+/**
+ * If the open editor's event was rewritten by sync, show the new version. If
+ * it moved to a new id, record that so the open page follows it
+ * (`useFollowMovedEvent`).
+ */
+function reloadIfOpen(id: string, replacedBy?: string): void {
+  if (replacedBy) {
+    useSyncStore.getState().recordMove(id, replacedBy);
+    return;
+  }
   const { doc, reload } = useDocumentStore.getState();
   if (doc?.id === id) void reload();
 }

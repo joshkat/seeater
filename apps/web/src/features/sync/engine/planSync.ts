@@ -1,6 +1,6 @@
 import type { RemoteEventSummary } from "@seating/shared";
 
-import type { SyncMeta } from "../../storage/db/SeatingDb";
+import { type SyncMeta, recordRole } from "../../storage/db/SeatingDb";
 
 /** What the planner needs to know about each local record. */
 export interface LocalSyncState {
@@ -24,7 +24,15 @@ export type SyncAction =
   /** Forget the local record (deleted elsewhere, or our delete is confirmed). */
   | { type: "dropLocal"; id: string; expectedUpdatedAt: string }
   /** Both sides edited: save local edits as a new copy, then pull the server copy. */
-  | { type: "forkThenPull"; id: string; expectedUpdatedAt: string };
+  | { type: "forkThenPull"; id: string; expectedUpdatedAt: string }
+  /**
+   * A shared event you can no longer change (access removed, made a viewer,
+   * or the owner deleted it) has unsynced edits: keep them as your own copy
+   * with fresh ids, and forget the original.
+   */
+  | { type: "keepAsCopy"; id: string; expectedUpdatedAt: string }
+  /** You removed a shared event from your list: leave it on the server, then forget it. */
+  | { type: "leave"; id: string; expectedUpdatedAt: string };
 
 /**
  * Decides how to reconcile local records with the server's list. Pure — the
@@ -44,6 +52,14 @@ export type SyncAction =
  *
  *   Local records the server has never seen: push(null), or dropLocal if
  *   they're tombstones.
+ *
+ * Shared events (your role is editor or viewer) never delete or restore the
+ * owner's copy, and viewers never push. These rules come first:
+ *
+ *   not owner, deleted here            → leave (removes it from your list only)
+ *   viewer, edited here                → forkThenPull (keepAsCopy if gone)
+ *   not owner, owner deleted it        → dropLocal, or keepAsCopy if edited
+ *   not owner, missing from the list   → access removed: dropLocal, or keepAsCopy if edited
  */
 export function planSync(local: LocalSyncState[], remote: RemoteEventSummary[]): SyncAction[] {
   const actions: SyncAction[] = [];
@@ -61,6 +77,12 @@ export function planSync(local: LocalSyncState[], remote: RemoteEventSummary[]):
 
     const { baseVersion, dirty, deleted } = mine.sync;
     const expectedUpdatedAt = mine.updatedAt;
+
+    if (server.role !== "owner") {
+      const shared = planShared(mine, server);
+      if (shared) actions.push(shared);
+      if (shared || server.role === "viewer") continue;
+    }
 
     if (server.version === baseVersion) {
       if (deleted) {
@@ -87,7 +109,15 @@ export function planSync(local: LocalSyncState[], remote: RemoteEventSummary[]):
 
   for (const mine of local) {
     if (remoteIds.has(mine.id)) continue;
-    if (mine.sync.deleted) {
+    if (recordRole(mine.sync) !== "owner") {
+      // It was shared with us and isn't any more.
+      const edited = mine.sync.dirty && !mine.sync.deleted;
+      actions.push({
+        type: edited ? "keepAsCopy" : "dropLocal",
+        id: mine.id,
+        expectedUpdatedAt: mine.updatedAt,
+      });
+    } else if (mine.sync.deleted) {
       actions.push({ type: "dropLocal", id: mine.id, expectedUpdatedAt: mine.updatedAt });
     } else {
       actions.push({ type: "push", id: mine.id, baseVersion: null });
@@ -95,4 +125,25 @@ export function planSync(local: LocalSyncState[], remote: RemoteEventSummary[]):
   }
 
   return actions;
+}
+
+/**
+ * The shared-event rules (role editor or viewer), or null when the ordinary
+ * table applies (an editor's normal pushes and pulls). For a viewer, null
+ * means "pull if changed, else nothing".
+ */
+function planShared(mine: LocalSyncState, server: RemoteEventSummary): SyncAction | null {
+  const { baseVersion, dirty, deleted } = mine.sync;
+  const expectedUpdatedAt = mine.updatedAt;
+  const edited = dirty && !deleted;
+
+  if (deleted) return { type: "leave", id: mine.id, expectedUpdatedAt };
+  if (server.deleted) {
+    return { type: edited ? "keepAsCopy" : "dropLocal", id: mine.id, expectedUpdatedAt };
+  }
+  if (server.role === "viewer") {
+    if (edited) return { type: "forkThenPull", id: mine.id, expectedUpdatedAt };
+    return server.version === baseVersion ? null : { type: "pull", id: mine.id, expectedUpdatedAt };
+  }
+  return null;
 }

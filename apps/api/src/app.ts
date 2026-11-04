@@ -53,7 +53,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // Standard security headers. The API is called cross-origin by the web app,
   // so allow cross-origin reads of its responses (CORS still decides who).
   await app.register(helmet, { crossOriginResourcePolicy: { policy: "cross-origin" } });
-  await app.register(cors, { origin: resolveCorsOrigin });
+  await app.register(cors, {
+    origin: resolveCorsOrigin,
+    // Image downloads carry their size in headers (read cross-origin in dev).
+    exposedHeaders: ["x-image-width", "x-image-height"],
+  });
   // Per-IP request cap. Sync makes a handful of calls a minute per open tab,
   // so the default leaves lots of headroom while stopping floods.
   await app.register(rateLimit, {

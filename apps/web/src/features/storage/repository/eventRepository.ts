@@ -1,6 +1,7 @@
 import {
   type DuplicateOptions,
   type EventDoc,
+  type EventRole,
   type EventSummary,
   duplicateEventDoc,
   reidentifyEventDoc,
@@ -8,7 +9,7 @@ import {
   summarizeEventDoc,
 } from "@seating/shared";
 
-import type { LocalEventRecord, SeatingDb, SyncMeta } from "../db/SeatingDb";
+import { type LocalEventRecord, type SeatingDb, type SyncMeta, recordRole } from "../db/SeatingDb";
 
 /**
  * Local CRUD over event documents. Every function takes the database
@@ -49,6 +50,27 @@ function isLive(record: LocalEventRecord): boolean {
 export async function listEventSummaries(db: SeatingDb): Promise<EventSummary[]> {
   const records = await db.events.orderBy("updatedAt").reverse().toArray();
   return records.filter(isLive).map((record) => record.summary);
+}
+
+/** A dashboard tile: the summary plus who it's shared with (signed-in sync). */
+export interface DashboardEvent {
+  summary: EventSummary;
+  role: EventRole;
+  /** Owner's name, for events shared with you. */
+  ownerName: string | null;
+  /** People you shared it with (your own events). */
+  memberCount: number;
+}
+
+/** Live events, newest first, with their sharing state. */
+export async function listDashboardEvents(db: SeatingDb): Promise<DashboardEvent[]> {
+  const records = await db.events.orderBy("updatedAt").reverse().toArray();
+  return records.filter(isLive).map((record) => ({
+    summary: record.summary,
+    role: recordRole(record.sync),
+    ownerName: record.sync.ownerName ?? null,
+    memberCount: record.sync.memberCount ?? 0,
+  }));
 }
 
 /** The document of a live event (null if missing, deleted or in the trash). */

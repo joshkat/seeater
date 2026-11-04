@@ -10,7 +10,7 @@ import {
 } from "../../backup/components/ImportBackupButton";
 import { SyncNotice } from "../../sync/components/SyncNotice";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
-import { useEventSummaries } from "../hooks/useEventSummaries";
+import { useDashboardEvents } from "../hooks/useDashboardEvents";
 import { usePurgeExpiredTrash } from "../hooks/usePurgeExpiredTrash";
 import { EventCard } from "./EventCard";
 import { NewEventButton } from "./NewEventButton";
@@ -20,7 +20,7 @@ import { TrashUndoNotice } from "./TrashUndoNotice";
 
 /** The "My Events" landing page: every seating chart on this device as a tile. */
 export function Dashboard(): JSX.Element {
-  const summaries = useEventSummaries();
+  const events = useDashboardEvents();
   usePurgeExpiredTrash();
   useDocumentTitle("My events · Seating");
   const [lastTrashed, setLastTrashed] = useState<{ id: string; name: string } | null>(null);
@@ -49,8 +49,8 @@ export function Dashboard(): JSX.Element {
           <BackupImportNotice result={backupImport} onDismiss={() => setBackupImport(null)} />
         )}
         {lastTrashed && <TrashUndoNotice event={lastTrashed} onDone={clearLastTrashed} />}
-        {summaries === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
-        {summaries?.length === 0 && (
+        {events === undefined && <p className="text-sm text-base-content/60">Loading events…</p>}
+        {events?.length === 0 && (
           <div className="flex flex-col items-center gap-3 rounded-box border border-dashed border-base-300 p-12 text-center">
             <p className="text-base font-medium">No events yet</p>
             <p className="max-w-md text-sm text-base-content/60">
@@ -66,10 +66,10 @@ export function Dashboard(): JSX.Element {
             </p>
           </div>
         )}
-        {summaries !== undefined && summaries.length > 0 && (
+        {events !== undefined && events.length > 0 && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {summaries.map((summary) => (
-              <EventCard key={summary.id} summary={summary} onTrashed={setLastTrashed} />
+            {events.map((event) => (
+              <EventCard key={event.summary.id} event={event} onTrashed={setLastTrashed} />
             ))}
           </div>
         )}

@@ -16,6 +16,12 @@ interface SyncState {
   /** One-off message for the user (e.g. "moved 3 events into your account"). */
   notice: string | null;
   dismissNotice: () => void;
+  /**
+   * Events sync re-created under a new id (old id → new id), so a page that
+   * has the old one open can follow it.
+   */
+  movedEvents: Record<string, string>;
+  recordMove: (fromId: string, toId: string) => void;
 }
 
 export const useSyncStore = create<SyncState>((set) => ({
@@ -24,4 +30,7 @@ export const useSyncStore = create<SyncState>((set) => ({
   lastError: null,
   notice: null,
   dismissNotice: () => set({ notice: null }),
+  movedEvents: {},
+  recordMove: (fromId, toId) =>
+    set((state) => ({ movedEvents: { ...state.movedEvents, [fromId]: toId } })),
 }));

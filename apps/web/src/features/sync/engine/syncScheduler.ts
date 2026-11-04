@@ -14,6 +14,15 @@ export interface SyncScheduler {
   setEnabled: (enabled: boolean) => void;
 }
 
+/** Tells the user where their edits to a no-longer-shared event went. */
+export function keptCopiesNotice(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) {
+    return `You can't edit a shared event any more, so your unsynced changes were saved as "${names[0]}".`;
+  }
+  return `You can't edit ${names.length} shared events any more, so your unsynced changes were saved as copies.`;
+}
+
 export function createSyncScheduler(
   api: SyncApi,
   onLocalChange: LocalChangeListener,
@@ -40,12 +49,14 @@ export function createSyncScheduler(
     // keep writing to the database we planned against.
     const db = activeDb();
     try {
-      await runSync(db, api, onLocalChange);
+      const report = await runSync(db, api, onLocalChange);
       useSyncStore.setState({
         status: "idle",
         lastSyncedAt: new Date().toISOString(),
         lastError: null,
       });
+      const notice = keptCopiesNotice(report.keptCopies);
+      if (notice) useSyncStore.setState({ notice });
     } catch (error) {
       if (error instanceof ApiError) {
         const message =

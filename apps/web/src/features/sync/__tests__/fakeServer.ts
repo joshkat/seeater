@@ -1,11 +1,15 @@
-import type { EventDoc, RemoteEvent } from "@seating/shared";
+import type { EventDoc, EventRole, RemoteEvent } from "@seating/shared";
 
-import type { RemoteWriteResult, SyncApi } from "../api/syncApi";
+import type { RemoteImage, RemoteWriteResult, SyncApi } from "../api/syncApi";
 
 interface Row {
   version: number;
   deleted: boolean;
   data: EventDoc | null;
+  /** The test user's role (default owner). */
+  role?: EventRole;
+  ownerName?: string;
+  memberCount?: number;
 }
 
 /**
@@ -17,6 +21,12 @@ export class FakeServer implements SyncApi {
   readonly rows = new Map<string, Row>();
   /** Set to make every call fail like an unreachable server. */
   offline = false;
+  /** Ids of other people's events: creating one answers `idTaken`. */
+  readonly foreignIds = new Set<string>();
+  /** Shared events the test user left. */
+  readonly left: string[] = [];
+  /** Image bytes by `${eventId}/${imageId}`. */
+  readonly images = new Map<string, RemoteImage>();
 
   private check(): void {
     if (this.offline) throw new TypeError("Failed to fetch");
@@ -28,8 +38,12 @@ export class FakeServer implements SyncApi {
   }
 
   /** Simulates another device writing directly to the server. */
-  seed(doc: EventDoc, version = 1): void {
-    this.rows.set(doc.id, { version, deleted: false, data: structuredClone(doc) });
+  seed(
+    doc: EventDoc,
+    version = 1,
+    access: Pick<Row, "role" | "ownerName" | "memberCount"> = {},
+  ): void {
+    this.rows.set(doc.id, { version, deleted: false, data: structuredClone(doc), ...access });
   }
 
   list = async () => {
@@ -41,6 +55,9 @@ export class FakeServer implements SyncApi {
         version: row.version,
         deleted: row.deleted,
         updatedAt: row.data?.updatedAt ?? new Date(0).toISOString(),
+        role: row.role ?? ("owner" as const),
+        ownerName: row.ownerName ?? "Me",
+        memberCount: row.memberCount ?? 0,
       })),
     };
   };
@@ -60,7 +77,11 @@ export class FakeServer implements SyncApi {
 
   put = async (doc: EventDoc, baseVersion: number | null): Promise<RemoteWriteResult> => {
     this.check();
+    if (this.foreignIds.has(doc.id)) {
+      return { ok: false, current: { version: 0, deleted: false }, reason: "idTaken" };
+    }
     const row = this.rows.get(doc.id);
+    if (row?.role === "viewer") throw new Error("403 viewer");
     if (!row || (baseVersion !== null && row.version === baseVersion)) {
       const version = row ? row.version + 1 : 1;
       if (row && baseVersion === null) return this.conflict(doc.id);
@@ -77,5 +98,27 @@ export class FakeServer implements SyncApi {
     if (row.version !== baseVersion) return this.conflict(id);
     this.rows.set(id, { version: row.version + 1, deleted: true, data: null });
     return { ok: true, version: row.version + 1 };
+  };
+
+  leave = async (id: string): Promise<void> => {
+    this.check();
+    this.left.push(id);
+    this.rows.delete(id);
+  };
+
+  uploadImage = async (eventId: string, imageId: string, image: RemoteImage): Promise<void> => {
+    this.check();
+    if (this.rows.get(eventId)?.role === "viewer") throw new Error("403 viewer");
+    this.images.set(`${eventId}/${imageId}`, {
+      mimeType: image.mimeType,
+      width: image.width,
+      height: image.height,
+      data: image.data.slice(0),
+    });
+  };
+
+  downloadImage = async (eventId: string, imageId: string): Promise<RemoteImage | null> => {
+    this.check();
+    return this.images.get(`${eventId}/${imageId}`) ?? null;
   };
 }
