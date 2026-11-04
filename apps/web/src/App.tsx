@@ -41,6 +41,15 @@ const router = createBrowserRouter([
     },
     hydrateFallbackElement: <EditorStatusScreen status="loading" />,
   },
+  {
+    // A public read-only link: no sign-in, nothing stored on the device.
+    path: "/s/:token",
+    lazy: async () => {
+      const { SharedLinkRoute } = await import("./features/sharing/components/SharedLinkRoute");
+      return { Component: SharedLinkRoute };
+    },
+    hydrateFallbackElement: <EditorStatusScreen status="loading" />,
+  },
   { path: "*", element: <NotFoundPage /> },
 ]);
 

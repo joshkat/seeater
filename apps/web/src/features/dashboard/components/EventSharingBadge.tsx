@@ -16,7 +16,7 @@ export function EventSharingBadge({ event }: EventSharingBadgeProps): JSX.Elemen
   }
   const owner = event.ownerName ? `Shared by ${event.ownerName}` : "Shared with you";
   return (
-    <span className="badge badge-info badge-soft badge-sm">
+    <span className="badge badge-info badge-soft badge-sm text-base-content">
       {owner}
       {event.role === "viewer" ? " · view only" : ""}
     </span>
