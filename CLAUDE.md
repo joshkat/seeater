@@ -52,6 +52,11 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
 :5175 (`VITE_ENABLE_SYNC=true` + keyless `VITE_DEV_SYNC_OWNER=dev-user`, syncs to the local API),
 `web-preview` :4173 (prod build, service worker active).
 
+- **Self-hosting:** `Dockerfile` (node:24-alpine build → `joseluisq/static-web-server` on
+  `scratch`, ~10 MB, config `docker/static-web-server.toml`: SPA fallback, brotli, immutable
+  `/assets`, no-cache shell). `scripts/deploy-zima.sh` streams the tree to the ZimaOS box
+  (`josh@192.168.1.194`), builds there and runs container `seeater` on :8090 (shows in
+  Portainer as a standalone container). `docker/compose.yml` is the same as a stack.
 - Smoke-test the API in keyless mode with `curl -H "x-owner-id: dev-user" localhost:4000/api/events`.
 
 ## Conventions (important — user preference)
@@ -307,6 +312,10 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   `.env` is gitignored and `prisma.config.ts` needs it). Any value works for typechecking.
 - **Passing Vite flags through npm:** use `npm run dev --workspace @seating/web -- --port N`. Going
   via the root `dev:web` script swallows the flags.
+- **Plain HTTP on a LAN IP is not a secure context:** no `crypto.randomUUID`,
+  `navigator.clipboard` or service worker. `newId` falls back to `getRandomValues` and
+  `lib/copyText` to `execCommand`; use those, never the raw APIs. The PWA/offline install needs
+  HTTPS (or localhost).
 - **Service worker only in production builds.** To test offline, build and run `web-preview`.
   Unregister the SW afterwards if it confuses later preview runs.
 - **StrictMode double-mounts** `EditorRoute`: `documentStore.open()` is idempotent and `close()` is

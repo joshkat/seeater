@@ -1,0 +1,17 @@
+# Keep the build context to what the Dockerfile copies.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.claude
+docs
+apps/e2e/test-results
+apps/e2e/playwright-report
+apps/e2e/blob-report
+apps/api/src/generated
+**/.DS_Store
+*.log

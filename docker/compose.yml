@@ -1,0 +1,15 @@
+# Stack for the production image (paste into Portainer → Stacks, or run with
+# `docker compose -f docker/compose.yml up -d`). The image is built on the host
+# first: `docker build -t seeater:latest .` (scripts/deploy-zima.sh does both).
+services:
+  seeater:
+    image: seeater:latest
+    container_name: seeater
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    # Serves files only: nothing to write, no privileges needed.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
