@@ -8,6 +8,8 @@ import { ZodError } from "zod";
 
 import { env } from "./config/env.js";
 import { eventRoutes } from "./modules/events/event.routes.js";
+import { sharedRoutes } from "./modules/sharing/shared.routes.js";
+import { sharingRoutes } from "./modules/sharing/sharing.routes.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -95,6 +97,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // Feature routes are registered under /api.
   await app.register(healthRoutes, { prefix: "/api" });
   await app.register(eventRoutes, { prefix: "/api" });
+  await app.register(sharingRoutes, { prefix: "/api" });
+  await app.register(sharedRoutes, { prefix: "/api" });
 
   return app;
 }

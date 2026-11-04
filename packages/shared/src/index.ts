@@ -30,3 +30,4 @@ export * from "./geometry/constants.js";
 export * from "./geometry/seatLayout.js";
 export * from "./geometry/capacity.js";
 export * from "./sync/protocol.js";
+export * from "./sync/sharing.js";

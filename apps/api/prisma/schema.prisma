@@ -21,23 +21,88 @@ datasource db {
   provider = "postgresql"
 }
 
-/// One synced event document per (owner, id).
+/// One synced event document. Ids are client-generated UUIDs and unique
+/// across all users, so one row can be shared with other people.
 model EventDocument {
-  /// Clerk user id (or the dev owner in keyless mode).
-  ownerId   String
   /// Client-generated UUID — the document's own `id`.
-  id        String
+  id           String    @id
+  /// Clerk user id of the owner (or the dev owner in keyless mode).
+  ownerId      String
+  /// Owner's display name at their last write, shown to collaborators.
+  ownerName    String    @default("")
   /// Denormalized from `data.name` for cheap listing.
-  name      String
+  name         String
   /// Incremented on every accepted write; clients send it back as `baseVersion`.
-  version   Int
+  version      Int
   /// The full EventDoc JSON. Null once deleted (tombstone).
-  data      Json?
+  data         Json?
   /// Set when deleted. The row is kept so other devices learn of the delete.
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  deletedAt    DateTime?
+  /// Secret for the public read-only link. Regenerating replaces it.
+  shareToken   String?   @unique
+  /// Whether the read-only link currently works.
+  shareEnabled Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  @@id([ownerId, id])
+  members EventMember[]
+  lock    EventLock?
+  images  EventImage[]
+
   @@index([ownerId, updatedAt])
+}
+
+enum MemberRole {
+  editor
+  viewer
+}
+
+/// Someone the owner shared an event with. Invites are by email; `userId` is
+/// filled in the first time a signed-in user with that verified email lists
+/// their events.
+model EventMember {
+  eventId   String
+  /// Lower-cased email the invite was sent to.
+  email     String
+  /// Clerk user id once the invite has been picked up.
+  userId    String?
+  role      MemberRole
+  invitedBy String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  event EventDocument @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, email])
+  @@index([userId])
+  @@index([email])
+}
+
+/// Advisory "one editor at a time" lock. Renewed by the editing client;
+/// anyone may take over an expired lock (or force it).
+model EventLock {
+  eventId     String   @id
+  userId      String
+  displayName String
+  /// Random id of the browser tab holding it, so two tabs of one user don't
+  /// both think they hold it.
+  clientId    String
+  expiresAt   DateTime
+
+  event EventDocument @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+/// Floor-plan image bytes. Immutable: an id always means the same picture.
+model EventImage {
+  eventId   String
+  id        String
+  mimeType  String
+  width     Int
+  height    Int
+  bytes     Bytes
+  createdAt DateTime @default(now())
+
+  event EventDocument @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, id])
 }

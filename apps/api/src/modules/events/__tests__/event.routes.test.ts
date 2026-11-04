@@ -147,9 +147,13 @@ describe("ownership", () => {
     expect((await get(`/api/events/${doc.id}`, otherOwner)).statusCode).toBe(404);
     expect((await get("/api/events", otherOwner)).json().events).toEqual([]);
 
-    // Same id under another owner is a separate row, not an overwrite.
+    // Ids are global: a stranger reusing one (e.g. the same backup imported
+    // twice) is told to re-id their copy, and never overwrites ours.
     const theirs = await put(renameEventDoc(doc, "Theirs"), null, otherOwner);
-    expect(theirs.json()).toEqual({ id: doc.id, version: 1 });
+    expect(theirs.statusCode).toBe(409);
+    expect(theirs.json().reason).toBe("idTaken");
+    const blind = await put(renameEventDoc(doc, "Theirs"), 1, otherOwner);
+    expect(blind.json().reason).toBe("idTaken");
     expect((await get(`/api/events/${doc.id}`)).json().data.name).toBe("Integration");
   });
 });

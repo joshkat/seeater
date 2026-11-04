@@ -13,13 +13,21 @@ import type { EventDoc } from "../document/schema.js";
  * (`deleted: true`) so other devices learn about them.
  */
 
-/** One row of `GET /api/events`. */
+/** What the caller may do with an event: owners and editors write, viewers read. */
+export type EventRole = "owner" | "editor" | "viewer";
+
+/** One row of `GET /api/events`: the caller's own events and those shared with them. */
 export interface RemoteEventSummary {
   id: string;
   name: string;
   version: number;
   deleted: boolean;
   updatedAt: string;
+  role: EventRole;
+  /** The owner's display name (for "Shared by …"). */
+  ownerName: string;
+  /** How many people it's shared with (owner's view; 0 for members). */
+  memberCount: number;
 }
 
 export interface ListEventsResponse {
@@ -53,4 +61,10 @@ export interface VersionConflictResponse {
   error: "Conflict";
   message: string;
   current: { version: number; deleted: boolean };
+  /**
+   * `idTaken`: a create used an id that already belongs to an event the
+   * caller can't see (e.g. two people imported the same backup). The client
+   * should give its copy fresh ids and create it again.
+   */
+  reason?: "idTaken";
 }

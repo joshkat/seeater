@@ -38,4 +38,10 @@ if (!parsed.success) {
   throw new Error("Invalid environment configuration. See errors above.");
 }
 
+// Fail closed: without Clerk the API trusts an `x-owner-id` header, which is
+// only acceptable on a developer's machine.
+if (parsed.data.NODE_ENV === "production" && !parsed.data.CLERK_SECRET_KEY) {
+  throw new Error("CLERK_SECRET_KEY is required when NODE_ENV=production.");
+}
+
 export const env = parsed.data;
