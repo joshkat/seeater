@@ -223,7 +223,18 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   SVG (browsers drop CSS backgrounds when printing). The PNG download still comes from the canvas
   via `registerChartCapture` (active layout).
   Lists are built from `seatingRows(doc, layoutView)` (pure). Guest CSV export uses headers the
-  importer reads back.
+  importer reads back. `PrintDocument({doc})` is the print view for any document; the editor's
+  `PrintView` feeds it the open event. `ChartSvg` takes optional `viewBox`/`underlay`/`overlay`.
+- **Viewer** (`features/viewer/`, route `/events/:eventId/view`, lazy, no Konva): a read-only
+  page. `EventViewer({doc, banner?, images?, nav?})` is presentational (layout tabs, the print
+  chart's SVG with pan/zoom, "Find your seat", Print ▾ via `PrintDocument`) and never touches
+  `documentStore`, so it makes no saves or undo history; any source can feed it (share links,
+  "Sam is editing"). `ViewerRoute` reads the local doc live (`useLiveQuery` + `getEventDoc`).
+  Pan/zoom is pure math in `lib/chartViewport.ts` (view = centre + px per unit → viewBox) driven
+  by `useChartViewport` (drag, wheel/trackpad pinch, two-finger pinch, arrows, + − Fit buttons).
+  `findSeats` searches names only (no contact details/notes, as a link may be public) and leaves
+  declined guests out; it opens on the layout with the most tables. The chart sits on white
+  "paper" in every theme (its colours are the print ones).
 - **Guest details (schema v4):** `meal`, `dietary`, `accessibility`, `notes`, `tags[]`, `isChild`.
   Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
   no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
@@ -392,6 +403,8 @@ Done:
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
   1280px, 44px targets on touch screens. **Phones:** compact header/toolbar, scrolling guest
   drawer with wrapping rows.
+- **Read-only viewer:** `/events/:id/view` — chart with pan/zoom, layout tabs, find your seat
+  (highlights the table and chair), print views. Not linked from the UI yet (sharing will).
 - **Day-of check-in:** a door list per event (search, table + seat, household check-in, walk-ins,
   arrivals count, undo), phone-first. Search finds arrived guests; check-ins confirm in place.
 - **UX pass (2026-10):** nothing unseats silently (Undo notices), visible Select ▾ / Copy / Paste,

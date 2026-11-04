@@ -32,6 +32,15 @@ const router = createBrowserRouter([
     },
     hydrateFallbackElement: <EditorStatusScreen status="loading" />,
   },
+  {
+    // Read-only: the seating chart, find-your-seat and print views. No Konva.
+    path: "/events/:eventId/view",
+    lazy: async () => {
+      const { ViewerRoute } = await import("./features/viewer/components/ViewerRoute");
+      return { Component: ViewerRoute };
+    },
+    hydrateFallbackElement: <EditorStatusScreen status="loading" />,
+  },
   { path: "*", element: <NotFoundPage /> },
 ]);
 
