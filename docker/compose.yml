@@ -1,15 +1,123 @@
-# Stack for the production image (paste into Portainer → Stacks, or run with
-# `docker compose -f docker/compose.yml up -d`). The image is built on the host
-# first: `docker build -t seeater:latest .` (scripts/deploy-zima.sh does both).
+# The public stack: the web app with sign-in + sync, the sync API, its
+# database, and a Cloudflare Tunnel that makes it reachable over HTTPS on your
+# own domain without opening a port on the router. Setup: docs/hosting.md.
+#
+#   cp docker/.env.example docker/.env      # then fill it in
+#   docker compose -f docker/compose.yml up -d --build
+#
+# `scripts/deploy-zima.sh --stack` builds the images on the ZimaOS box and runs
+# this file there. (The default `scripts/deploy-zima.sh` still deploys the old
+# single local-only container, see ../Dockerfile.)
+#
+# Routing (set on the tunnel's public hostname in Cloudflare, docs/hosting.md):
+#   https://$PUBLIC_HOST/api/*  → http://api:4000
+#   https://$PUBLIC_HOST/*      → http://web:8080
+# One origin for both, so the browser never makes a cross-origin call.
+name: seeater
+
 services:
-  seeater:
-    image: seeater:latest
-    container_name: seeater
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        VITE_ENABLE_SYNC: "true"
+        VITE_API_BASE_URL: /api
+        VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:?set CLERK_PUBLISHABLE_KEY in docker/.env}
+    image: seeater-web:latest
     restart: unless-stopped
+    networks: [backend, outside]
+    # Optional direct port, by default reachable from the box itself only.
+    # WEB_LAN_BIND=0.0.0.0 opens it to the LAN; note Clerk's production keys
+    # only sign in on PUBLIC_HOST, and each origin has its own browser data.
     ports:
-      - "8090:8080"
+      - "${WEB_LAN_BIND:-127.0.0.1}:${WEB_LAN_PORT:-8090}:8080"
     # Serves files only: nothing to write, no privileges needed.
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 64m
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    image: seeater-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # `outside` because Clerk verification fetches the instance's signing keys
+    # (and user lookups call Clerk's API). No ports are published.
+    networks: [backend, outside]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://seeater:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}@postgres:5432/seeater?schema=public
+      # Requests arrive through cloudflared; trust X-Forwarded-For so rate
+      # limiting sees each visitor's IP rather than the tunnel's.
+      TRUST_PROXY: "true"
+      CORS_ORIGIN: https://${PUBLIC_HOST:?set PUBLIC_HOST in docker/.env}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in docker/.env}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    # Migrations run on start (apps/api/docker-entrypoint.sh); the image's
+    # healthcheck polls /api/health, which also checks the database.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      POSTGRES_USER: seeater
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: seeater
+    volumes:
+      # A plain folder on the box so it's easy to find and back up
+      # (docs/hosting.md has the pg_dump one-liner).
+      - ${PG_DATA_DIR:-/DATA/AppData/seeater/pg}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seeater -d seeater"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+    # The entrypoint starts as root to own the data folder, then drops to the
+    # postgres user; these are the only capabilities that takes.
+    read_only: true
+    tmpfs: [/tmp, /var/run/postgresql]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    shm_size: 128m
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    restart: unless-stopped
+    # A remotely managed tunnel: the token carries its identity and the
+    # routes live in the Cloudflare dashboard.
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in docker/.env}
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks: [backend, outside]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+
+networks:
+  # No route out: the database lives only here.
+  backend:
+    internal: true
+  # Outbound traffic (the tunnel, Clerk) and web's optional port.
+  outside: {}
