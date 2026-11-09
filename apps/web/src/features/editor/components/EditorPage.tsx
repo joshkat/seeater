@@ -94,9 +94,9 @@ export function EditorPage(): JSX.Element {
 
   return (
     <div className="flex h-screen flex-col text-base-content">
-      <header className="relative z-50 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-base-300 bg-base-100 px-4 py-3 max-sm:px-3 max-sm:py-2">
+      <header className="relative z-50 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-base-300 bg-base-100 px-4 py-3 short:py-1.5 max-sm:px-3 max-sm:py-2">
         <div className="flex min-w-0 items-center gap-3 max-sm:flex-1">
-          <Link to="/" className="btn btn-secondary btn-sm" title="All events">
+          <Link to="/" className="btn btn-sm" title="All events">
             ←<span className="max-sm:hidden"> Events</span>
           </Link>
           <EventTitle />
@@ -117,7 +117,7 @@ export function EditorPage(): JSX.Element {
       </header>
 
       {!phone && (
-        <div className="relative z-40 border-b border-base-300 bg-base-100 px-4 py-2.5">
+        <div className="relative z-40 border-b border-base-300 bg-base-100 px-4 py-2.5 short:py-1.5">
           <Toolbar />
         </div>
       )}

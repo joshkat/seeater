@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { isTextEntry } from "../../../lib/isTextEntry";
+import { DRAWER_QUERY, matchesQuery } from "../../../lib/useMediaQuery";
 import { useGuestDetailsStore } from "../../guests/store/guestDetailsStore";
 import { usePrintStore } from "../../export/store/printStore";
 import { useSeatingFlowStore } from "../../guests/store/seatingFlowStore";
@@ -135,7 +136,9 @@ export function useKeyboardShortcuts(): void {
         const seating = useSeatingFlowStore.getState();
         const layout = useLayoutStore.getState();
         if (seating.question || seating.overflow) seating.dismiss();
-        else if (layout.guestsOpen || layout.propertiesOpen) layout.closeDrawers();
+        else if ((layout.guestsOpen || layout.propertiesOpen) && matchesQuery(DRAWER_QUERY)) {
+          layout.closeDrawers();
+        }
         // "Select several" ends first (keeping the selection), then it clears.
         else if (useEditorStore.getState().selectSeveral) {
           useEditorStore.getState().setSelectSeveral(false);

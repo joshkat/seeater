@@ -96,7 +96,7 @@ export function RuleGuestPicker({
         <p className="text-xs text-base-content/70">No guest matches “{query.trim()}”.</p>
       )}
       <div className="flex justify-end gap-2">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+        <button type="button" className="btn btn-sm" onClick={onCancel}>
           Cancel
         </button>
         <button

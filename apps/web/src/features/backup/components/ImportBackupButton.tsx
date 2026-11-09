@@ -41,7 +41,7 @@ export function ImportBackupButton({
       />
       <button
         type="button"
-        className="btn btn-ghost btn-sm"
+        className="btn btn-sm"
         title="Restore an event from a backup file"
         onClick={() => inputRef.current?.click()}
       >

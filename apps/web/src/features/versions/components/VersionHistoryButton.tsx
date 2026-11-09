@@ -6,7 +6,7 @@ export function VersionHistoryButton(): JSX.Element {
   return (
     <button
       type="button"
-      className="btn btn-ghost btn-sm"
+      className="btn btn-sm"
       title="Version history: save, restore or copy earlier versions"
       onClick={() => setOpen(true)}
     >

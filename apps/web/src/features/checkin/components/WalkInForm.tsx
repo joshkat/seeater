@@ -39,7 +39,7 @@ export function WalkInForm({
       <button type="submit" className="btn btn-primary btn-sm" disabled={!name.trim()}>
         Add &amp; check in
       </button>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDone(null)}>
+      <button type="button" className="btn btn-sm" onClick={() => onDone(null)}>
         Cancel
       </button>
     </form>

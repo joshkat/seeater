@@ -25,11 +25,11 @@ export function ViewerRoute(): JSX.Element {
       banner={viewOnly ? <SharedByBanner ownerName={access.ownerName} /> : undefined}
       nav={
         viewOnly ? (
-          <Link to="/" className="btn btn-secondary btn-sm">
+          <Link to="/" className="btn btn-sm">
             ← Events
           </Link>
         ) : (
-          <Link to={`/events/${result.doc.id}`} className="btn btn-secondary btn-sm">
+          <Link to={`/events/${result.doc.id}`} className="btn btn-sm">
             ← Editor
           </Link>
         )

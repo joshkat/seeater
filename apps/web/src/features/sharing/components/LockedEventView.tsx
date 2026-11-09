@@ -29,7 +29,7 @@ export function LockedEventView({
       images={images}
       banner={<EditLockBanner holder={holder} tookOver={tookOver} onEditAnyway={onEditAnyway} />}
       nav={
-        <Link to="/" className="btn btn-secondary btn-sm">
+        <Link to="/" className="btn btn-sm">
           ← Events
         </Link>
       }

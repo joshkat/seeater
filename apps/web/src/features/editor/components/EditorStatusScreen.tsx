@@ -36,7 +36,7 @@ export function EditorStatusScreen({ status }: EditorStatusScreenProps): JSX.Ele
             Back to events
           </Link>
           {status === "missing" && (
-            <Link to="/trash" className="btn btn-ghost btn-sm">
+            <Link to="/trash" className="btn btn-sm">
               Open trash
             </Link>
           )}

@@ -60,8 +60,8 @@ export function NewEventDialog({ onClose }: { onClose: () => void }): JSX.Elemen
         <span className="text-xs font-semibold text-base-content/70">Start from</span>
         <TemplatePicker value={templateId} onChange={setTemplateId} />
         <div className="flex justify-end gap-2">
-          <SampleEventButton className="btn btn-ghost btn-sm mr-auto" />
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} disabled={busy}>
+          <SampleEventButton className="btn btn-sm mr-auto" />
+          <button type="button" className="btn btn-sm" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <button

@@ -91,6 +91,10 @@ interface EditorState {
   highlightedSeatId: string | null;
   /** Zooms to the table holding this seat and rings the chair. */
   locateSeat: (seatId: string) => void;
+  /** A table lit up for a moment after guests were seated at it. */
+  pulsedTableId: string | null;
+  /** Lights a table up briefly (no zoom, no selection change). */
+  pulseTable: (tableId: string) => void;
 
   /** Clears per-event view state; called when a different event is opened. */
   resetForNewEvent: () => void;
@@ -152,6 +156,9 @@ function edit(change: (doc: EventDoc) => EventDoc, coalesceKey?: string): void {
 /** How long "Show on map" rings the chair. */
 const HIGHLIGHT_MS = 2500;
 let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+/** How long a table stays lit after guests are seated at it. */
+const PULSE_MS = 1400;
+let pulseTimer: ReturnType<typeof setTimeout> | undefined;
 
 function dimensions() {
   return currentDoc()?.dimensions ?? DEFAULT_FLOOR_PLAN_SIZE;
@@ -191,6 +198,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   preFocusViewport: null,
   focusedTableId: null,
   highlightedSeatId: null,
+  pulsedTableId: null,
+
+  pulseTable(tableId) {
+    set({ pulsedTableId: tableId });
+    clearTimeout(pulseTimer);
+    pulseTimer = setTimeout(() => set({ pulsedTableId: null }), PULSE_MS);
+  },
 
   locateSeat(seatId) {
     const table = currentDoc()?.tables.find((t) => t.seats.some((seat) => seat.id === seatId));

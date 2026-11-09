@@ -37,7 +37,7 @@ export function LayoutTabs(): JSX.Element {
         ))}
         <button
           type="button"
-          className="btn btn-ghost btn-sm whitespace-nowrap"
+          className="btn btn-sm whitespace-nowrap"
           title="Add a layout (e.g. ceremony and reception)"
           onClick={() => setCreating(true)}
         >

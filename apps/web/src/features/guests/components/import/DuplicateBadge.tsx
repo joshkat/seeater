@@ -30,7 +30,7 @@ export function DuplicateBadge({
       </span>
       <button
         type="button"
-        className="btn btn-ghost btn-xs"
+        className="btn btn-xs"
         aria-label={`${action}: ${name}`}
         onClick={onToggle}
       >

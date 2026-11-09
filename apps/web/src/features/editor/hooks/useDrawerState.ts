@@ -1,15 +1,17 @@
-import { DESKTOP_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
 import { useDragStore } from "../../dnd/store/dragStore";
 import { useLayoutStore } from "../store/layoutStore";
+import { type PanelMode, usePanelMode } from "./usePanelMode";
 
 /**
- * Drawer behaviour for a side panel. At desktop widths panels are always
- * shown (`drawer` false). Below that they slide over the canvas; a closed
- * drawer is `inert` so keyboard focus can't land in it — except while a drag
- * that started inside it is still in progress.
+ * Layout state for a side panel (see usePanelMode). On desktop panels are
+ * always shown. Docked (laptop windows), a closed panel is simply not
+ * rendered beside the floor plan. As a drawer it slides over the canvas; a
+ * closed drawer is `inert` so keyboard focus can't land in it — except while a
+ * drag that started inside it is still in progress.
  */
 export function useDrawerState(panel: "guests" | "properties"): {
-  drawer: boolean;
+  mode: PanelMode;
+  /** Shown right now (always true on desktop). */
   open: boolean;
   inert: boolean;
   /** A drag is in progress: the drawer must not catch the drop (it may still
@@ -17,20 +19,35 @@ export function useDrawerState(panel: "guests" | "properties"): {
   passThrough: boolean;
   close: () => void;
 } {
-  const desktop = useMediaQuery(DESKTOP_QUERY);
-  const open = useLayoutStore((state) =>
+  const mode = usePanelMode();
+  const drawerOpen = useLayoutStore((state) =>
     panel === "guests" ? state.guestsOpen : state.propertiesOpen,
   );
-  const setOpen = useLayoutStore((state) =>
+  const guestsDocked = useLayoutStore((state) => state.guestsDocked);
+  const setDrawerOpen = useLayoutStore((state) =>
     panel === "guests" ? state.setGuestsOpen : state.setPropertiesOpen,
   );
+  const setGuestsDocked = useLayoutStore((state) => state.setGuestsDocked);
   const dragging = useDragStore((state) => state.drag !== null);
-  const drawer = !desktop;
+
+  if (mode === "fixed") {
+    return { mode, open: true, inert: false, passThrough: false, close: () => {} };
+  }
+  if (mode === "docked") {
+    const guests = panel === "guests";
+    return {
+      mode,
+      open: guests ? guestsDocked : drawerOpen,
+      inert: false,
+      passThrough: false,
+      close: () => (guests ? setGuestsDocked(false) : setDrawerOpen(false)),
+    };
+  }
   return {
-    drawer,
-    open: drawer && open,
-    inert: drawer && !open && !dragging,
-    passThrough: drawer && dragging,
-    close: () => setOpen(false),
+    mode,
+    open: drawerOpen,
+    inert: !drawerOpen && !dragging,
+    passThrough: dragging,
+    close: () => setDrawerOpen(false),
   };
 }

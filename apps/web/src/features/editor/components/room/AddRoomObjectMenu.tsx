@@ -5,7 +5,7 @@ import { RoomObjectMenuItems } from "./RoomObjectMenuItems";
 export function AddRoomObjectMenu(): JSX.Element {
   return (
     <div className="dropdown">
-      <button type="button" tabIndex={0} className="btn btn-sm btn-outline">
+      <button type="button" tabIndex={0} className="btn btn-primary btn-outline btn-sm">
         + Room item ▾
       </button>
       <ul className="dropdown-content menu z-30 mt-1 w-48 rounded-box border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-lg">

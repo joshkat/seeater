@@ -24,6 +24,9 @@ export function AddGuestForm({ autoFocus, onClose }: AddGuestFormProps): JSX.Ele
   const addGuest = useGuestStore((state) => state.addGuest);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  // The last guest added, confirmed under the fields (the row is highlighted
+  // in the list too, but it may be further down).
+  const [added, setAdded] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(event: FormEvent): void {
@@ -31,6 +34,7 @@ export function AddGuestForm({ autoFocus, onClose }: AddGuestFormProps): JSX.Ele
     const trimmed = name.trim();
     if (!trimmed) return;
     addGuest({ name: trimmed, ...classifyContact(contact) });
+    setAdded(trimmed);
     setName("");
     setContact("");
     nameRef.current?.focus();
@@ -66,10 +70,14 @@ export function AddGuestForm({ autoFocus, onClose }: AddGuestFormProps): JSX.Ele
         >
           Add
         </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+        <button type="button" className="btn btn-sm" onClick={onClose}>
           Done
         </button>
       </div>
+      {/* A live region, but not role="status": that's the canvas notice. */}
+      <p aria-live="polite" className="m-0 min-h-4 text-xs font-semibold text-success-strong">
+        {added && `✓ Added ${added}. They’re under “To seat”.`}
+      </p>
     </form>
   );
 }

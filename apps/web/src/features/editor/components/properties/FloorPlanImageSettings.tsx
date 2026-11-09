@@ -45,11 +45,7 @@ export function FloorPlanImageSettings(): JSX.Element {
           {busy ? "Uploading…" : backdrop ? "Replace image" : "Upload image"}
         </button>
         {backdrop && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => apply(clearBackdrop)}
-          >
+          <button type="button" className="btn btn-sm" onClick={() => apply(clearBackdrop)}>
             Remove
           </button>
         )}

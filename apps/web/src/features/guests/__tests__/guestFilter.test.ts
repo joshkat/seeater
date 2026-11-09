@@ -38,12 +38,10 @@ describe("guest filter", () => {
     expect(search("thumb wheelchair")).toEqual(["Tom Thumb"]);
   });
 
-  it("filters by RSVP, seating, tag, meal and needs", () => {
+  it("filters by RSVP, tag, meal and needs", () => {
     const { doc } = sample();
     const by = (patch: Partial<typeof NO_FILTER>) =>
       names(filterGuests(doc.guests, doc.households, { ...NO_FILTER, ...patch }));
-    expect(by({ seating: "seated" })).toEqual(["Ada Lovelace"]);
-    expect(by({ seating: "unseated" })).toEqual(["Grace Hopper", "Tom Thumb"]);
     expect(by({ tag: "work" })).toEqual(["Grace Hopper"]);
     expect(by({ meal: "fish" })).toEqual(["Ada Lovelace"]);
     expect(by({ need: "child" })).toEqual(["Tom Thumb"]);

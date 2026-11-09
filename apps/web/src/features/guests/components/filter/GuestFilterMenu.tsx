@@ -8,7 +8,7 @@ import { useGuestFilterStore } from "../../store/guestFilterStore";
 const selectClass = "select select-sm w-full";
 const labelClass = "mb-0.5 block text-xs font-semibold text-base-content/70";
 
-/** "Filters" dropdown: RSVP, seated or not, tag, meal, needs. */
+/** "Filters" dropdown: RSVP, tag, meal, needs. (Seated or not is the tabs.) */
 export function GuestFilterMenu(): JSX.Element {
   const doc = useDocumentStore((state) => state.doc);
   const filter = useGuestFilterStore((state) => state.filter);
@@ -41,20 +41,6 @@ export function GuestFilterMenu(): JSX.Element {
               <option value="accepted">Going</option>
               <option value="pending">Pending</option>
               <option value="declined">Declined</option>
-            </select>
-          </label>
-          <label>
-            <span className={labelClass}>Seating</span>
-            <select
-              className={selectClass}
-              value={filter.seating}
-              onChange={(event) =>
-                setFilter({ seating: event.target.value as typeof filter.seating })
-              }
-            >
-              <option value="any">Any</option>
-              <option value="seated">Seated</option>
-              <option value="unseated">Not seated yet</option>
             </select>
           </label>
           <label>

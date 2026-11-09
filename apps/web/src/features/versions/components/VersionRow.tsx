@@ -48,7 +48,7 @@ export function VersionRow({
         </button>
         <button
           type="button"
-          className="btn btn-ghost btn-sm"
+          className="btn btn-sm"
           disabled={busy}
           title="Open this version as a separate event"
           onClick={onCopy}

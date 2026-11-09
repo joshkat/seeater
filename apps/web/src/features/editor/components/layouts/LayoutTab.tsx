@@ -47,7 +47,7 @@ export function LayoutTab({
 
   if (!active) {
     return (
-      <button type="button" className="btn btn-ghost btn-sm" onClick={onSelect}>
+      <button type="button" className="btn btn-sm" onClick={onSelect}>
         {layout.name}
       </button>
     );

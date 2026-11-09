@@ -11,7 +11,7 @@ export function SyncNotice(): JSX.Element | null {
   return (
     <div role="status" className="alert alert-info alert-soft mb-6 text-sm">
       <span>{notice}</span>
-      <button type="button" className="btn btn-ghost btn-xs" onClick={dismissNotice}>
+      <button type="button" className="btn btn-xs" onClick={dismissNotice}>
         Dismiss
       </button>
     </div>

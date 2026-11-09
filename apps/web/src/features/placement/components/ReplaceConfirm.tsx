@@ -27,7 +27,7 @@ export function ReplaceConfirm({
           : `Move ${occupantName} to “To place” and seat ${moverName} here?`}
       </span>
       <div className="flex gap-1.5">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChoose("cancel")}>
+        <button type="button" className="btn btn-sm" onClick={() => onChoose("cancel")}>
           Cancel
         </button>
         {canSwap && (

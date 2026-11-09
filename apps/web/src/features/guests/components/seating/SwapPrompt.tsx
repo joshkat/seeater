@@ -32,7 +32,7 @@ export function SwapPrompt({ question }: { question: SwapQuestion }): JSX.Elemen
           </p>
         ))}
         <div className="card-actions mt-1 justify-end">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={dismiss}>
+          <button type="button" className="btn btn-sm" onClick={dismiss}>
             Cancel
           </button>
           <button type="button" autoFocus className="btn btn-primary btn-sm" onClick={confirmSwap}>

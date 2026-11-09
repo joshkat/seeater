@@ -13,13 +13,13 @@ export function RulesAndAutoSeat(): JSX.Element {
     <>
       <button
         type="button"
-        className={`btn btn-ghost btn-xs ${problems.length > 0 ? "text-error" : ""}`}
+        className={`btn btn-xs ${problems.length > 0 ? "text-error-strong" : ""}`}
         title="Keep-together and keep-apart rules"
         onClick={() => setOpen("rules")}
       >
         Rules{problems.length > 0 && ` ⚠${problems.length}`}
       </button>
-      <button type="button" className="btn btn-ghost btn-xs" onClick={() => setOpen("auto")}>
+      <button type="button" className="btn btn-xs" onClick={() => setOpen("auto")}>
         Auto-seat…
       </button>
       {open === "rules" && <RulesDialog onClose={() => setOpen(null)} />}

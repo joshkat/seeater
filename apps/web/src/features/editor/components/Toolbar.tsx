@@ -11,6 +11,10 @@ import { SelectMenu } from "./SelectMenu";
 import { ToolbarOverflowMenu } from "./ToolbarOverflowMenu";
 import { UndoRedoButtons } from "./UndoRedoButtons";
 
+/** Every "+ add to the room" button looks the same: outlined in the accent
+ * colour, so the group reads as one family next to the grey edit buttons. */
+const addClass = "btn btn-primary btn-outline btn-sm";
+
 /**
  * Top toolbar (tablet and desktop; phones use PhoneBottomBar): add tables,
  * act on the selection, and the theme.
@@ -44,17 +48,13 @@ export function Toolbar(): JSX.Element {
         {!desktop && <GuestsDrawerToggle />}
         <UndoRedoButtons showRedo={desktop} />
         {desktop && <span className="mx-1 h-6 w-px bg-base-300" />}
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => addTable("round")}>
+        <button type="button" className={addClass} onClick={() => addTable("round")}>
           + Round
         </button>
         {/* Below xl, rectangles come from + More (banquet and head tables),
             so an iPad's toolbar fits on one row. */}
         {desktop && (
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => addTable("rectangle")}
-          >
+          <button type="button" className={addClass} onClick={() => addTable("rectangle")}>
             + Rectangle
           </button>
         )}
@@ -77,7 +77,7 @@ export function Toolbar(): JSX.Element {
         )}
         <button
           type="button"
-          className="btn btn-sm btn-error"
+          className="btn btn-error btn-outline btn-sm"
           disabled={!hasSelection}
           onClick={deleteSelected}
         >
@@ -107,7 +107,7 @@ export function Toolbar(): JSX.Element {
                 type="button"
                 aria-label="Keyboard shortcuts"
                 title="Keyboard shortcuts (?)"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-square btn-sm"
                 onClick={() => openShortcuts(true)}
               >
                 ⌨

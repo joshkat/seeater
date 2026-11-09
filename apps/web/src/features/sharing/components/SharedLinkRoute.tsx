@@ -42,7 +42,7 @@ export function SharedLinkRoute(): JSX.Element {
         <p className="text-lg font-semibold">{title}</p>
         {detail && <p className="mt-1 text-sm text-base-content/70">{detail}</p>}
         {state.kind !== "loading" && (
-          <Link to="/" className="btn btn-ghost btn-sm mt-4">
+          <Link to="/" className="btn btn-sm mt-4">
             Make your own seating chart
           </Link>
         )}

@@ -2,11 +2,12 @@ import { useState } from "react";
 
 import { useGuests } from "../../editor/hooks/useDocumentSelectors";
 import { AddGuestForm } from "./AddGuestForm";
-import { GuestFilterMenu } from "./filter/GuestFilterMenu";
 import { FormatHelp } from "./FormatHelp";
+import { RulesAndAutoSeat } from "../../rules/components/RulesAndAutoSeat";
 import { ImportMenu } from "./ImportMenu";
 
-/** One line of guest-list actions — [+ Add guest] [Import ▾] [Filters] — with
+/** One line of guest-list actions — [+ Add guest] [Import ▾] and, on the
+ * right, [Rules] [Auto-seat…] — with
  * the add form, format help and import status opening underneath. The add
  * form starts open while the list is empty. */
 export function GuestPanelActions(): JSX.Element {
@@ -18,7 +19,7 @@ export function GuestPanelActions(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
         <button
           type="button"
           aria-expanded={adding}
@@ -32,8 +33,8 @@ export function GuestPanelActions(): JSX.Element {
         </button>
         <ImportMenu onMessage={setMessage} onShowHelp={() => setHelpOpen(true)} />
         {hasGuests && (
-          <span className="ml-auto">
-            <GuestFilterMenu />
+          <span className="ml-auto flex items-center gap-1">
+            <RulesAndAutoSeat />
           </span>
         )}
       </div>

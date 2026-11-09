@@ -27,14 +27,14 @@ export function TrashPage(): JSX.Element {
       <header className="border-b border-base-300 bg-base-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-4">
           <div className="flex items-center gap-3">
-            <Link to="/" className="btn btn-secondary btn-sm">
+            <Link to="/" className="btn btn-sm">
               ← Events
             </Link>
             <h1 className="text-xl font-bold">Trash</h1>
           </div>
           <button
             type="button"
-            className="btn btn-ghost btn-sm text-error"
+            className="btn btn-sm text-error"
             disabled={!trashed?.length}
             onClick={() => void handleEmpty()}
           >

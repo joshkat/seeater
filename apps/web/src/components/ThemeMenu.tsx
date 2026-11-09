@@ -8,7 +8,7 @@ export function ThemeMenu(): JSX.Element {
         type="button"
         tabIndex={0}
         aria-label="Theme"
-        className="btn btn-sm btn-secondary whitespace-nowrap"
+        className="btn btn-sm whitespace-nowrap"
       >
         Theme ▾
       </button>

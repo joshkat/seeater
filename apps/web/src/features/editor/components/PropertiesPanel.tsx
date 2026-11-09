@@ -7,10 +7,11 @@ import { MultiTableEditor } from "./properties/MultiTableEditor";
 import { RoomObjectEditor } from "./properties/RoomObjectEditor";
 import { SingleTableEditor } from "./properties/SingleTableEditor";
 
-/** Right-hand inspector for the current selection (a drawer on tablets). */
+/** Right-hand inspector for the current selection (a drawer on tablets; on
+ * laptop-sized windows it docks beside the floor plan when opened). */
 export function PropertiesPanel(): JSX.Element {
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const { open, inert, passThrough, close } = useDrawerState("properties");
+  const { mode, open, inert, passThrough, close } = useDrawerState("properties");
   const tables = useTables();
   const roomObjects = useRoomObjects();
 
@@ -23,8 +24,14 @@ export function PropertiesPanel(): JSX.Element {
     <aside
       aria-label="Properties"
       inert={inert}
-      className={`w-65 shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:w-[min(320px,85vw)] max-xl:shadow-xl max-xl:transition-transform ${
-        open ? "" : "max-xl:translate-x-full"
+      className={`shrink-0 overflow-y-auto border-l border-base-300 bg-base-100 p-4 ${
+        mode === "drawer"
+          ? `absolute inset-y-0 right-0 z-30 w-[min(320px,85vw)] shadow-xl transition-transform ${
+              open ? "" : "translate-x-full"
+            }`
+          : open
+            ? "w-65"
+            : "hidden"
       } ${passThrough ? "pointer-events-none" : ""}`}
     >
       <div className="mb-3 flex items-center justify-between">

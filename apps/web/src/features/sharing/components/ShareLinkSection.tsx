@@ -53,7 +53,7 @@ export function ShareLinkSection({ link, busy, onChange }: ShareLinkSectionProps
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-sm"
             title="Make a new link. The old one stops working."
             disabled={busy}
             onClick={() => void onChange(true, true)}

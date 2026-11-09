@@ -71,7 +71,7 @@ export function CheckInPage(): JSX.Element {
       <header className="sticky top-0 z-10 border-b border-base-300 bg-base-100">
         <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Link to={`/events/${doc.id}`} className="btn btn-secondary btn-sm">
+            <Link to={`/events/${doc.id}`} className="btn btn-sm">
               ← Editor
             </Link>
             {/* Phones: the title gets a line of its own, so it isn't cut to a few letters. */}
