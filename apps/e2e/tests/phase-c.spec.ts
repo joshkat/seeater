@@ -25,7 +25,7 @@ async function seatEveryone(page: import("@playwright/test").Page): Promise<void
   await importGuests(page, CSV);
   await selectAllGuests(page);
   await assignSelectionTo(page, "Table 1");
-  await expect(page.getByRole("status")).toHaveText("Seated 4 guests at Table 1.");
+  await expect(page.getByRole("status")).toContainText("Seated 4 guests at Table 1.");
 }
 
 test("search and filters narrow the guest list", async ({ page }) => {
@@ -33,11 +33,11 @@ test("search and filters narrow the guest list", async ({ page }) => {
   await seatEveryone(page);
   const panel = await guestPanel(page);
   await panel.getByLabel("Search guests").fill("family");
-  await expect(panel.getByText("Showing 3 of 4")).toBeVisible();
-  await panel.getByRole("button", { name: "Clear filters" }).click();
+  await expect(panel.getByText("3 of 4 guests match")).toBeVisible();
+  await panel.getByRole("button", { name: "Clear search" }).click();
   await panel.getByRole("button", { name: "Filters" }).click();
   await panel.getByLabel("Needs").selectOption("child");
-  await expect(panel.getByText("Showing 1 of 4")).toBeVisible();
+  await expect(panel.getByText("Filters on: 1 of 4 guests")).toBeVisible();
 });
 
 test("stats show table fill and meal totals", async ({ page }) => {

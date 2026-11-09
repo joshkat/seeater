@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createEvent, csvOf, guestPanel, importGuests } from "./helpers";
+import { createEvent, csvOf, guestPanel, importGuests, showGuestTab } from "./helpers";
 
 /** Opens the sample wedding (46 guests, most seated). */
 async function openSample(page: import("@playwright/test").Page): Promise<void> {
@@ -25,7 +25,7 @@ test("on a 1280×800 laptop the guest list comes first", async ({ page }, testIn
   await expect(panel.getByRole("region", { name: "Selected guests" })).toHaveCount(0);
 
   // Count the rows fully inside the panel. The review measured 2; the sample
-  // has 7 unassigned guests, then the Seated heading.
+  // has 7 guests without a seat on the "To seat" tab.
   const panelBox = (await panel.boundingBox())!;
   const rows = await panel.locator("li.cursor-grab").evaluateAll(
     (items, bottom) =>
@@ -134,6 +134,7 @@ test("the RSVP control is a labelled radio group", async ({ page }) => {
 test("table headings in the list say they show the table on the map", async ({ page }) => {
   await openSample(page);
   const panel = await guestPanel(page);
+  await showGuestTab(page, "Seated");
   const heading = panel.getByRole("button", { name: /^Head table .*Show on map$/ });
   await expect(heading).toBeVisible();
   const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);

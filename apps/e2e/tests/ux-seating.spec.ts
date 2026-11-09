@@ -11,6 +11,7 @@ import {
   isTabletLayout,
   seatedCount,
   selectAllGuests,
+  showGuestTab,
 } from "./helpers";
 
 /** The Properties panel (opening its drawer on tablets). */
@@ -108,9 +109,13 @@ test("swapping seats asks before splitting a household, then says where both wen
       .getByRole("checkbox", { name: `Select ${name}` })
       .locator("..")
       .click();
+  // Everyone has a seat now, so they're on the "Seated" tab.
+  await showGuestTab(page, "Seated");
   await tick("Alan Turing");
   await assignSelectionTo(page, "Table 2");
-  await expect(page.getByRole("status").filter({ hasText: "Seated 1 guest" })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Seated Alan Turing at Table 2" }),
+  ).toBeVisible();
 
   await tick("Marie Curie");
   await tick("Alan Turing");
