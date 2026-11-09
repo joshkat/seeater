@@ -6,8 +6,18 @@
 #   docker run -p 8090:8080 seeater
 #
 # The app is local-first: guests' events live in each browser's IndexedDB, so
-# the container holds no data and needs no volume. Sync stays off (no
-# VITE_ENABLE_SYNC at build time), so the bundle makes no network calls.
+# the container holds no data and needs no volume. By default sync stays off
+# (no VITE_ENABLE_SYNC at build time), so the bundle makes no network calls.
+#
+# For the public stack (docker/compose.yml) the same image is built with
+# sign-in + sync switched on, talking to the API on the same origin:
+#
+#   docker build -t seeater-web \
+#     --build-arg VITE_ENABLE_SYNC=true \
+#     --build-arg VITE_API_BASE_URL=/api \
+#     --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_live_… .
+#
+# These are baked into the JavaScript bundle (a publishable key is public).
 
 # --- build -------------------------------------------------------------------
 FROM node:24-alpine AS build
@@ -27,6 +37,11 @@ RUN npm ci --ignore-scripts --no-audit --no-fund \
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
+# Optional, see the top of this file. Left unset, each one is absent from the
+# build's environment (an empty VITE_API_BASE_URL would point the app at "").
+ARG VITE_ENABLE_SYNC
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_API_BASE_URL
 RUN npm run build:shared && npm run build --workspace @seating/web
 
 # --- runtime -----------------------------------------------------------------

@@ -8,8 +8,9 @@ current: update **Feature status**, **Architecture**, and **Gotchas** whenever a
 A **local-first** web app for building seating charts (weddings, galas, or a two-table dinner).
 Users lay out tables with configurable chairs, manage a guest list, and seat guests. Each **event**
 is one JSON document stored in the browser's IndexedDB. The app works offline with no account.
-Optional sign-in (Clerk) + sync to a small Postgres-backed API is built but **switched off**: the
-product ships local-only. It only runs with `VITE_ENABLE_SYNC=true` (decision: re-enable later).
+Optional sign-in (Clerk) + sync to a small Postgres-backed API adds **multi-device sync and
+sharing** (editors / viewers by email, a public read-only link, one editor at a time). It runs only
+in builds with `VITE_ENABLE_SYNC=true` (the public ZimaOS stack); other builds stay local-only.
 
 ## Stack & layout
 
@@ -21,9 +22,11 @@ npm-workspaces monorepo:
   `npm run build:shared` after editing.**
 - `apps/web` (`@seating/web`): **the product.** React 19 + Vite 8, react-konva, zustand, React
   Router, Dexie (IndexedDB), vite-plugin-pwa, Tailwind v4 + DaisyUI, optional Clerk. Features:
-  `src/features/{storage,editor,guests,dashboard,backup,auth,sync}/`.
-- `apps/api` (`@seating/api`): **optional sync service.** Fastify 5 + Prisma + Postgres. One module
-  (`modules/events`) and one table (`EventDocument`). Compare-and-swap writes on `version`.
+  `src/features/{storage,editor,guests,dashboard,backup,auth,sync,sharing,viewer}/`.
+- `apps/api` (`@seating/api`): **optional sync + sharing service.** Fastify 5 + Prisma + Postgres.
+  `modules/events` (documents, compare-and-swap on `version`, `access.ts` = who may do what) and
+  `modules/sharing` (members, public link, edit lock, floor-plan images). Tables `EventDocument`,
+  `EventMember`, `EventLock`, `EventImage`.
 
 Docs: `docs/architecture.md` (start), `docs/data-model.md`, `docs/sync.md`,
 `docs/reviewing-local-first.md`.
@@ -50,13 +53,26 @@ pushing.
 Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync off unless
 `VITE_ENABLE_SYNC=true` there), `web-keyless` :5174 (Clerk forced off), `api` :4000, `web-devsync`
 :5175 (`VITE_ENABLE_SYNC=true` + keyless `VITE_DEV_SYNC_OWNER=dev-user`, syncs to the local API),
-`web-preview` :4173 (prod build, service worker active).
+`web-devsync-guest` :5176 (a second keyless user, `guest-user` / "Gina Guest", for trying sharing
+against `dev-user`), `web-preview` :4173 (prod build, service worker active).
 
-- **Self-hosting:** `Dockerfile` (node:24-alpine build → `joseluisq/static-web-server` on
-  `scratch`, ~10 MB, config `docker/static-web-server.toml`: SPA fallback, brotli, immutable
-  `/assets`, no-cache shell). `scripts/deploy-zima.sh` streams the tree to the ZimaOS box
-  (`josh@192.168.1.194`), builds there and runs container `seeater` on :8090 (shows in
-  Portainer as a standalone container). `docker/compose.yml` is the same as a stack.
+- **Self-hosting** (`docs/hosting.md`): `Dockerfile` (node:24-alpine build →
+  `joseluisq/static-web-server` on `scratch`, ~13 MB, config `docker/static-web-server.toml`: SPA
+  fallback, brotli, immutable `/assets`, no-cache shell). Build args `VITE_ENABLE_SYNC`,
+  `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_BASE_URL` (unset = local-only). `apps/api/Dockerfile`
+  (build from the root) runs `prisma migrate deploy`, then the server, as `node`; it's ~150 MB
+  compressed, mostly the Prisma CLI, which can't be trimmed (it loads Studio's deps eagerly).
+  `scripts/deploy-zima.sh` streams the tree to the ZimaOS box (`josh@192.168.1.194`) and builds
+  there. With no flag it runs the local-only container `seeater` on :8090. `--stack` runs
+  `docker/compose.yml` (project `seeater`: web + api + postgres:17 in
+  `/DATA/AppData/seeater/pg` + cloudflared). It's public at `https://$PUBLIC_HOST` via a
+  Cloudflare Tunnel whose routes send `/api/*` → `api:4000` and the rest → `web:8080` (same
+  origin). Secrets: `docker/.env` (gitignored, see `.env.example`) → copied to
+  `/DATA/AppData/seeater/stack.env`. Postgres sits on an internal-only network; api has egress
+  (Clerk fetches its JWKS).
+  **On the box `DOCKER_CONFIG` is a temp dir**, which hides buildx: images must build with the
+  legacy builder (no `COPY --chmod`, no heredocs). It also hides the compose plugin (the
+  script links it back).
 - Smoke-test the API in keyless mode with `curl -H "x-owner-id: dev-user" localhost:4000/api/events`.
 
 ## Conventions (important — user preference)
@@ -133,7 +149,28 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
 - **Sync:** `sync/engine/planSync.ts` is the whole conflict policy (a pure decision table; "keep
   both" on concurrent edits). `runSync.ts` executes it. Local writes from sync are compare-and-set
   on `updatedAt` (`storage/repository/syncRepository.ts`). Triggers: sign-in, focus/online, every
-  60 s, and 1.5 s after any record goes dirty.
+  60 s, and 1.5 s after any record goes dirty. Floor-plan images sync after documents
+  (`syncImages.ts`; `StoredImageRecord.uploadedTo` lists events the server has them for).
+- **Sharing (server):** event ids are global (one row per event). `access.ts` `accessFor` gives
+  owner / editor / viewer / none (none = 404). Invites are by **verified** email and bind to an
+  account on that user's next list (`claimInvites`). A create on a stranger's id answers 409
+  `reason: "idTaken"` and the client re-ids its copy (`replaceWithOwnCopy`). Production refuses
+  to start without `CLERK_SECRET_KEY` (`config/env.ts`); keyless dev reads `x-owner-id`,
+  `x-owner-email`, `x-owner-name`.
+- **Sharing (client):** `SyncMeta.role/ownerName/memberCount` (optional; absent = owner, so no
+  IndexedDB upgrade; read via `recordRole`). Planner rules for shared events: viewers only pull,
+  members never delete or restore the owner's copy (deleting = `leave`), losing access keeps
+  unsynced edits as "(copy)" (`keepAsCopy`). When sync moves the open event to a new id,
+  `syncStore.movedEvents` + `useFollowMovedEvent` follow it. UI in `features/sharing/`: Share in
+  the editor header (phone: ⋯), `ShareDialog`, dashboard badges + "Remove from my list".
+- **One editor at a time:** `useEditLock` (in `EditorRoute`) takes the server's advisory lock for
+  events others can open (`needsEditLock`), renews every 30 s (also in background tabs; TTL 90 s),
+  releases on close/`pagehide`. Held elsewhere → `LockedEventView` (the viewer + "Sam is editing",
+  polls + syncs every 10 s, takes over when free, "Edit anyway" forces). Offline/solo: no lock.
+  Writes stay compare-and-swap, so a clash still makes a conflicted copy.
+- **Viewer** (`features/viewer/`): `EventViewer` is presentational (doc + images + banner/nav).
+  `/events/:id/view` (viewers land here; `useLocalViewerSource` reads storage, never the document
+  store) and public `/s/:token` (`SharedLinkRoute`, no sign-in, `GET /api/shared/:token`).
 - **Seat identity:** chair edits reuse seat ids by index (`tableOps.buildSeats`), so seated guests
   stay put. Shrinking or deleting unseats orphans in the same op.
 - **One guest per seat:** enforced by shared ops and by `eventDocSchema` integrity (also checked on
@@ -223,7 +260,18 @@ Preview configs (`.claude/launch.json`): `web` :5173 (uses `.env.local`; sync of
   SVG (browsers drop CSS backgrounds when printing). The PNG download still comes from the canvas
   via `registerChartCapture` (active layout).
   Lists are built from `seatingRows(doc, layoutView)` (pure). Guest CSV export uses headers the
-  importer reads back.
+  importer reads back. `PrintDocument({doc})` is the print view for any document; the editor's
+  `PrintView` feeds it the open event. `ChartSvg` takes optional `viewBox`/`underlay`/`overlay`.
+- **Viewer** (`features/viewer/`, route `/events/:eventId/view`, lazy, no Konva): a read-only
+  page. `EventViewer({doc, banner?, images?, nav?})` is presentational (layout tabs, the print
+  chart's SVG with pan/zoom, "Find your seat", Print ▾ via `PrintDocument`) and never touches
+  `documentStore`, so it makes no saves or undo history; any source can feed it (share links,
+  "Sam is editing"). `ViewerRoute` reads the local doc live (`useLiveQuery` + `getEventDoc`).
+  Pan/zoom is pure math in `lib/chartViewport.ts` (view = centre + px per unit → viewBox) driven
+  by `useChartViewport` (drag, wheel/trackpad pinch, two-finger pinch, arrows, + − Fit buttons).
+  `findSeats` searches names only (no contact details/notes, as a link may be public) and leaves
+  declined guests out; it opens on the layout with the most tables. The chart sits on white
+  "paper" in every theme (its colours are the print ones).
 - **Guest details (schema v4):** `meal`, `dietary`, `accessibility`, `notes`, `tags[]`, `isChild`.
   Meals/tags match existing spellings case-insensitively (`mealOptions`/`tagOptions` list them —
   no separate settings list). Edited in `guests/components/details/` (✎ on a row; Delete lives
@@ -343,8 +391,10 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   `HTMLSelectElement` value setter and dispatch a bubbling `change` event.
 - **HMR on a zustand store module** can leave components bound to two store instances (a prompt
   "doesn't appear"). Reload the page before concluding it's a bug.
-- **Sync is off by default.** If sign-in/sync "doesn't show up", that's `VITE_ENABLE_SYNC` unset —
-  intended. Don't remove the flag or the gated code; it's deliberately parked.
+- **Sync is per build.** If sign-in/sync/Share "doesn't show up", that's `VITE_ENABLE_SYNC` unset —
+  intended for local-only builds (`web`, the LAN container). Use `web-devsync` (+ `-guest`).
+- **The edit lock in two dev tabs:** each tab is its own editor (`TAB_ID`), so two tabs of one
+  dev user also lock each other out ("You're editing this in another tab").
 - **xlsx comes from SheetJS's CDN tarball** (`cdn.sheetjs.com/xlsx-0.20.3`), not npm — the npm
   package is abandoned with open advisories. Upgrade by changing that URL.
 - **`npm audit` is at 0** (including dev tools) and CI fails on any high/critical advisory
@@ -392,6 +442,8 @@ Done:
 - **Tablet & touch:** touch drag-and-drop (long-press), pinch/two-finger pan/tap, drawers below
   1280px, 44px targets on touch screens. **Phones:** compact header/toolbar, scrolling guest
   drawer with wrapping rows.
+- **Read-only viewer:** `/events/:id/view` — chart with pan/zoom, layout tabs, find your seat
+  (highlights the table and chair), print views. Used for viewers, "someone is editing" and links.
 - **Day-of check-in:** a door list per event (search, table + seat, household check-in, walk-ins,
   arrivals count, undo), phone-first. Search finds arrived guests; check-ins confirm in place.
 - **UX pass (2026-10):** nothing unseats silently (Undo notices), visible Select ▾ / Copy / Paste,
@@ -433,8 +485,11 @@ Done:
 - **Theming** (light / dark / black / synthwave) persisted to localStorage.
 - **Local-first:** IndexedDB storage, no account needed, **offline + installable (PWA)**, URL
   routing, **backup download/import**.
-- **Optional sign-in (Clerk) with multi-device sync**: versioned whole-document sync, "keep
-  both" conflicts, signed-out events adopted on sign-in. **Built but disabled** (`VITE_ENABLE_SYNC`).
+- **Sign-in (Clerk), multi-device sync and sharing**: versioned whole-document sync, "keep
+  both" conflicts, signed-out events (and their floor plans) adopted on sign-in; invite editors /
+  viewers by email, public read-only link, one editor at a time with live read-only view. On in
+  `VITE_ENABLE_SYNC` builds (the public ZimaOS stack, `docs/hosting.md`). Backlog: simultaneous
+  editing.
 - **Hardening:** ESLint + Prettier check + GitHub Actions CI; API rate limiting + helmet;
   patched SheetJS; code-split editor and Clerk. **Current majors:** React 19, Vite 8, Vitest 5,
   Prisma 7, zod 4, ESLint 10 (TypeScript stays 5.x until typescript-eslint supports 7).
@@ -450,8 +505,9 @@ floor-plan image) → **F ✅** (11 seating rules, 20 auto-seat + swap). → **G
 layout, 24 check-in; 23 QR / 26 Wallet need hosting — parked with sync). → **I ✅**
 (16 shortcuts, 19 minimap). → **UX pass** (`docs/ux-review.md`, review guide
 `docs/reviewing-ux-pass.md`; owner decisions D1–D7 there are still open). Next: the owner's
-decisions on D1–D7. Deferred on purpose: **error reporting**
-(Sentry or an "email us" link) and **re-enabling sign-in + sync**.
+decisions on D1–D7. → **Sharing ✅** (2026-11: sign-in + sync on, editors/viewers, links, edit
+lock, ZimaOS + Cloudflare Tunnel hosting). Deferred on purpose: **error reporting** (Sentry or an
+"email us" link) and **simultaneous editing** (CRDT / per-entity merge).
 
 ## Git
 

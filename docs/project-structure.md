@@ -7,6 +7,9 @@ _why_ behind this layout, read [architecture.md](./architecture.md).
 custom-seating-app/
 ├── package.json            # workspace root: dev/build/test/typecheck scripts, db:up / db:down
 ├── docker-compose.yml      # local Postgres for the optional sync API (npm run db:up)
+├── Dockerfile              # production web image (static-web-server); sync via build args
+├── docker/                 # compose.yml (public stack), .env.example, static-web-server.toml
+├── scripts/deploy-zima.sh  # build + run on the ZimaOS box (--stack for the public stack)
 ├── tsconfig.base.json      # shared strict TypeScript config
 ├── README.md               # running, configuring, deploying
 ├── CLAUDE.md               # agent onboarding + gotchas cheatsheet
@@ -14,6 +17,7 @@ custom-seating-app/
 │   ├── architecture.md         # how it fits together (start here)
 │   ├── data-model.md           # the event document + storage diagrams + capacity
 │   ├── sync.md                 # sign-in sync protocol + conflict policy
+│   ├── hosting.md              # public stack on the ZimaOS box (Cloudflare Tunnel, Clerk, backups)
 │   ├── reviewing-local-first.md# guide for auditing the local-first migration PR
 │   ├── project-structure.md
 │   └── styling.md

@@ -1,6 +1,7 @@
 import {
   EVENT_DOC_SCHEMA_VERSION,
   type EventDoc,
+  type EventRole,
   type EventSummary,
   upgradeEventDoc,
 } from "@seating/shared";
@@ -17,7 +18,19 @@ export interface SyncMeta {
   dirty: boolean;
   /** True when deleted locally but the delete hasn't reached the server yet. */
   deleted: boolean;
+  /**
+   * The signed-in user's access, from the server's list. Absent = "owner"
+   * (every record from before sharing, and every event made on this device).
+   */
+  role?: EventRole;
+  /** Owner's display name, for "Shared by …" on events shared with you. */
+  ownerName?: string;
+  /** How many people the owner shared it with (owner's records only). */
+  memberCount?: number;
 }
+
+/** The record's role, treating records from before sharing as owned. */
+export const recordRole = (sync: SyncMeta): EventRole => sync.role ?? "owner";
 
 /** One row of the `events` store: a whole event document plus metadata. */
 export interface LocalEventRecord {
@@ -69,6 +82,11 @@ export interface StoredImageRecord {
   width: number;
   height: number;
   createdAt: string;
+  /**
+   * Events whose server copy already has these bytes (signed-in sync only).
+   * A list, because a duplicated event references the same picture.
+   */
+  uploadedTo?: string[];
 }
 
 /**

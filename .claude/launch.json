@@ -50,6 +50,26 @@
       "port": 5175
     },
     {
+      "name": "web-devsync-guest",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_ENABLE_SYNC=true",
+        "VITE_CLERK_PUBLISHABLE_KEY=",
+        "VITE_DEV_SYNC_OWNER=guest-user",
+        "VITE_DEV_SYNC_NAME=Gina Guest",
+        "npm",
+        "run",
+        "dev",
+        "--workspace",
+        "@seating/web",
+        "--",
+        "--port",
+        "5176",
+        "--strictPort"
+      ],
+      "port": 5176
+    },
+    {
       "name": "web-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

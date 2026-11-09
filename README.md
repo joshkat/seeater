@@ -150,6 +150,9 @@ service worker) and `npm run build --workspace @seating/api`. To try the offline
 
 That alone is a complete, free-to-run product. Users' data stays in their browsers.
 
+**Self-hosted (what we run):** the whole stack, with web, API, Postgres and a Cloudflare Tunnel, runs
+from `docker/compose.yml` on a home server. See [docs/hosting.md](docs/hosting.md).
+
 **Sync API (only once sync is enabled):** a small Node service plus Postgres.
 
 - Postgres: any managed provider (Neon, Supabase, RDS). Run `npm run prisma:deploy` with

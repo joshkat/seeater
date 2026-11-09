@@ -35,13 +35,13 @@ flowchart LR
   L -. "moved into the account<br/>on first sign-in" .-> A1
 ```
 
-| Store                      | What's in it                                                  | Who can see it                         |
-| -------------------------- | ------------------------------------------------------------- | -------------------------------------- |
-| `seating-local` (IDB)      | Events made while signed out                                  | Anyone using this browser              |
-| `seating-account-<id>`     | That account's events (a full offline copy)                   | This browser, when signed in           |
-| `EventDocument` (Postgres) | Signed-in users' events, one row each, plus delete tombstones | Only the owning account (API-enforced) |
-| localStorage               | UI preferences and the last signed-in user id (no event data) | This browser                           |
-| Service worker cache       | The built app, so it loads offline (no user data)             | This browser                           |
+| Store                      | What's in it                                                  | Who can see it                                                                   |
+| -------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `seating-local` (IDB)      | Events made while signed out                                  | Anyone using this browser                                                        |
+| `seating-account-<id>`     | That account's events (a full offline copy)                   | This browser, when signed in                                                     |
+| `EventDocument` (Postgres) | Signed-in users' events, one row each, plus delete tombstones | The owner and people it's shared with (API-enforced); a public link if turned on |
+| localStorage               | UI preferences and the last signed-in user id (no event data) | This browser                                                                     |
+| Service worker cache       | The built app, so it loads offline (no user data)             | This browser                                                                     |
 
 Why one database per identity: signing out, or a second person signing in on the same browser,
 never mixes guest lists. Signing out keeps the account's database as an offline cache; it's only
@@ -286,16 +286,26 @@ made signed out upload correctly the moment you sign in.
 
 | Column                    | Type        | Notes                                                        |
 | ------------------------- | ----------- | ------------------------------------------------------------ |
-| `ownerId`                 | text, PK    | Clerk user id. Composite primary key with `id`.              |
-| `id`                      | text, PK    | The document's own client-generated id.                      |
+| `id`                      | text, PK    | The document's own client-generated id. Unique across users. |
+| `ownerId`                 | text        | Clerk user id of the owner.                                  |
+| `ownerName`               | text        | Owner's display name, shown to people it's shared with.      |
 | `name`                    | text        | Copied from `data.name` for listing.                         |
 | `version`                 | int         | +1 on every accepted write. Used for compare-and-swap.       |
 | `data`                    | jsonb, null | The whole EventDoc. Cleared to null on delete.               |
 | `deletedAt`               | timestamp   | Set on delete. The row stays so other devices hear about it. |
+| `shareToken`              | text, uniq  | Secret behind the public read-only link (`/s/:token`).       |
+| `shareEnabled`            | bool        | Whether that link works.                                     |
 | `createdAt` / `updatedAt` | timestamp   |                                                              |
 
-Index: `(ownerId, updatedAt)`. Because the primary key includes `ownerId`, one account can never
-read or overwrite another's row, even if they somehow used the same document id.
+Index: `(ownerId, updatedAt)`. Who may read or write a row is decided in
+`modules/events/access.ts` (owner, or a member below), never by the id alone. Sharing adds:
+
+- **`EventMember`** `(eventId, email)`: an invite as `editor` or `viewer`; `userId` is filled when
+  someone signs in with that verified email.
+- **`EventLock`** `(eventId)`: the "one editor at a time" lock (user, tab id, expiry).
+- **`EventImage`** `(eventId, id)`: floor-plan picture bytes, write-once.
+
+All three are deleted with their event row.
 
 The server never looks inside `data` beyond validating it. It doesn't edit documents, merge them,
 or query individual guests.

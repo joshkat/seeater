@@ -5,6 +5,8 @@ import { useDocumentTitle } from "../../../lib/useDocumentTitle";
 import { PHONE_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
 
 import { AuthControls } from "../../auth/components/AuthControls";
+import { ShareButton } from "../../sharing/components/ShareButton";
+import { ShareDialog } from "../../sharing/components/ShareDialog";
 import { SyncStatusBadge } from "../../sync/components/SyncStatusBadge";
 import { GuestPanel } from "../../guests/components/GuestPanel";
 import { GuestDetailsDialog } from "../../guests/components/details/GuestDetailsDialog";
@@ -105,6 +107,7 @@ export function EditorPage(): JSX.Element {
               <CheckInLink />
               <ExportMenu />
               <VersionHistoryButton />
+              <ShareButton />
             </>
           )}
           <SaveStatusBadge />
@@ -134,6 +137,7 @@ export function EditorPage(): JSX.Element {
       {phone && <PhoneBottomBar />}
       <PlacementDialog />
       <VersionHistoryDialog />
+      <ShareDialog />
       <ShortcutsDialog />
       <GuestDetailsDialog />
       <PrintView />

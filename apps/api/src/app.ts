@@ -8,6 +8,8 @@ import { ZodError } from "zod";
 
 import { env } from "./config/env.js";
 import { eventRoutes } from "./modules/events/event.routes.js";
+import { sharedRoutes } from "./modules/sharing/shared.routes.js";
+import { sharingRoutes } from "./modules/sharing/sharing.routes.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -51,7 +53,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // Standard security headers. The API is called cross-origin by the web app,
   // so allow cross-origin reads of its responses (CORS still decides who).
   await app.register(helmet, { crossOriginResourcePolicy: { policy: "cross-origin" } });
-  await app.register(cors, { origin: resolveCorsOrigin });
+  await app.register(cors, {
+    origin: resolveCorsOrigin,
+    // Image downloads carry their size in headers (read cross-origin in dev).
+    exposedHeaders: ["x-image-width", "x-image-height"],
+  });
   // Per-IP request cap. Sync makes a handful of calls a minute per open tab,
   // so the default leaves lots of headroom while stopping floods.
   await app.register(rateLimit, {
@@ -95,6 +101,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // Feature routes are registered under /api.
   await app.register(healthRoutes, { prefix: "/api" });
   await app.register(eventRoutes, { prefix: "/api" });
+  await app.register(sharingRoutes, { prefix: "/api" });
+  await app.register(sharedRoutes, { prefix: "/api" });
 
   return app;
 }

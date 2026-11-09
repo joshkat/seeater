@@ -6,12 +6,23 @@ import type {
   VersionConflictResponse,
 } from "@seating/shared";
 
-import { ApiError, apiRequest } from "../../../lib/apiClient";
+import { ApiError, apiFetch, apiRequest } from "../../../lib/apiClient";
 
-/** Result of a conditional write: accepted at `version`, or rejected as stale. */
+/**
+ * Result of a conditional write: accepted at `version`, or rejected as stale.
+ * `reason: "idTaken"` means the id belongs to someone else's event.
+ */
 export type RemoteWriteResult =
   | { ok: true; version: number }
-  | { ok: false; current: VersionConflictResponse["current"] };
+  | { ok: false; current: VersionConflictResponse["current"]; reason?: "idTaken" };
+
+/** Floor-plan image bytes as the sync engine moves them. */
+export interface RemoteImage {
+  mimeType: string;
+  width: number;
+  height: number;
+  data: ArrayBuffer;
+}
 
 /** The calls the sync engine makes. An interface so tests can fake the server. */
 export interface SyncApi {
@@ -19,16 +30,25 @@ export interface SyncApi {
   get: (id: string) => Promise<RemoteEvent>;
   put: (doc: EventDoc, baseVersion: number | null) => Promise<RemoteWriteResult>;
   remove: (id: string, baseVersion: number) => Promise<RemoteWriteResult>;
+  /** Removes a shared event from the caller's list (not the owner's). */
+  leave: (id: string) => Promise<void>;
+  uploadImage: (eventId: string, imageId: string, image: RemoteImage) => Promise<void>;
+  /** The image, or null if the server doesn't have it (yet). */
+  downloadImage: (eventId: string, imageId: string) => Promise<RemoteImage | null>;
 }
+
+const path = (id: string) => `/events/${encodeURIComponent(id)}`;
 
 function asConflict(error: unknown): RemoteWriteResult | null {
   if (error instanceof ApiError && error.status === 409) {
-    return { ok: false, current: (error.body as VersionConflictResponse).current };
+    const body = error.body as VersionConflictResponse;
+    return { ok: false, current: body.current, ...(body.reason ? { reason: body.reason } : {}) };
   }
   return null;
 }
 
-const path = (id: string) => `/events/${encodeURIComponent(id)}`;
+const imagePath = (eventId: string, imageId: string) =>
+  `${path(eventId)}/images/${encodeURIComponent(imageId)}`;
 
 /** The real HTTP implementation against `/api/events`. */
 export const httpSyncApi: SyncApi = {
@@ -57,6 +77,35 @@ export const httpSyncApi: SyncApi = {
     } catch (error) {
       const conflict = asConflict(error);
       if (conflict) return conflict;
+      throw error;
+    }
+  },
+
+  leave: (id) => apiRequest<void>(`${path(id)}/membership`, { method: "DELETE" }),
+
+  async uploadImage(eventId, imageId, image) {
+    await apiFetch(imagePath(eventId, imageId), {
+      method: "PUT",
+      headers: {
+        "Content-Type": image.mimeType,
+        "x-image-width": String(image.width),
+        "x-image-height": String(image.height),
+      },
+      body: image.data,
+    });
+  },
+
+  async downloadImage(eventId, imageId) {
+    try {
+      const response = await apiFetch(imagePath(eventId, imageId));
+      return {
+        mimeType: response.headers.get("content-type") ?? "image/png",
+        width: Number(response.headers.get("x-image-width")) || 0,
+        height: Number(response.headers.get("x-image-height")) || 0,
+        data: await response.arrayBuffer(),
+      };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     }
   },

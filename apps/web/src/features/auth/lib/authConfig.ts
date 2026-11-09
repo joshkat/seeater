@@ -22,5 +22,11 @@ export const clerkPublishableKey = syncEnabled
 export const devSyncOwner =
   syncEnabled && !clerkPublishableKey ? import.meta.env.VITE_DEV_SYNC_OWNER || null : null;
 
+/** Keyless dev: the email (for invites) and name the fake owner goes by. */
+export const devSyncEmail = devSyncOwner
+  ? import.meta.env.VITE_DEV_SYNC_EMAIL || `${devSyncOwner}@example.com`
+  : null;
+export const devSyncName = devSyncOwner ? import.meta.env.VITE_DEV_SYNC_NAME || devSyncOwner : null;
+
 /** Whether this build can sync at all (enabled, with some identity source). */
 export const syncConfigured = Boolean(clerkPublishableKey || devSyncOwner);
