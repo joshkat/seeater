@@ -48,7 +48,7 @@ export function GuestListItem({
       onPointerDown={onPointerDown}
       onClick={(event) => onSelect(selectModifiers(event))}
       title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table (press and hold on touch) or pick a seat"
-      className={`flex cursor-grab touch-manipulation select-none flex-wrap items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1 pr-2 ${
+      className={`flex cursor-grab touch-manipulation select-none flex-wrap items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1 pr-2 short:py-0.5 ${
         nested ? "pl-6" : "pl-2"
       } ${selected ? "border-primary bg-primary/5" : "border-transparent"} ${
         highlighted ? "guest-flash" : ""

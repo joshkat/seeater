@@ -14,7 +14,7 @@ import { GuestPanelActions } from "./GuestPanelActions";
 import { ResizeHandle } from "./ResizeHandle";
 
 /** The guest panel's widest when docked on a laptop-sized window. */
-const DOCKED_MAX_WIDTH = 360;
+const DOCKED_MAX_WIDTH = 380;
 
 /** Left-hand guest panel: add/import guests and assign them to seats. A fixed,
  * resizable column on desktop; docked (and closable) on laptop-sized windows; a

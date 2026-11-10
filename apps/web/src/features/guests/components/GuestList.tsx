@@ -267,7 +267,7 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
         ref={scrollRef}
         role={searching ? undefined : "tabpanel"}
         aria-label={searching ? undefined : "Guest list"}
-        className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto max-sm:flex-none max-sm:overflow-visible"
+        className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto short:gap-1.5 max-sm:flex-none max-sm:overflow-visible"
       >
         <GuestColumnHeaders
           allSelected={allSelected}
@@ -279,7 +279,10 @@ export function GuestList({ seatInfoFor }: GuestListProps): JSX.Element {
           <>
             {counts.toSeat > 0 && (
               <div className="flex items-center justify-between gap-2 px-1">
-                <span className="text-xs text-base-content/70">A table’s worth at a time:</span>
+                {/* Never wraps: a second line would push the list down. */}
+                <span className="min-w-0 truncate text-xs text-base-content/70">
+                  A table’s worth at a time:
+                </span>
                 <SelectNextControl
                   disabled={false}
                   onSelectNext={(count) =>

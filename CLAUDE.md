@@ -199,7 +199,7 @@ against `dev-user`), `web-preview` :4173 (prod build, service worker active).
 - **Panel modes** (`editor/hooks/usePanelMode`, `useDrawerState`, `layoutStore`): `fixed` at `xl`+
   (both panels always shown); `docked` on a laptop-sized window with a mouse (900–1279px, e.g. a
   1440px screen at 125% zoom): panels sit beside the floor plan, never over it, Guests open by
-  default (`guestsDocked`, capped at 360px), Properties opened from its toolbar button, both
+  default (`guestsDocked`, capped at 380px), Properties opened from its toolbar button, both
   closable; `drawer` on tablets and phones (`DRAWER_QUERY`: under 900px, or under 1280px with a
   coarse pointer). Panel classes are picked in JS from the mode, not with `max-xl:` variants.
   `closeDrawers()` (Escape, "Show on map", prompts) only acts in drawer mode. `short:` (window
