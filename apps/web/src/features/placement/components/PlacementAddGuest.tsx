@@ -28,7 +28,7 @@ export function PlacementAddGuest({ candidates, onAdd }: PlacementAddGuestProps)
     return (
       <button
         type="button"
-        className="btn btn-ghost btn-sm min-h-11 self-start"
+        className="btn btn-sm min-h-11 self-start"
         disabled={candidates.length === 0}
         title={candidates.length === 0 ? "Everyone else already has a seat" : undefined}
         onClick={() => setOpen(true)}
@@ -66,7 +66,7 @@ export function PlacementAddGuest({ candidates, onAdd }: PlacementAddGuestProps)
             }
           }}
         />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+        <button type="button" className="btn btn-sm" onClick={() => setOpen(false)}>
           Cancel
         </button>
       </div>

@@ -20,7 +20,7 @@ async function seatTwo(page: import("@playwright/test").Page): Promise<void> {
   await importGuests(page, CSV);
   await selectAllGuests(page);
   await assignSelectionTo(page, "Table 1");
-  await expect(page.getByRole("status")).toHaveText("Seated 2 guests at Table 1.");
+  await expect(page.getByRole("status")).toContainText("Seated 2 guests at Table 1.");
   await closeDrawers(page);
 }
 

@@ -11,6 +11,8 @@ interface GuestListItemProps {
   /** Secondary line: seat location when seated, else email/phone. */
   subtitle: string | null;
   selected: boolean;
+  /** Just added: the row is tinted for a moment so it's easy to spot. */
+  highlighted?: boolean;
   /** Shown under a household header (indented). */
   nested?: boolean;
   /** `additive`: ctrl/cmd was held or the checkbox was used (toggle).
@@ -30,6 +32,7 @@ export function GuestListItem({
   guest,
   subtitle,
   selected,
+  highlighted = false,
   nested = false,
   onSelect,
   onPointerDown,
@@ -41,12 +44,15 @@ export function GuestListItem({
 
   return (
     <li
+      data-guest-id={guest.id}
       onPointerDown={onPointerDown}
       onClick={(event) => onSelect(selectModifiers(event))}
       title="Tick the box to pick several (or ⌘/Ctrl-click), Shift-click for a range, then drag onto a table (press and hold on touch) or pick a seat"
-      className={`flex cursor-grab touch-manipulation select-none flex-wrap items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1.5 pr-2 ${
+      className={`flex cursor-grab touch-manipulation select-none flex-wrap items-center [-webkit-touch-callout:none] gap-2 rounded-field border py-1 pr-2 short:py-0.5 ${
         nested ? "pl-6" : "pl-2"
-      } ${selected ? "border-primary bg-primary/5" : "border-transparent"}`}
+      } ${selected ? "border-primary bg-primary/5" : "border-transparent"} ${
+        highlighted ? "guest-flash" : ""
+      }`}
     >
       <SelectCheckbox
         checked={selected}

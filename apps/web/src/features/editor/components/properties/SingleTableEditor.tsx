@@ -53,7 +53,7 @@ export function SingleTableEditor({ table, index }: { table: Table; index: numbe
 
       <button
         type="button"
-        className="btn btn-secondary btn-sm"
+        className="btn btn-sm"
         disabled={table.seats.length === 0}
         title="Pick who sits in which chair (also: double-click the table)"
         onClick={() => openPlacement(table.id, [])}

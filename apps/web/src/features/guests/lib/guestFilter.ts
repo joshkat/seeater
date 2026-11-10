@@ -1,10 +1,10 @@
 import type { Guest, Household, RsvpStatus } from "@seating/shared";
 
-/** The guest list's search box and filters. */
+/** The guest list's search box and filters. (Seated or not is the panel's
+ * tabs, see guestTabs.ts.) */
 export interface GuestFilter {
   query: string;
   rsvp: RsvpStatus | "any";
-  seating: "any" | "seated" | "unseated";
   tag: string | null;
   meal: string | null;
   /** Only guests with dietary needs, accessibility needs, or children. */
@@ -14,7 +14,6 @@ export interface GuestFilter {
 export const NO_FILTER: GuestFilter = {
   query: "",
   rsvp: "any",
-  seating: "any",
   tag: null,
   meal: null,
   need: "any",
@@ -24,7 +23,6 @@ export const NO_FILTER: GuestFilter = {
 export function activeFilterCount(filter: GuestFilter): number {
   return [
     filter.rsvp !== "any",
-    filter.seating !== "any",
     filter.tag !== null,
     filter.meal !== null,
     filter.need !== "any",
@@ -45,8 +43,6 @@ export function matchesFilter(
   householdName: (id: string) => string | undefined,
 ): boolean {
   if (filter.rsvp !== "any" && guest.rsvpStatus !== filter.rsvp) return false;
-  if (filter.seating === "seated" && !guest.seatId) return false;
-  if (filter.seating === "unseated" && guest.seatId) return false;
   if (filter.tag && !guest.tags.some((tag) => tag.toLowerCase() === filter.tag!.toLowerCase())) {
     return false;
   }

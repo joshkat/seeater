@@ -73,7 +73,7 @@ export function OverflowChoices({
             + {model.chairsToAdd} chair{model.chairsToAdd === 1 ? "" : "s"} at {model.name}
           </button>
         )}
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+        <button type="button" className="btn btn-sm" onClick={onLeave}>
           {model.leaveLabel}
         </button>
       </div>

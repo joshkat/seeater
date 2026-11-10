@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { addRoundTable, createEvent, guestPanel, importGuests } from "./helpers";
+import { addRoundTable, createEvent, guestPanel, importGuests, showGuestTab } from "./helpers";
 
 const CSV = ["Name,Group", "Ada,Work", "Bob,Family", "Cy,Work", "Dee,Family"].join("\n");
 
@@ -20,6 +20,7 @@ test("auto-seat, then a keep-apart rule is flagged when broken", async ({ page }
   await expect(page.getByRole("status")).toContainText(/Auto-seated 4 guests: .+ and 1 more\./);
 
   // Ada (Work) and Cy (Work) share a table; rule: keep them apart.
+  await showGuestTab(page, "Seated");
   const box = (name: string) =>
     panel.getByRole("checkbox", { name: `Select ${name}` }).locator("..");
   await (await guestPanel(page))

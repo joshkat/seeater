@@ -80,7 +80,7 @@ test("press, hold and drag a guest onto a table by touch", async ({ page }) => {
     { start, end },
   );
 
-  await expect(page.getByRole("status")).toHaveText("Seated 1 guest at Table 1.");
+  await expect(page.getByRole("status")).toContainText(/Seated .+ at Table 1\./);
   expect(await seatedCount(page)).toBe(1);
 });
 

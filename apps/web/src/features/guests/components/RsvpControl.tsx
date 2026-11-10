@@ -72,7 +72,7 @@ export function RsvpControl({ status, onChange, guestName }: RsvpControlProps): 
         }}
         title={`RSVP: ${meta.label} — hover or tap to change`}
         aria-label={`RSVP for ${guestName}: ${meta.label}. Change`}
-        className={`badge badge-soft outline ${BADGE_TONE[status]} shrink-0 cursor-pointer gap-1 border-none font-semibold pointer-coarse:min-h-11`}
+        className={`badge badge-soft badge-sm ${BADGE_TONE[status]} shrink-0 cursor-pointer gap-1 border-none font-medium pointer-coarse:min-h-11`}
       >
         {status !== "pending" && <span aria-hidden>{meta.symbol}</span>}
         {meta.label}

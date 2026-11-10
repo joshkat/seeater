@@ -47,7 +47,7 @@ export function HouseholdPrompt({ question }: { question: HouseholdQuestion }): 
           </p>
         )}
         <div className="card-actions mt-1 flex-wrap justify-end">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={dismiss}>
+          <button type="button" className="btn btn-sm" onClick={dismiss}>
             Cancel
           </button>
           <button

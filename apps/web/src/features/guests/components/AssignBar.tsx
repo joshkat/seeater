@@ -82,7 +82,7 @@ export function AssignBar(): JSX.Element | null {
         <SelectionMoreMenu />
         <button
           type="button"
-          className="btn btn-ghost btn-xs"
+          className="btn btn-xs"
           title="Clear the selection"
           onClick={clearGuestSelection}
         >

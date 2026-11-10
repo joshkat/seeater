@@ -32,7 +32,7 @@ export function SelectionMoreMenu(): JSX.Element {
 
   return (
     <div className="dropdown dropdown-top dropdown-end">
-      <button type="button" tabIndex={0} disabled={count === 0} className="btn btn-ghost btn-xs">
+      <button type="button" tabIndex={0} disabled={count === 0} className="btn btn-xs">
         More ▾
       </button>
       <ul className="dropdown-content menu z-30 mb-1 w-52 rounded-box border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-lg">

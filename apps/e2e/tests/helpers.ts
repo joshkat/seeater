@@ -94,11 +94,17 @@ export async function assignSelectionTo(page: Page, tableName: string): Promise<
   await select.selectOption({ label: label ?? tableName });
 }
 
-/** The "Seated (n)" count from the guest list. */
+/** The count on the guest list's "Seated" tab. */
 export async function seatedCount(page: Page): Promise<number> {
   const panel = await guestPanel(page);
-  const text = await panel.getByRole("heading", { name: /^Seated \(\d+\)$/ }).textContent();
+  const text = await panel.getByRole("tab", { name: /^Seated/ }).textContent();
   return Number(text?.match(/\d+/)?.[0] ?? NaN);
+}
+
+/** Switches the guest list to "To seat", "Seated" or "All". */
+export async function showGuestTab(page: Page, name: "To seat" | "Seated" | "All"): Promise<void> {
+  const panel = await guestPanel(page);
+  await panel.getByRole("tab", { name: new RegExp(`^${name}`) }).click();
 }
 
 export function csvOf(names: string[]): string {

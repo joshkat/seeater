@@ -12,6 +12,8 @@ import {
 import { create } from "zustand";
 
 import { useDocumentStore } from "../../editor/store/documentStore";
+import { useGuestFilterStore } from "./guestFilterStore";
+import { useGuestHighlightStore } from "./guestHighlightStore";
 
 /**
  * Guest-panel state (which guests are selected) plus guest actions.
@@ -61,22 +63,37 @@ function edit(change: (doc: EventDoc) => EventDoc): void {
   useDocumentStore.getState().apply(change);
 }
 
+/** New guests have no seat: show the list they landed in and highlight them. */
+function announceAdded(guestIds: string[]): void {
+  if (guestIds.length === 0) return;
+  const tabs = useGuestFilterStore.getState();
+  if (tabs.tab === "seated") tabs.setTab("toSeat");
+  useGuestHighlightStore.getState().flash(guestIds);
+}
+
 export const useGuestStore = create<GuestState>((set, get) => ({
   selectedGuestIds: [],
   anchorGuestId: null,
 
   addGuest(input) {
-    edit((doc) => addGuests(doc, [input]).doc);
+    let guestIds: string[] = [];
+    edit((doc) => {
+      const result = addGuests(doc, [input]);
+      guestIds = result.guestIds;
+      return result.doc;
+    });
+    announceAdded(guestIds);
   },
 
   importGuests(inputs) {
-    let added = 0;
+    let guestIds: string[] = [];
     edit((doc) => {
       const result = addGuests(doc, inputs);
-      added = result.guestIds.length;
+      guestIds = result.guestIds;
       return result.doc;
     });
-    return added;
+    announceAdded(guestIds);
+    return guestIds.length;
   },
 
   editGuest(guestId, patch) {

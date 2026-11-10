@@ -203,17 +203,13 @@ export function GuestDetailsForm({ guest, onClose }: GuestDetailsFormProps): JSX
       </div>
 
       <div className="modal-action mt-1 items-center">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm mr-auto text-error"
-          onClick={handleDelete}
-        >
+        <button type="button" className="btn btn-sm mr-auto text-error" onClick={handleDelete}>
           Delete guest
         </button>
         {guest.seatId && (
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-sm"
             onClick={() => {
               onClose();
               locateGuestSeat(guest.seatId!);

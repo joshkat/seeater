@@ -83,6 +83,11 @@ against `dev-user`), `web-preview` :4173 (prod build, service worker active).
   `className="btn btn-primary btn-sm"`. Theme tokens: `bg-base-100/200/300`, `text-base-content`,
   `btn-primary/secondary/accent/error`, `badge-*`, `join`, `dropdown`, `card`, `rounded-box`.
   (Konva canvas nodes use Konva props, not CSS.)
+- **Three button levels, visible in every theme** (`global.css`, "Buttons that stay visible"):
+  `btn btn-primary` = the main action; plain `btn` = secondary, always bordered; `btn-ghost` only
+  for icon-only buttons (✕, ✎, `btn-square`). **Never `btn-ghost` on a text label**: it reads as
+  plain text (user feedback, 2026-11-09). Disabled buttons keep an outline and a readable label.
+  "+ add to the room" toolbar buttons are all `btn-primary btn-outline`.
 - **Numbers use `components/NumberField`**, never `<input type="number">`: blank while typing,
   commits on blur/Enter/−/+ (blank → `emptyValue`, default `min`). Don't commit per keystroke:
   intermediate values (typing "12" passes "1") hit the document and can unseat guests.
@@ -191,8 +196,16 @@ against `dev-user`), `web-preview` :4173 (prod build, service worker active).
   list scrolls), zones = `data-drop-zone="id"` + `registerDropZone(id, handler)`, `DragGhost` follows
   the pointer. Zones: `canvas` (Konva hit test → `requestSeating`), `placement-seat`,
   `placement-tray`.
-- **Tablet layout:** below `xl` (1280px — every iPad orientation) the guest/properties panels are
-  slide-over drawers (`editor/store/layoutStore`, `useDrawerState`; closed = `inert`). Canvas:
+- **Panel modes** (`editor/hooks/usePanelMode`, `useDrawerState`, `layoutStore`): `fixed` at `xl`+
+  (both panels always shown); `docked` on a laptop-sized window with a mouse (900–1279px, e.g. a
+  1440px screen at 125% zoom): panels sit beside the floor plan, never over it, Guests open by
+  default (`guestsDocked`, capped at 380px), Properties opened from its toolbar button, both
+  closable; `drawer` on tablets and phones (`DRAWER_QUERY`: under 900px, or under 1280px with a
+  coarse pointer). Panel classes are picked in JS from the mode, not with `max-xl:` variants.
+  `closeDrawers()` (Escape, "Show on map", prompts) only acts in drawer mode. `short:` (window
+  height ≤ 760px) trims header/toolbar/panel padding.
+- **Tablet layout:** in drawer mode the guest/properties panels are
+  slide-over drawers (closed = `inert`). Canvas:
   pinch zoom + two-finger pan (`pinchViewport`), tap to (de)select. `@media (pointer: coarse)` in
   `global.css` makes every `.btn`/input ≥ 44px; guest-list columns widen via `pointer-coarse:`.
 - **Toolbar by width:** `Toolbar` (sm and up) is one row: at `xl`+ it has Duplicate, Copy,
@@ -209,9 +222,21 @@ against `dev-user`), `web-preview` :4173 (prod build, service worker active).
   rather than hiding a CSS copy: e2e `getByText` sees hidden copies, which breaks strict mode.
   The Guests drawer scrolls as a whole; a guest row keeps RSVP + actions on the name's line while
   the name gets 5rem, else they wrap below it.
-- **Guest panel** (`GuestPanel`): counts, search (`GuestFilterBar`), then one row
-  `+ Add guest · Import ▾ · Filters` (`GuestPanelActions`; the add form opens inline and keeps
-  focus in Name). `AssignBar` renders only with a selection, as the `sticky bottom-0` last item
+- **Guest panel** (`GuestPanel`): title + "39 of 46 seated" + Stats, search + Filters, one row
+  `+ Add guest · Import ▾ · Rules · Auto-seat…` (`GuestPanelActions`; the add form opens inline,
+  keeps focus in Name and confirms "✓ Added …"), then the list's **tabs** (`GuestTabs`,
+  `lib/guestTabs.ts`, state in `guestFilterStore.tab`): **To seat** (default: everyone without a
+  seat, so seating someone takes them off the list; the count leaves out declined guests, who stay
+  listed struck through so a row never jumps when its RSVP changes), **Seated** (by table,
+  `SeatedTables`) and **All**. A typed search lists every match whatever the tab
+  (`effectiveTab`), and the tabs give way to "N of M guests match". There is no seated/unseated
+  filter any more: the tabs are it.
+- **Add / seat feedback:** new guests (typed or imported) flash in the list and scroll into view
+  (`guestHighlightStore`, `.guest-flash`; `guestStore.addGuest`/`importGuests` call it and leave
+  the Seated tab). Every seating path ends in `confirmSeated` (`seatingFlowStore`): an Undo notice
+  naming the guest ("Seated Annie Easley at Table 3.") and `editorStore.pulseTable`, which lights
+  the table for a moment. Unseating from a row says so too. `SeatingPrompts` is `z-40`, above an
+  open drawer and its backdrop, so the notice's Undo is reachable on tablets. `AssignBar` renders only with a selection, as the `sticky bottom-0` last item
   of the list's scroll area (region "Selected guests"), so ticking never moves a row.
   `RsvpControl` is a radiogroup per guest (needs `guestName`).
 - **Check-in (schema v9):** `guest.checkedInAt` (ISO or null). `setCheckedIn` also marks the RSVP as
@@ -343,6 +368,10 @@ seating_app`). Homebrew Postgres is gone from this machine. Prisma **P1001** mea
   and restart the dev server. `vite.config.ts` already sets `resolve.dedupe: ['react','react-dom']`.
   **Do NOT add `react`/`react-dom` to `optimizeDeps.include`**: it triggers an "Outdated Optimize
   Dep" reload loop (blank page). Only `react-konva`/`konva` belong there.
+- **`getByRole("status")` in e2e is the canvas notice.** Don't add other `role="status"` elements
+  to the editor (the add-guest confirmation is `aria-live` instead), and notices now carry an Undo
+  button, so assert with `toContainText`, not `toHaveText`. After seating, guests are on the
+  **Seated** tab: `showGuestTab(page, "Seated")` before ticking them; `seatedCount` reads the tab.
 - **Playwright (`apps/e2e`):** WebKit refuses some ports (4190 = ManageSieve) with "Not allowed to
   use restricted network port" — that's why e2e uses 4280. Root `npm run e2e -- --flag` swallows
   flags (same as below); run `npx playwright test …` inside `apps/e2e`. Guest checkboxes ignore
@@ -485,6 +514,10 @@ Done:
 - **Theming** (light / dark / black / synthwave) persisted to localStorage.
 - **Local-first:** IndexedDB storage, no account needed, **offline + installable (PWA)**, URL
   routing, **backup download/import**.
+- **UX pass 2 (2026-11):** guest list tabs (To seat / Seated / All), confirmations with Undo for
+  every add and seat, bordered buttons and readable disabled states in all four themes (Black
+  theme's primary is now light), docked panels + tighter chrome on zoomed-in / small laptop
+  windows (`ux-small-screens.spec`).
 - **Sign-in (Clerk), multi-device sync and sharing**: versioned whole-document sync, "keep
   both" conflicts, signed-out events (and their floor plans) adopted on sign-in; invite editors /
   viewers by email, public read-only link, one editor at a time with live read-only view. On in

@@ -39,7 +39,7 @@ export function MemberRow({
           />
           <button
             type="button"
-            className="btn btn-ghost btn-sm text-error-strong"
+            className="btn btn-sm text-error-strong"
             aria-label={`Remove ${member.email}`}
             disabled={busy}
             onClick={onRemove}

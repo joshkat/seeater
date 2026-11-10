@@ -5,6 +5,7 @@ import {
   assignSelectionTo,
   createEvent,
   csvOf,
+  editorTools,
   exactPlacementToggle,
   importGuests,
   isTabletLayout,
@@ -36,7 +37,7 @@ test("seat guests chair by chair, then undo and redo", async ({ page }) => {
 
   // The whole Confirm is one undo step.
   if (isTabletLayout(page)) await page.getByRole("button", { name: "Guests", exact: true }).click();
-  await page.getByRole("button", { name: "Undo" }).click();
+  await editorTools(page).getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => seatedCount(page)).toBe(0);
   await (await redoControl(page)).click();
   await expect.poll(() => seatedCount(page)).toBe(3);
@@ -55,7 +56,7 @@ test("guests who don't fit stay selected and can go to another table", async ({ 
   const prompt = page.getByRole("dialog", { name: "Guests that didn't fit" });
   await expect(prompt).toContainText("2 guests didn’t fit at Table 1");
   await prompt.getByRole("button", { name: /Table 2/ }).click();
-  await expect(page.getByRole("status")).toHaveText("Seated 2 guests at Table 2.");
+  await expect(page.getByRole("status")).toContainText("Seated 2 guests at Table 2.");
   expect(await seatedCount(page)).toBe(10);
 });
 

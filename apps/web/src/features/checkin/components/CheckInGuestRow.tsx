@@ -23,7 +23,7 @@ export function CheckInGuestRow({
   const undoButton = (label: string) => (
     <button
       type="button"
-      className="btn btn-ghost btn-sm ml-auto"
+      className="btn btn-sm ml-auto"
       aria-label={`Undo check-in for ${guest.name}`}
       onClick={() => onUndo(guest.id)}
     >

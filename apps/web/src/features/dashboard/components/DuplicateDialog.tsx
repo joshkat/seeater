@@ -71,7 +71,7 @@ export function DuplicateDialog({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} disabled={busy}>
+          <button type="button" className="btn btn-sm" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <button

@@ -1,12 +1,12 @@
-import { DESKTOP_QUERY, useMediaQuery } from "../../../lib/useMediaQuery";
+import { usePanelMode } from "../hooks/usePanelMode";
 import { useLayoutStore } from "../store/layoutStore";
 
-/** Dims the canvas behind an open drawer (tablet widths); tap to close it. */
+/** Dims the canvas behind an open drawer (tablets and phones; docked panels cover nothing); tap to close it. */
 export function DrawerBackdrop(): JSX.Element | null {
-  const desktop = useMediaQuery(DESKTOP_QUERY);
+  const drawers = usePanelMode() === "drawer";
   const anyOpen = useLayoutStore((state) => state.guestsOpen || state.propertiesOpen);
   const closeDrawers = useLayoutStore((state) => state.closeDrawers);
-  if (desktop || !anyOpen) return null;
+  if (!drawers || !anyOpen) return null;
   return (
     <button
       type="button"

@@ -17,15 +17,15 @@ export function GuestFilterBar(): JSX.Element {
   };
 
   return (
-    <label className="input input-sm flex w-full items-center gap-1.5">
+    <label className="input input-sm flex min-w-0 flex-1 items-center gap-1.5">
       <span aria-hidden className="text-base-content/60">
         ⌕
       </span>
       <input
         type="search"
         aria-label="Search guests"
-        placeholder="Search name, meal, tag, notes…"
-        className="grow"
+        placeholder="Search guests…"
+        className="min-w-0 grow"
         value={filter.query}
         onChange={(event) => setFilter({ query: event.target.value })}
         onKeyDown={(event) => {

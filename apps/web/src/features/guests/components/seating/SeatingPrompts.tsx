@@ -21,8 +21,10 @@ export function SeatingPrompts(): JSX.Element {
     if (prompting) useLayoutStore.getState().closeDrawers();
   }, [prompting]);
 
+  // Above an open drawer and its backdrop (z-30 / z-20): seating from the
+  // guest drawer must not hide its own confirmation, or its Undo button.
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
+    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center px-4">
       {question ? (
         <HouseholdPrompt question={question} />
       ) : swap ? (

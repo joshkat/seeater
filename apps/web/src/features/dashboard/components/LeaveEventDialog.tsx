@@ -39,7 +39,7 @@ export function LeaveEventDialog({
           ask them to share it with you again.
         </p>
         <div className="modal-action mt-1">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button type="button" className="btn btn-sm" onClick={onClose}>
             Cancel
           </button>
           <button type="button" className="btn btn-error btn-sm" onClick={onConfirm}>

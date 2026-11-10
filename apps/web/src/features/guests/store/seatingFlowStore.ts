@@ -16,6 +16,7 @@ import {
 import { create } from "zustand";
 
 import { useDocumentStore } from "../../editor/store/documentStore";
+import { useEditorStore } from "../../editor/store/editorStore";
 // historyActions imports this store too; each only uses the other inside
 // functions, so the cycle is safe.
 import { showUndoNotice } from "../../editor/store/historyActions";
@@ -157,6 +158,19 @@ function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
+/** "Annie Easley" for one guest, "4 guests" for a group. */
+function whoLabel(guestIds: string[], count: number): string {
+  const only = guestIds.length === 1 && count === 1 ? guestIds[0] : null;
+  const name = only ? currentDoc()?.guests.find((guest) => guest.id === only)?.name : null;
+  return name ?? plural(count, "guest");
+}
+
+/** Says who was seated where, with Undo, and lights the table up on the map. */
+function confirmSeated(text: string, tableId: string): void {
+  showUndoNotice(text);
+  useEditorStore.getState().pulseTable(tableId);
+}
+
 export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
   /** Shows the outcome of a table seating and sets up the next round, if any. */
   const settle = (
@@ -164,20 +178,18 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     tableId: string,
     extra = "",
     before: EventDoc | null = null,
+    guestIds: string[] = [],
   ): void => {
     if (!result) return;
     const doc = currentDoc();
     const name = doc ? tableNameById(doc.tables, tableId) : "the table";
     if (result.unseatedIds.length === 0) {
       useGuestStore.getState().clearGuestSelection();
-      set({
-        question: null,
-        overflow: null,
-        notice: {
-          id: ++noticeId,
-          text: `Seated ${plural(result.assigned, "guest")} at ${name}${extra}.${ruleWarning(before)}`,
-        },
-      });
+      set({ question: null, overflow: null });
+      confirmSeated(
+        `Seated ${whoLabel(guestIds, result.assigned)} at ${name}${extra}.${ruleWarning(before)}`,
+        tableId,
+      );
       return;
     }
     useGuestStore.getState().setGuestSelection(result.unseatedIds);
@@ -194,12 +206,16 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
     const before = currentDoc();
     if (target.kind === "seat" && guestIds.length === 1) {
       useGuestStore.getState().assignSeat(guestIds[0], target.seatId);
-      const warning = ruleWarning(before);
-      set({
-        question: null,
-        overflow: null,
-        notice: warning ? { id: ++noticeId, text: warning.trim() } : null,
-      });
+      set({ question: null, overflow: null, notice: null });
+      const after = currentDoc();
+      // Nothing to confirm if the chair was already theirs.
+      if (after && after !== before) {
+        const name = tableNameById(after.tables, target.tableId);
+        confirmSeated(
+          `Seated ${whoLabel(guestIds, 1)} at ${name}.${ruleWarning(before)}`,
+          target.tableId,
+        );
+      }
       return;
     }
     const doc = currentDoc();
@@ -212,6 +228,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
       target.tableId,
       "",
       before,
+      guestIds,
     );
   };
 
@@ -257,13 +274,10 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
       useGuestStore.getState().clearGuestSelection();
       const doc = currentDoc();
       const name = doc ? tableNameById(doc.tables, placement.tableId) : "the table";
-      set({
-        placement: null,
-        notice:
-          plan.length > 0
-            ? { id: ++noticeId, text: `Seating saved at ${name}.${ruleWarning(before)}` }
-            : null,
-      });
+      set({ placement: null, notice: null });
+      if (plan.length > 0) {
+        confirmSeated(`Seating saved at ${name}.${ruleWarning(before)}`, placement.tableId);
+      }
     },
 
     cancelPlacement() {
@@ -327,6 +341,7 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
         overflow.tableId,
         "",
         before,
+        overflow.guestIds,
       );
     },
 
@@ -350,7 +365,13 @@ export const useSeatingFlowStore = create<SeatingFlowState>((set, get) => {
         added = outcome.addedChairs;
         return outcome;
       });
-      settle(result, overflow.tableId, added > 0 ? ` (added ${plural(added, "chair")})` : "");
+      settle(
+        result,
+        overflow.tableId,
+        added > 0 ? ` (added ${plural(added, "chair")})` : "",
+        null,
+        overflow.guestIds,
+      );
     },
 
     leaveUnseated() {

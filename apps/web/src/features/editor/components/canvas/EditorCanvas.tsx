@@ -64,6 +64,7 @@ export function EditorCanvas(): JSX.Element {
   const updateRoomObject = useEditorStore((state) => state.updateRoomObject);
   const selectedIds = useEditorStore((state) => state.selectedIds);
   const highlightedSeatId = useEditorStore((state) => state.highlightedSeatId);
+  const pulsedTableId = useEditorStore((state) => state.pulsedTableId);
   // A table the overflow prompt is pointing at (hover / focus on its chip).
   const previewTableId = useTablePreviewStore((state) => state.tableId);
   const viewport = useEditorStore((state) => state.viewport);
@@ -407,7 +408,11 @@ export function EditorCanvas(): JSX.Element {
               key={table.id}
               table={table}
               selected={selectedIds.includes(table.id)}
-              dropHighlight={dropHighlightTableId === table.id || previewTableId === table.id}
+              dropHighlight={
+                dropHighlightTableId === table.id ||
+                previewTableId === table.id ||
+                pulsedTableId === table.id
+              }
               highlightedSeatId={highlightedSeatId}
               ruleWarning={ruleTableIds.has(table.id)}
               tableNumber={index + 1}
